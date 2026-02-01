@@ -1,0 +1,15 @@
+# IPPOC-OS Code Owners
+
+# Root foundation
+* @ippoc-os/kernel-council
+
+# Organ boundaries
+/brain/ @ippoc-os/brain-architects
+/body/ @ippoc-os/body-engineers
+/memory/ @ippoc-os/memory-specialists
+/mind/ @ippoc-os/mind-designers
+
+# Infrastructure
+/tools/ @ippoc-os/infra-ops
+/docs/ @ippoc-os/kernel-council
+/.github/ @ippoc-os/infra-ops

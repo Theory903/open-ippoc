@@ -355,5 +355,52 @@ impl GitEvolution {
              Ok(false)
         }
     }
+
+    /// Collect a summary of staged changes for the Brain to analyze
+    pub fn summarize_staged_changes(&self) -> Result<String> {
+        let repo = Repository::open(&self.path)?;
+        let mut index = repo.index()?;
+        let tree_id = index.write_tree()?;
+        let tree = repo.find_tree(tree_id)?;
+        
+        let head = repo.head()?.peel_to_commit()?;
+        let head_tree = head.tree()?;
+        
+        let diff = repo.diff_tree_to_tree(Some(&head_tree), Some(&tree), None)?;
+        
+        let mut summary = String::new();
+        diff.print(git2::DiffFormat::Patch, |_delta, _hunk, line| {
+            if let Ok(content) = std::str::from_utf8(line.content()) {
+                summary.push_str(content);
+            }
+            true
+        })?;
+        
+        Ok(summary)
+    }
+
+    /// Commit staged changes with metadata provided by the Brain
+    pub fn commit_staged(&self, metadata: CommitMetadata) -> Result<String> {
+        let repo = Repository::open(&self.path)?;
+        let signature = Signature::now("IPPOC-Immune", "immune@ippoc.os")?;
+        
+        let mut index = repo.index()?;
+        let tree_id = index.write_tree()?;
+        let tree = repo.find_tree(tree_id)?;
+        
+        let head_commit = repo.head()?.peel_to_commit()?;
+        let msg = metadata.to_message();
+        
+        let oid = repo.commit(
+            Some("HEAD"),
+            &signature,
+            &signature,
+            &msg,
+            &tree,
+            &[&head_commit]
+        )?;
+        
+        Ok(oid.to_string())
+    }
 }
 
