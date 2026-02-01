@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+/target/
+dist/
+.next/
+.turbo/
+.pnpm-debug.log
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+
+# OS files
+.DS_Store
+Thumbs.db
+.Spotlight-V100
+.Trashes
+
+# Rust/Cargo
+**/*.rs.bk
+Cargo.lock.bak
+
+# Node/PNPM
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+.env/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Project Specific
+data/nodes/
+/brain/brain.log
+/body/body.log
+/mind/mind.log
+memory/db.sqlite*

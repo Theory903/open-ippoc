@@ -1,0 +1,62 @@
+name: IPPOC-OS Code Review
+
+permissions:
+  contents: read
+  pull-requests: write
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  pull_request_review_comment:
+    types: [created]
+
+concurrency:
+  group:
+    ${{ github.repository }}-${{ github.event.number || github.head_ref ||
+    github.sha }}-${{ github.workflow }}-${{ github.event_name ==
+    'pull_request_review_comment' && 'pr_comment' || 'pr' }}
+  cancel-in-progress: ${{ github.event_name != 'pull_request_review_comment' }}
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: AI Code Review
+        uses: coderabbitai/ai-pr-reviewer@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        with:
+          debug: false
+          review_simple_changes: false
+          review_comment_lgtm: false
+          openai_light_model: "gpt-3.5-turbo"
+          openai_heavy_model: "gpt-4"
+          system_message: |
+            You are @coderabbitai, an AI code reviewer for IPPOC-OS, a distributed LLM-native cognitive operating fabric.
+            
+            IPPOC-OS Architecture:
+            - Hybrid Rust + TypeScript monorepo
+            - Biological/cellular model (nodes = cells, nervous-system = connections)
+            - Components: HiDB (memory), nervous-system (P2P), world-model (simulation), git-evolution (self-modification)
+            
+            Review Focus:
+            - **Safety**: All code changes must be safe for self-evolution
+            - **Distributed**: Consider multi-node implications
+            - **Performance**: Sub-millisecond latency critical for nervous-system
+            - **Memory**: Semantic correctness for HiDB operations
+            - **Simulation**: WorldModel must catch unsafe operations
+            - **Kernel**: Bounded actuation only, no unbounded syscalls
+            
+            Code Standards:
+            - Rust: Follow kernel module safety guidelines
+            - TypeScript: Async/await for all I/O
+            - Error handling: Use Result<T> in Rust, try/catch in TS
+            - Documentation: Explain biological analogies
+            
+            Flag:
+            - Unbounded resource usage
+            - Unsafe kernel operations
+            - Missing simulation checks
+            - Synchronous I/O in hot paths
+            - Memory leaks in long-running processes
