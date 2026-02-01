@@ -1,0 +1,18 @@
+[package]
+name = "inter-org"
+version = "0.1.0"
+edition = "2021"
+description = "The Bilingual Transport Layer: Unifying P2P Mesh and Gateway Protocols"
+
+[dependencies]
+tokio = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+serde = { workspace = true }
+serde_json = "1.0"
+async-trait = "0.1"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+
+# Internal dependencies
+nervous-system = { path = ".." }
+# Placeholder for gateway integration (will likely be an interface to OpenClaw)

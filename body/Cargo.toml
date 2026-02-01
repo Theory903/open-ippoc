@@ -1,0 +1,30 @@
+
+[package]
+name = "ippoc-node"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { workspace = true }
+serde = { workspace = true }
+anyhow = { workspace = true }
+clap = { version = "4.4", features = ["derive"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"
+hidb = { path = "../memory" }
+nervous-system = { path = "mesh" }
+wasmtime = "18.0"
+wasmtime-wasi = "18.0"
+reqwest = { version = "0.11", features = ["json"] }
+sysinfo = "0.30"
+sha2 = { workspace = true }
+hex = { workspace = true }
+cap-std = "2.0"
+uuid = { workspace = true }
+ed25519-dalek = "2.1"
+rand = "0.8"
+axum = "0.6"
+serde_json = "1.0"
+cerebellum = { path = "../brain/cerebellum" }
+git-evolution = { path = "immune/git-evolution" }
+brain-evolution = { path = "../brain/evolution" }
