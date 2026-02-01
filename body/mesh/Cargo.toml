@@ -1,0 +1,30 @@
+[package]
+name = "nervous-system"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { workspace = true }
+anyhow = { workspace = true }
+quinn = { workspace = true }
+capnp = { workspace = true }
+rustls = "0.21"
+rcgen = "0.11"
+mdns-sd = "0.10"
+uuid = { workspace = true }
+serde = { workspace = true }
+chrono = { workspace = true }
+serde_json = { workspace = true }
+hex = { workspace = true }
+bincode = { workspace = true }
+ed25519-dalek = { version = "2.2", features = ["rand_core"] }
+x25519-dalek = { version = "2.0", features = ["static_secrets", "getrandom"] }
+chacha20poly1305 = "0.10"
+aes-gcm = "0.10"
+hkdf = "0.12"
+sha2 = "0.10"
+getrandom = "0.2"
+igd-next = "0.14"
+rand = "0.8"
+tracing = { workspace = true }
+sys-info = "0.9.1"
