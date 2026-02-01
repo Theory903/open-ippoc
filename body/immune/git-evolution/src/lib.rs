@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 pub trait BrainMutationResolver: Send + Sync {
     async fn resolve_conflict(&self, conflict: ConflictContext) -> Result<String>;
     async fn simulate_patch(&self, repo_root: &str, patch_content: &str) -> Result<bool>;
+    async fn review_patch(&self, patch_content: &str) -> Result<bool>;
+    async fn scan_for_governance_violations(&self, summary: &str) -> Result<Vec<String>>;
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -282,6 +284,12 @@ impl GitEvolution {
     where 
         T: BrainMutationResolver + 'static + ?Sized
     {
+        // 1. Pre-review safety check (Rule 0 & Rule 3)
+        if !self.review_patch(brain, &metadata.description).await? {
+            warn!("GitEvolution: Patch REJECTED by immune system review.");
+            return Ok(false);
+        }
+
         let safe_name = feature_name.replace(' ', "-").to_lowercase();
         let branch_name = format!("feature/{}", safe_name);
         info!("GitEvolution: Creating feature branch '{}'", branch_name);
@@ -401,6 +409,27 @@ impl GitEvolution {
         )?;
         
         Ok(oid.to_string())
+    }
+
+    /// Review a patch with the Brain's immune system
+    pub async fn review_patch<T>(&self, brain: &T, patch_content: &str) -> Result<bool>
+    where
+        T: BrainMutationResolver + 'static + ?Sized
+    {
+        info!("GitEvolution: Initiating immune system patch review...");
+        
+        // 1. Ask brain to scan for governance violations
+        let violations = brain.scan_for_governance_violations(patch_content).await?;
+        
+        if !violations.is_empty() {
+            for violation in violations {
+                error!("GitEvolution: GOVERNANCE VIOLATION: {}", violation);
+            }
+            return Ok(false);
+        }
+
+        // 2. Structural review
+        brain.review_patch(patch_content).await
     }
 }
 
