@@ -1,0 +1,22 @@
+{
+    "name": "openclaw-cortex",
+    "version": "0.1.0",
+    "private": true,
+    "scripts": {
+        "start": "ts-node src/cortex.ts",
+        "dev": "nodemon src/cortex.ts"
+    },
+    "dependencies": {
+        "capnp-ts": "^0.7.0",
+        "fs-extra": "^11.2.0",
+        "openclaw": "file:../../openclaw-main",
+        "simple-git": "^3.22.0",
+        "zod": "^3.22.4"
+    },
+    "devDependencies": {
+        "@types/node": "^20.10.0",
+        "ts-node": "^10.9.2",
+        "tsx": "^4.21.0",
+        "typescript": "^5.3.3"
+    }
+}
