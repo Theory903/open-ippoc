@@ -87,6 +87,46 @@ impl BrainMutationResolver for EvolutionEngine {
         info!("Brain: Simulation PASSED.");
         Ok(true)
     }
+
+    async fn review_patch(&self, patch_content: &str) -> Result<bool> {
+        info!("Brain: Performing structural immune review on patch");
+        
+        let query = format!(
+            "Task: Structural Immune Review\nPatch:\n{}\n\nConstraint: Does this patch follow Rule 6 (LOC limit), Rule 8 (Naming), and Rule 10 (Safety)? Return JSON: {{ \"safe\": bool, \"reason\": \"string\" }}",
+            patch_content
+        );
+
+        let req = cerebellum::ThoughtRequest {
+            query,
+            context_history: vec!["You are the IPPOC Immune System. You reject any mutation that weakens the organism or violates structural laws.".to_string()],
+        };
+
+        let response = self.cerebellum.think(req).await?;
+        Ok(response.answer.contains("\"safe\": true"))
+    }
+
+    async fn scan_for_governance_violations(&self, summary: &str) -> Result<Vec<String>> {
+        info!("Brain: Scanning for governance violations in proposed evolution");
+        
+        let query = format!(
+            "Task: Governance Audit\nProposed Change Summary:\n{}\n\nConstraint: Check against rules.md (Rule 2: Canon, Rule 3: Organ, Rule 9: Invariants). Return a list of violations. If none, return an empty list. Format: [\"Violation 1\", ...]",
+            summary
+        );
+
+        let req = cerebellum::ThoughtRequest {
+            query,
+            context_history: vec!["You are the Guardian of the IPPOC System Canon. You enforce hard stop conditions for all mutations.".to_string()],
+        };
+
+        let response = self.cerebellum.think(req).await?;
+        
+        // Simple heuristic for parsing violations from LLM response
+        if response.answer.contains("[]") || response.answer.to_lowercase().contains("no violations") {
+            Ok(vec![])
+        } else {
+            Ok(vec![response.answer]) // Wrap the reasoning as a violation for now
+        }
+    }
 }
 
 impl EvolutionEngine {

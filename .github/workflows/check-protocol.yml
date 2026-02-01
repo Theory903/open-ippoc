@@ -1,0 +1,33 @@
+name: IPPOC Protocol Enforcer
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+jobs:
+  lint-commits:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Commit Message Format
+        uses: gsly93/commit-msg-checker@v1.0.1
+        with:
+          pattern: '^(brain|body|mind|memory|infra|system|docs|api)\/[a-z0-9-]+: [\s\S]+'
+          error: 'Your commit message must follow the "organ: intent" protocol (e.g., body/immune: improve git flow). See rules.md.'
+          check_all_commits: true
+
+      - name: Verify DESCRIPTION and IMPACT sections
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const commits = await github.rest.pulls.listCommits({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+            
+            for (const commit of commits.data) {
+              const msg = commit.commit.message;
+              if (!msg.includes('DESCRIPTION:') || !msg.includes('IMPACT:')) {
+                core.setFailed(`Commit message for ${commit.sha} is missing DESCRIPTION: or IMPACT: sections.`);
+              }
+            }
