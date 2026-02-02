@@ -1,0 +1,29 @@
+#!/bin/bash
+# IPPOC Pre-Push Hook
+# Ensures organ-specific branches are synced if changes are detected.
+
+ORGANS=("brain" "body" "mind" "memory")
+CHANGES_DETECTED=false
+
+# Check if any organ directory has staged/unstaged changes relative to the remote
+for ORGAN in "${ORGANS[@]}"; do
+    if git diff --quiet HEAD "origin/main" -- "$ORGAN" 2>/dev/null; then
+        :
+    else
+        echo "📝 Changes detected in organ: $ORGAN"
+        CHANGES_DETECTED=true
+    fi
+done
+
+if [ "$CHANGES_DETECTED" = true ]; then
+    echo "--------------------------------------------------------"
+    echo "💡 You have pending changes in one or more organs."
+    echo "Would you like to sync organ-specific branches now? (y/n)"
+    read -r response
+    if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+        bash ./scripts/organ-sync.sh
+    fi
+    echo "--------------------------------------------------------"
+fi
+
+exit 0
