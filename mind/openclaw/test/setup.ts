@@ -2,6 +2,10 @@ import { afterAll, afterEach, beforeEach, vi } from "vitest";
 
 // Ensure Vitest environment is properly set
 process.env.VITEST = "true";
+process.env.OPENCLAW_DISABLE_SKILLS_WATCH = "true";
+process.env.ANTHROPIC_API_KEY ??= "test-anthropic-key";
+process.env.OPENAI_API_KEY ??= "test-openai-key";
+process.env.GOOGLE_API_KEY ??= "test-google-key";
 
 import type {
   ChannelId,

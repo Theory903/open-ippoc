@@ -298,10 +298,14 @@ export async function runTui(opts: TuiOptions) {
   const updateHeader = () => {
     const sessionLabel = formatSessionKey(currentSessionKey);
     const agentLabel = formatAgentLabel(currentAgentId);
+    let title = `openclaw tui - ${client.connection.url} - agent ${agentLabel} - session ${sessionLabel}`;
+    
+    if (process.env.IPPOC_ENABLED === "true") {
+      title += " | Powered by IPPOC 🧠 ⚡ 🧬";
+    }
+
     header.setText(
-      theme.header(
-        `openclaw tui - ${client.connection.url} - agent ${agentLabel} - session ${sessionLabel}`,
-      ),
+      theme.header(title),
     );
   };
 

@@ -139,6 +139,7 @@ pub enum MessageType {
     ProtocolNack = 0x23,         // Negative acknowledgment (failure)
     SystemValidation = 0x24,     // Session validation ping
     HandshakeRequest = 0x25,     // Request handshake for pending messages
+    Telepathy = 0x30,            // IPPOC Telepathy (AI-to-AI thoughts)
 }
 
 // Peer information

@@ -317,6 +317,10 @@ export class MemoryIndexManager {
     return merged.filter((entry) => entry.score >= minScore).slice(0, maxResults);
   }
 
+  async embed(text: string): Promise<number[]> {
+    return this.embedQueryWithTimeout(text);
+  }
+
   private async searchVector(
     queryVec: number[],
     limit: number,

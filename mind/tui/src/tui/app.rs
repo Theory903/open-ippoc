@@ -14,7 +14,6 @@ pub struct Message {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[allow(dead_code)]
 pub enum SidebarSection {
     Channels,
     People,
@@ -73,7 +72,6 @@ pub struct App {
     
     // Data state for rendering
     pub nickname: String,
-    #[allow(dead_code)]
     pub network_name: String,
     pub connected: bool,
     pub channels: Vec<String>,
@@ -113,7 +111,6 @@ pub struct App {
 }
 
 impl App {
-    #[allow(dead_code)]
     pub fn new() -> Self {
         Self::new_with_nickname("anonymous".to_string())
     }

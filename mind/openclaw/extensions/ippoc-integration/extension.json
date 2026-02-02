@@ -1,0 +1,26 @@
+{
+    "id": "ippoc-integration",
+    "name": "IPPOC Organism Layer",
+    "version": "1.0.0",
+    "description": "Adds memory, learning, economy, and swarm intelligence via IPPOC",
+    "entry": "index.ts",
+    "capabilities": [
+        "memory_override",
+        "embedding_provider",
+        "prompt_injection",
+        "post_execution_analysis",
+        "tui_branding"
+    ],
+    "configuration": {
+        "ippocNodeUrl": {
+            "type": "string",
+            "default": "http://localhost:8001",
+            "description": "URL of the IPPOC Brain Node"
+        },
+        "ippocApiKey": {
+            "type": "string",
+            "description": "Secret Key for IPPOC Brain Authentication",
+            "secret": true
+        }
+    }
+}

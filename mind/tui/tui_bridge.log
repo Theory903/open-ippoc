@@ -1,0 +1,4 @@
+[?1049h[?1000h[?1002h[?1003h[?1015h[?1006h
+thread 'main' panicked at mind/tui/src/main.rs:192:40:
+Failed to initialize TUI: Os { code: 4, kind: Interrupted, message: "Interrupted system call" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

@@ -24,7 +24,7 @@ export interface OneDriveUploadResult {
 /**
  * Upload a file to the user's OneDrive root folder.
  * For larger files, this uses the simple upload endpoint (up to 4MB).
- * TODO: For files >4MB, implement resumable upload session.
+ * NOTE: Files >4MB require a createUploadSession flow (not implemented in this v1 kernel).
  */
 export async function uploadToOneDrive(params: {
   buffer: Buffer;
@@ -35,6 +35,10 @@ export async function uploadToOneDrive(params: {
 }): Promise<OneDriveUploadResult> {
   const fetchFn = params.fetchFn ?? fetch;
   const token = await params.tokenProvider.getAccessToken(GRAPH_SCOPE);
+
+  if (params.buffer.length > 4 * 1024 * 1024) {
+      throw new Error(`File too large for simple upload (Size: ${params.buffer.length}). Limit is 4MB.`);
+  }
 
   // Use "OpenClawShared" folder to organize bot-uploaded files
   const uploadPath = `/OpenClawShared/${encodeURIComponent(params.filename)}`;

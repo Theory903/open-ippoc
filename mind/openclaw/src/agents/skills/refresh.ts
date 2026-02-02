@@ -102,6 +102,9 @@ export function ensureSkillsWatcher(params: { workspaceDir: string; config?: Ope
   if (!workspaceDir) {
     return;
   }
+  if (process.env.OPENCLAW_DISABLE_SKILLS_WATCH === "true" || process.env.VITEST === "true") {
+    return;
+  }
   const watchEnabled = params.config?.skills?.load?.watch !== false;
   const debounceMsRaw = params.config?.skills?.load?.watchDebounceMs;
   const debounceMs =

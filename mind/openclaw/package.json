@@ -78,6 +78,7 @@
     ".": "./dist/index.js",
     "./plugin-sdk": "./dist/plugin-sdk/index.js",
     "./plugin-sdk/*": "./dist/plugin-sdk/*",
+    "./memory": "./dist/memory/index.js",
     "./cli-entry": "./openclaw.mjs"
   },
   "scripts": {
