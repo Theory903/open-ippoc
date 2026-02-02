@@ -18,6 +18,7 @@ from brain.evolution.evolver import get_evolver
 from brain.memory.consolidation import get_hippocampus
 from brain.social.trust import get_trust_model
 from brain.explain import log_decision
+from brain.core.canon import violates_canon
 
 
 STATE_PATH = os.getenv("AUTONOMY_STATE_PATH", "data/autonomy_state.json")
@@ -47,6 +48,20 @@ class Planner:
                     reason=f"trust_below_threshold ({score})",
                     intent=i.to_dict()
                 )
+                continue
+
+            # 0.1 Canon Gatekeeping (Sovereignty Check)
+            # The Law: No intent can violate these rules, even from trusted sources
+            if violates_canon(i):
+                 print(f"[Planner] Sovereignty Gatekeeper REJECTED intent from {i.source} (Canon Violation)")
+                 log_decision(
+                    action="reject",
+                    reason=f"canon_violation ({i.description})",
+                    intent=i.to_dict()
+                 )
+                 continue
+
+            allowed_intents.append(i)
         intents.intents = allowed_intents
 
         # 1. Survival Check (Observer Signals)
@@ -101,7 +116,12 @@ class Decider:
         economy = get_economy()
         pain_score = observation.get("pain_score", 0.0)
         
-        # 0. Survival override (NON-NEGOTIABLE)
+        # 0. Canon Backstop (Sovereignty)
+        # Even if Planner failed, the Tactical Layer must refuse bad orders
+        if intent and violates_canon(intent):
+            return {"action": "reject", "reason": "canon_violation_backstop"}
+
+        # 0.5 Survival override (NON-NEGOTIABLE)
         if intent and intent.intent_type == IntentType.MAINTAIN:
              # Survival instincts ignore budget (mostly)
              return {"action": "act", "intent": intent, "reason": "survival_override"}
@@ -266,6 +286,18 @@ class AutonomyController:
             "decision": {k: (asdict(v) if isinstance(v, Intent) else v) for k, v in decision.items()},
             "observation": observation,
         }
+
+        # --- TERMINAL GATES ---
+        if decision["action"] == "reject":
+            # Sovereignty Violation Refusal
+            print(f"[Autonomy] REFUSING intent from {intent.source}: {decision['reason']}")
+            # Ensure we log the refusal
+            self._record_explain({**explanation, "result": "refused"})
+            self._save_state()
+            # Remove bad intent from stack to prevent looping
+            if intent and intent in self.intent_stack.intents:
+                 self.intent_stack.intents.remove(intent)
+            return {"status": "rejected", "reason": decision["reason"]}
 
         if decision["action"] == "idle":
             self._record_explain({**explanation, "result": "idle"})

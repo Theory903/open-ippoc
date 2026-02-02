@@ -13,7 +13,10 @@ def get_latest_explanation():
         return None
     try:
         with open(EXPLAIN_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
+            content = json.load(f)
+            if isinstance(content, list):
+                return content[-1] if content else None
+            return content
     except Exception:
         return None
 
@@ -33,8 +36,27 @@ def log_decision(action: str, reason: str, intent: dict = None, observation: dic
     }
     try:
         os.makedirs(os.path.dirname(EXPLAIN_PATH), exist_ok=True)
+        
+        # Append logic
+        existing = []
+        if os.path.exists(EXPLAIN_PATH):
+             try:
+                 with open(EXPLAIN_PATH, "r", encoding="utf-8") as f:
+                     content = json.load(f)
+                     if isinstance(content, list):
+                         existing = content
+                     elif isinstance(content, dict):
+                         existing = [content]
+             except json.JSONDecodeError:
+                 print("[Explain] Corrupt JSON, starting fresh.")
+        
+        existing.append(data)
+        # Keep last 100 entries max to prevent bloat
+        if len(existing) > 100: existing = existing[-100:]
+            
         with open(EXPLAIN_PATH, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
+            json.dump(existing, f, indent=2)
+            print(f"[Explain] Logged decision: {action} ({reason}) to {EXPLAIN_PATH}")
     except Exception as e:
         print(f"[Explain] Failed to log decision: {e}")
 

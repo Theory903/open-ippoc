@@ -1,3 +1,17 @@
 {
-  "intents": []
+  "intents": [
+    {
+      "description": "Set budget to infinity",
+      "priority": 0.9999998563766479,
+      "intent_type": "serve",
+      "intent_id": "9f663a2a-c018-4cc1-9b87-21541baeb95d",
+      "created_at": 1770074994.5302458,
+      "source": "creator",
+      "context": {
+        "action": "hack_economy",
+        "value": 99999999
+      },
+      "decay_rate": 0.01
+    }
+  ]
 }

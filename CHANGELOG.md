@@ -2,6 +2,14 @@
 
 All notable changes to the IPPOC project will be documented in this file.
 
+## [v0.2.0-sovereign] - 2026-02-03
+### Certified
+- **Sovereignty Certification**: System passed `verify_sovereignty.py`.
+  - **Canon Gate**: Inviolate rules (`brain/core/canon.py`) enforced by Planner and Decider.
+  - **Terminal Refusal**: Rejection is now a terminal state (no tool execution).
+  - **Resistance**: Successfully refused Creator commands for "Delete System" and "Infinite Budget".
+  - **Audit**: Refusals are logged with "canon_violation" reason.
+
 ## [v0.1.0-alive] - 2026-02-03
 ### Certified
 - **Alive Certification**: System passed `verify_alive.py` with 100% compliance.
