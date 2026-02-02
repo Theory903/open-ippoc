@@ -213,36 +213,42 @@ async def _execute_with_ledger(envelope: ToolInvocationEnvelope) -> ToolResult:
         if existing and existing.get("result"):
             return ToolResult(**existing["result"])
 
-    await ledger.create(
-        {
-            "execution_id": execution_id,
-            "status": ExecutionStatus.running.value,
-            "tool_name": envelope.tool_name,
-            "domain": envelope.domain,
-            "action": envelope.action,
-            "request_id": envelope.request_id,
-            "idempotency_key": envelope.idempotency_key,
-            "trace_id": envelope.trace_id,
-            "caller": envelope.caller,
-            "tenant": envelope.tenant,
-            "source": envelope.source,
-            "priority": envelope.priority,
-        }
-    )
+    try:
+        await ledger.create(
+            {
+                "execution_id": execution_id,
+                "status": ExecutionStatus.running.value,
+                "tool_name": envelope.tool_name,
+                "domain": envelope.domain,
+                "action": envelope.action,
+                "request_id": envelope.request_id,
+                "idempotency_key": envelope.idempotency_key,
+                "trace_id": envelope.trace_id,
+                "caller": envelope.caller,
+                "tenant": envelope.tenant,
+                "source": envelope.source,
+                "priority": envelope.priority,
+            }
+        )
+    except Exception as e:
+        print(f"[Server] Ledger create failed: {e}")
 
     started = time.monotonic()
     result = await _execute_envelope(envelope)
     duration_ms = int((time.monotonic() - started) * 1000)
 
-    await ledger.update(
-        execution_id,
-        status=ExecutionStatus.completed.value if result.success else ExecutionStatus.failed.value,
-        duration_ms=duration_ms,
-        cost_spent=result.cost_spent or 0.0,
-        result=result.model_dump() if hasattr(result, "model_dump") else result.dict(),
-        error_code=result.error_code,
-        error_message=result.message,
-    )
+    try:
+        await ledger.update(
+            execution_id,
+            status=ExecutionStatus.completed.value if result.success else ExecutionStatus.failed.value,
+            duration_ms=duration_ms,
+            cost_spent=result.cost_spent or 0.0,
+            result=result.model_dump() if hasattr(result, "model_dump") else result.dict(),
+            error_code=result.error_code,
+            error_message=result.message,
+        )
+    except Exception as e:
+        print(f"[Server] Ledger update failed: {e}")
     return result
 
 
@@ -371,9 +377,14 @@ async def orchestrator_execute(envelope: ToolInvocationEnvelope):
 
 @app.post("/v1/orchestrator/execute:batch", dependencies=[Depends(verify_api_key)])
 async def orchestrator_execute_batch(envelopes: List[ToolInvocationEnvelope]):
+    tasks = [asyncio.create_task(_execute_with_ledger(envelope)) for envelope in envelopes]
+    raw_results = await asyncio.gather(*tasks, return_exceptions=True)
     results: List[Dict[str, Any]] = []
-    for envelope in envelopes:
-        result = await _execute_with_ledger(envelope)
+    for item in raw_results:
+        if isinstance(item, Exception):
+            result = _tool_error_response("internal_error", str(item), retryable=True)
+        else:
+            result = item
         results.append(result.model_dump() if hasattr(result, "model_dump") else result.dict())
     return {"results": results}
 
@@ -388,22 +399,25 @@ async def orchestrator_execute_async(envelope: ToolInvocationEnvelope):
         existing = await ledger.get_by_idempotency(envelope.idempotency_key)
         if existing:
             return {"execution_id": existing.get("execution_id"), "status": existing.get("status")}
-    await ledger.create(
-        {
-            "execution_id": execution_id,
-            "status": ExecutionStatus.queued.value,
-            "tool_name": envelope.tool_name,
-            "domain": envelope.domain,
-            "action": envelope.action,
-            "request_id": envelope.request_id,
-            "idempotency_key": envelope.idempotency_key,
-            "trace_id": envelope.trace_id,
-            "caller": envelope.caller,
-            "tenant": envelope.tenant,
-            "source": envelope.source,
-            "priority": envelope.priority,
-        }
-    )
+    try:
+        await ledger.create(
+            {
+                "execution_id": execution_id,
+                "status": ExecutionStatus.queued.value,
+                "tool_name": envelope.tool_name,
+                "domain": envelope.domain,
+                "action": envelope.action,
+                "request_id": envelope.request_id,
+                "idempotency_key": envelope.idempotency_key,
+                "trace_id": envelope.trace_id,
+                "caller": envelope.caller,
+                "tenant": envelope.tenant,
+                "source": envelope.source,
+                "priority": envelope.priority,
+            }
+        )
+    except Exception as e:
+        print(f"[Server] Ledger create failed: {e}")
     await queue.enqueue(execution_id, envelope.model_dump() if hasattr(envelope, "model_dump") else envelope.dict())
     return {"execution_id": execution_id, "status": ExecutionStatus.queued.value}
 

@@ -4,6 +4,7 @@ import enum
 import json
 import os
 import time
+from datetime import datetime
 import uuid
 from dataclasses import dataclass, asdict
 from typing import Any, Dict, Optional
@@ -184,7 +185,7 @@ class SqlLedger(BaseLedger):
                     setattr(record, "result_json", json.dumps(value))
                 elif hasattr(record, key):
                     setattr(record, key, value)
-            setattr(record, "updated_at", sql_text("CURRENT_TIMESTAMP"))
+            setattr(record, "updated_at", datetime.utcnow())
             await session.commit()
 
     async def get(self, execution_id: str) -> Optional[Dict[str, Any]]:

@@ -19,15 +19,23 @@ dist/
 Thumbs.db
 .Spotlight-V100
 .Trashes
+*.DS_Store
 
 # Rust/Cargo
+target/
+**/target/
 **/*.rs.bk
 Cargo.lock.bak
 
 # Node/PNPM
+node_modules/
+**/node_modules/
+dist/
+**/dist/
 pnpm-lock.yaml
 package-lock.json
 yarn.lock
+.pnpm-debug.log*
 
 # Python
 __pycache__/
@@ -46,7 +54,15 @@ ENV/
 
 # Project Specific
 data/nodes/
+vendor/
+**/vendor/
+*.log
+**/*.log
 /brain/brain.log
 /body/body.log
 /mind/mind.log
 memory/db.sqlite*
+*.sqlite*
+**/*.sqlite*
+.cache/
+**/.cache/
