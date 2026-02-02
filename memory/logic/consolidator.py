@@ -1,6 +1,5 @@
 from typing import List
-from langchain_openai import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate
+from langchain_google_genai import ChatGoogleGenerativeAI
 from ..episodic.manager import EpisodicManager, EpisodicEvent
 from ..semantic.rag import SemanticManager
 
@@ -8,7 +7,7 @@ class MemoryConsolidator:
     def __init__(self, episodic: EpisodicManager, semantic: SemanticManager):
         self.episodic = episodic
         self.semantic = semantic
-        self.llm = ChatOpenAI(model="gpt-4-turbo", temperature=0) # High reasoning for consolidation
+        self.llm = ChatGoogleGenerativeAI(model="gemini-flash-latest", temperature=0) # High reasoning for consolidation
 
     async def consolidate_recent(self, hours: int = 24):
         """

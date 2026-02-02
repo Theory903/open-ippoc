@@ -3,14 +3,13 @@
 //! Implements PRD 14: Sovereign Swarm Spec (Metabolism)
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::path::PathBuf;
 use anyhow::{Result, anyhow};
 use chrono::Utc;
 use sha2::{Sha256, Digest};
 
 /// 3-Layer Currency Model
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct Balances {
     /// L0: Internal Cognitive Fuel (Compute, Reasoning)
     pub ippc: u128,
@@ -20,11 +19,6 @@ pub struct Balances {
     pub eth_virtual: u128,
 }
 
-impl Default for Balances {
-    fn default() -> Self {
-        Self { ippc: 0, iusd: 0, eth_virtual: 0 }
-    }
-}
 
 /// Types of economic actions
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -36,6 +30,18 @@ pub enum ActionType {
     DaoFee,
     Transfer { target: String },
     SystemGrant, // Genesis minting
+    DecayBurn { amount: u128 }, // Entropy
+    Vote { proposal_id: String, vote: bool },
+}
+
+/// DAO Governance Proposal Types (Layer 4)
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum ProposalType {
+    AdjustCosts { action: String, new_cost: u128 },
+    FundNode { node_id: String, amount: u128 },
+    SlashNode { node_id: String, reason: String },
+    ApproveEvolution { commit_hash: String },
+    EmergencyFreeze,
 }
 
 /// Outcome of an action
@@ -56,10 +62,14 @@ pub struct Proof {
 /// Canonical Source of Truth
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LedgerEntry {
+    /// Monotonic Sequence Number (Layer 2 Hardening)
+    pub seq_no: u64,
     /// SHA256(prev_hash + data)
     pub tx_id: String,
     pub timestamp: u64,
     pub actor: String,
+    /// Economic Ruleset Version
+    pub policy_version: String,
     pub action: ActionType,
     pub debit: Balances,
     pub credit: Balances,
@@ -74,9 +84,11 @@ pub struct EconomyController {
     /// Persist Path
     db_path: PathBuf,
     /// In-memory wallet state
-    wallet: Wallet,
+    pub wallet: Wallet,
     /// Append-only log
     ledger: Vec<LedgerEntry>,
+    /// Current Policy Version
+    policy_version: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -90,7 +102,7 @@ pub struct Wallet {
 
 impl EconomyController {
     /// Initialize the Economy for this Node
-    pub fn new(node_id: &str, node_root: &PathBuf) -> Result<Self> {
+    pub fn new(node_id: &str, node_root: &std::path::Path) -> Result<Self> {
         let economy_dir = node_root.join("economy");
         std::fs::create_dir_all(&economy_dir)?;
         
@@ -122,6 +134,7 @@ impl EconomyController {
             db_path: economy_dir,
             wallet,
             ledger,
+            policy_version: "1.0.0".to_string(),
         })
     }
 
@@ -153,10 +166,33 @@ impl EconomyController {
             ActionType::DaoFee => Balances {
                 ippc: 0,
                 iusd: 0,
-                eth_virtual: 1000, // gwei?
+                eth_virtual: 1000, 
+            },
+            ActionType::DecayBurn { amount } => Balances {
+                ippc: *amount,
+                iusd: 0,
+                eth_virtual: 0,
             },
             _ => Balances::default(),
         }
+    }
+
+    /// Apply Entropy (Decay) to IPPC to prevent hoarding
+    /// Humans get tired. Nodes leak energy.
+    pub fn apply_decay(&mut self) -> Result<()> {
+        let current_ippc = self.wallet.balances.ippc;
+        if current_ippc > 100 {
+            let decay_amount = current_ippc / 50; // 2% decay
+            if decay_amount > 0 {
+                let node_id = self.wallet.node_id.clone();
+                self.record_action(
+                    &node_id,
+                    ActionType::DecayBurn { amount: decay_amount },
+                    Outcome::Success
+                )?;
+            }
+        }
+        Ok(())
     }
 
     /// Execute a transaction (Append to Ledger + Update Wallet)
@@ -164,17 +200,16 @@ impl EconomyController {
         let cost = self.estimate_cost(&action);
         
         // Check Funds
-        if outcome == Outcome::Success {
-             if self.wallet.balances.ippc < cost.ippc {
-                 return Err(anyhow!("Insufficient IPPC Funds"));
-             }
+        if outcome == Outcome::Success && self.wallet.balances.ippc < cost.ippc {
+             return Err(anyhow!("Insufficient IPPC Funds"));
         }
 
         // Create Ledger Entry
         let prev_hash = self.ledger.last()
             .map(|e| e.tx_id.clone())
             .unwrap_or_else(|| "0000000000000000000000000000000000000000000000000000000000000000".to_string());
-
+        
+        let seq_no = self.ledger.last().map(|e| e.seq_no + 1).unwrap_or(0);
         let timestamp = Utc::now().timestamp() as u64;
         
         // Calculate hash
@@ -182,17 +217,20 @@ impl EconomyController {
         hasher.update(&prev_hash);
         hasher.update(actor.as_bytes());
         hasher.update(timestamp.to_be_bytes());
+        hasher.update(seq_no.to_be_bytes()); // Include seq_no in hash
         let tx_id = hex::encode(hasher.finalize());
 
         let entry = LedgerEntry {
+            seq_no,
             tx_id,
             timestamp,
             actor: actor.to_string(),
+            policy_version: self.policy_version.clone(),
             action,
-            debit: cost.clone(), // We only track debits mostly
+            debit: cost.clone(), 
             credit: Balances::default(),
             outcome: outcome.clone(),
-            proof: None, // TODO: Signatures
+            proof: None, 
             prev_hash,
         };
 
@@ -210,7 +248,7 @@ impl EconomyController {
     }
 
     /// Grant funds (System / Genesis / Reward)
-    pub fn grant(&mut self, amount: Balances, reason: &str) -> Result<()> {
+    pub fn grant(&mut self, amount: Balances, _reason: &str) -> Result<()> {
         let node_id = self.wallet.node_id.clone();
         
         self.wallet.balances.ippc += amount.ippc;

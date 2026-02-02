@@ -1,0 +1,16 @@
+[openclaw] Building TypeScript (dist is stale).
+2026-02-01T13:24:37.298Z Moved to Trash: ~/.openclaw/workspace-dev
+2026-02-01T13:24:37.302Z Dev config ready: ~/.openclaw-dev/openclaw.json
+2026-02-01T13:24:37.302Z Dev workspace ready: ~/.openclaw/workspace-dev
+[90m2026-02-01T13:24:37.310Z[39m [35m[canvas][39m [36mhost mounted at http://127.0.0.1:19001/__openclaw__/canvas/ (root /Users/abhishekjha/.openclaw/canvas)[39m
+[90m2026-02-01T13:24:37.341Z[39m [36m[heartbeat][39m [36mstarted[39m
+[90m2026-02-01T13:24:37.342Z[39m [36m[gateway][39m [36magent model: google/gemini-1.5-flash-latest[39m
+[90m2026-02-01T13:24:37.343Z[39m [36m[gateway][39m [36mlistening on ws://127.0.0.1:19001 (PID 81722)[39m
+[90m2026-02-01T13:24:37.343Z[39m [36m[gateway][39m [36mlistening on ws://[::1]:19001[39m
+[90m2026-02-01T13:24:37.344Z[39m [36m[gateway][39m [36mlog file: /tmp/openclaw/openclaw-2026-02-01.log[39m
+[90m2026-02-01T13:24:37.346Z[39m [35m[browser/service][39m [36mBrowser control service ready (profiles=2)[39m
+[90m2026-02-01T13:24:37.346Z[39m [31m[gateway/channels][39m [36mskipping channel start (OPENCLAW_SKIP_CHANNELS=1 or OPENCLAW_SKIP_PROVIDERS=1)[39m
+2026-02-01T13:24:37.366Z Warning: no IPv4 address available on utun6
+[90m2026-02-01T13:24:47.968Z[39m [36m[ws][39m [36mwebchat connected conn=b0da6c87-edd9-445d-89e1-06be7bd2609b remote=::1 client=openclaw-control-ui webchat vdev[39m
+[90m2026-02-01T13:36:43.698Z[39m [36m[ws][39m [36m⇄ res ✓ logs.tail 5546ms conn=b0da6c87…609b id=7ee8741d…ac9c[39m
+[90m2026-02-01T13:36:45.453Z[39m [36m[ws][39m [36m⇄ res ✓ node.list 3550ms conn=b0da6c87…609b id=788a7f0a…7e76[39m

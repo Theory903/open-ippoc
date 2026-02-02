@@ -1,0 +1,24 @@
+{
+  "id": "ippoc-integration",
+  "name": "IPPOC Organism Layer",
+  "description": "Integrates IPPOC memory, learning, economy, and swarm intelligence.",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": true,
+    "properties": {
+      "enabled": { "type": "boolean" },
+      "nodeUrl": { "type": "string" }
+    }
+  },
+  "uiHints": {
+    "enabled": {
+      "label": "Enable IPPOC integration",
+      "help": "Enable the IPPOC organism layer for this OpenClaw instance."
+    },
+    "nodeUrl": {
+      "label": "IPPOC Node URL",
+      "placeholder": "http://localhost:9000",
+      "help": "HTTP base URL for the IPPOC node."
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+    "name": "@openclaw/ippoc-integration",
+    "version": "1.0.0",
+    "description": "IPPOC Organism Layer Integration",
+    "type": "module",
+    "peerDependencies": {
+        "openclaw": "workspace:*"
+    },
+    "openclaw": {
+        "extensions": [
+            "./index.ts"
+        ]
+    }
+}

@@ -4,14 +4,16 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tracing::info;
+use crate::discovery::Discovery;
 
 pub struct NervousSystemTransport {
     endpoint: Endpoint,
     rx_channel: mpsc::Receiver<Vec<u8>>,
+    discovery: Arc<Discovery>,
 }
 
 impl NervousSystemTransport {
-    pub async fn bind(port: u16) -> Result<Self> {
+    pub async fn bind(port: u16, discovery: Arc<Discovery>) -> Result<Self> {
         let (server_config, client_config) = configure_quic()?;
         
         let addr = SocketAddr::from(([0, 0, 0, 0], port));
@@ -20,20 +22,36 @@ impl NervousSystemTransport {
         
         info!("NervousSystem: Listening on QUIC port {}", port);
         
-        let (_tx, rx) = mpsc::channel(100);
+        let (tx, rx) = mpsc::channel(100);
         
         // Spawn listener
         let endpoint_clone = endpoint.clone();
+        let tx_clone = tx.clone();
         tokio::spawn(async move {
-            while let Some(_conn) = endpoint_clone.accept().await {
-                info!("NervousSystem: Incoming connection...");
-                // Handle connection (simplified)
+            while let Some(conn) = endpoint_clone.accept().await {
+                info!("NervousSystem: Incoming connection from {}", conn.remote_address());
+                // Handle connection
+                let tx = tx_clone.clone();
+                tokio::spawn(async move {
+                    if let Ok((mut send, mut recv)) = conn.accept_bi().await {
+                        while let Ok(data) = recv.read_chunk(usize::MAX, true).await {
+                            if let Some(chunk) = data {
+                                let buffer = chunk.bytes.to_vec();
+                                if let Err(e) = tx.send(buffer).await {
+                                    info!("NervousSystem: Failed to send received data: {}", e);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                });
             }
         });
 
         Ok(Self {
             endpoint,
             rx_channel: rx,
+            discovery,
         })
     }
 
@@ -45,9 +63,30 @@ impl NervousSystemTransport {
         Ok(())
     }
 
+    pub async fn send_broadcast(&self, data: &[u8]) -> Result<()> {
+        let peers = self.discovery.get_peers();
+        info!("NervousSystem: Broadcasting to {} peers", peers.len());
+        
+        for (_, ip) in peers.iter() {
+            let target = SocketAddr::new(*ip, self.endpoint.local_addr()?.port());
+            if let Err(e) = self.send_thought(target, data).await {
+                info!("NervousSystem: Failed to send to peer {}: {}", target, e);
+            }
+        }
+        
+        Ok(())
+    }
+
     /// Receive the next thought/message from the nervous system
     pub async fn receive(&mut self) -> Option<Vec<u8>> {
         self.rx_channel.recv().await
+    }
+
+    pub fn get_discovered_peers(&self) -> Vec<SocketAddr> {
+        let peers = self.discovery.get_peers();
+        peers.iter()
+            .map(|(_, ip)| SocketAddr::new(*ip, self.endpoint.local_addr().unwrap().port()))
+            .collect()
     }
 }
 

@@ -13,6 +13,7 @@ pub struct NodeIdentity {
     pub signing_key: SigningKey,
 }
 
+#[allow(dead_code)]
 impl NodeIdentity {
     /// Determines the NodeID before the isolation root is finalized.
     /// Returns the NodeID and the key. Does NOT write to isolation root yet.
@@ -66,7 +67,7 @@ impl NodeIdentity {
             let hostname = System::host_name().unwrap_or_else(|| "unknown".to_string());
             let cpu_info = sys.cpus().first().map(|c| c.brand()).unwrap_or("unknown").to_string();
             let mem_total = sys.total_memory();
-            let fingerprint = format!("{}-{}-{}", hostname, cpu_info, mem_total);
+            let fingerprint = format!("{hostname}-{cpu_info}-{mem_total}");
             fs::write(&fingerprint_path, fingerprint)?;
             
             info!("NodeIdentity: Identity persisted to isolation root and bound to hardware.");

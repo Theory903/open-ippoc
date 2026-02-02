@@ -129,7 +129,7 @@ pub fn encrypt_message(shared: &SharedSecret, plaintext: &[u8]) -> Result<Vec<u8
     let nonce = Nonce::from_slice(&nonce_bytes);
     
     let ciphertext = cipher.encrypt(nonce, plaintext)
-        .map_err(|e| anyhow!("Encryption failed: {}", e))?;
+        .map_err(|e| anyhow!("Encryption failed: {e}"))?;
     
     // Prepend nonce to ciphertext
     let mut result = nonce_bytes.to_vec();
@@ -151,7 +151,7 @@ pub fn decrypt_message(shared: &SharedSecret, encrypted: &[u8]) -> Result<Vec<u8
     let nonce = Nonce::from_slice(nonce_bytes);
     
     let plaintext = cipher.decrypt(nonce, ciphertext)
-        .map_err(|e| anyhow!("Decryption failed: {}", e))?;
+        .map_err(|e| anyhow!("Decryption failed: {e}"))?;
     
     Ok(plaintext)
 }
@@ -159,7 +159,7 @@ pub fn decrypt_message(shared: &SharedSecret, encrypted: &[u8]) -> Result<Vec<u8
 /// Verify a signature
 pub fn verify_signature(signing_public: &[u8; 32], message: &[u8], signature: &[u8; 64]) -> Result<bool> {
     let verifying_key = VerifyingKey::from_bytes(signing_public)
-        .map_err(|e| anyhow!("Invalid public key: {}", e))?;
+        .map_err(|e| anyhow!("Invalid public key: {e}"))?;
     let sig = Signature::from_bytes(signature);
     
     Ok(verifying_key.verify(message, &sig).is_ok())

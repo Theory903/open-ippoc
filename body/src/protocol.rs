@@ -69,7 +69,7 @@ impl SignedPacket {
         material.extend_from_slice(&self.header.timestamp.to_be_bytes());
         material.extend_from_slice(self.header.nonce.as_bytes());
 
-        if let Err(_) = verifying_key.verify(&material, &signature) {
+        if verifying_key.verify(&material, &signature).is_err() {
              warn!("Protocol: Signature MISMATCH for packet from {}", self.header.node_id);
              return Ok(false);
         }

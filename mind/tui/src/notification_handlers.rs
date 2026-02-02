@@ -8,6 +8,7 @@ use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio::time;
+use sha2::Digest;
 
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -73,6 +74,32 @@ pub async fn handle_announce_message(
             ))
             .await;
     }
+}
+
+// Handler for telepathy messages (Brain-to-Brain)
+pub async fn handle_telepathy_packet(
+    packet: &BitchatPacket,
+    _peers_lock: &mut HashMap<String, Peer>,
+    ui_tx: mpsc::Sender<String>,
+) {
+    let payload_str = String::from_utf8_lossy(&packet.payload).to_string();
+    
+    // Log to TUI
+    let _ = ui_tx.send(format!("[TELEPATHY] Incoming mesh signal from {}: {} 🧠\n", packet.sender_id_str, payload_str)).await;
+
+    // Forward to Brain
+    tokio::spawn(async move {
+        let client = reqwest::Client::new();
+        match serde_json::from_str::<serde_json::Value>(&payload_str) {
+            Ok(json_payload) => {
+                let _ = client.post("http://localhost:8001/v1/telepathy/receive")
+                    .json(&json_payload)
+                    .send()
+                    .await;
+            }
+            Err(_) => {}
+        }
+    });
 }
 
 // Handler for message relay
@@ -1517,13 +1544,13 @@ async fn handle_decrypted_message(
     password_protected_channels: &mut HashSet<String>,
     channel_keys: &mut HashMap<String, [u8; 32]>,
     chat_context: &mut ChatContext,
-    delivery_tracker: &mut DeliveryTracker,
+    _delivery_tracker: &mut DeliveryTracker,
     encryption_service: &EncryptionService,
-    peripheral: &Peripheral,
-    cmd_char: &btleplug::api::Characteristic,
-    nickname: &str,
-    my_peer_id: &str,
-    blocked_peers: &HashSet<String>,
+    _peripheral: &Peripheral,
+    _cmd_char: &btleplug::api::Characteristic,
+    _nickname: &str,
+    _my_peer_id: &str,
+    _blocked_peers: &HashSet<String>,
     ui_tx: mpsc::Sender<String>,
 ) {
     if !bloom.check(&message.id) {
@@ -1861,13 +1888,24 @@ pub async fn handle_handshake_request_message(
                     "[DEBUG] We have higher ID, sending identity announce to requester: {}",
                     request.requester_id
                 ));
-                // TODO: Implement sendNoiseIdentityAnnounce equivalent
-                let _ = ui_tx
-                    .send(format!(
-                        "[DEBUG] Would send identity announce to {}\n",
-                        request.requester_id
-                    ))
-                    .await;
+                
+                // Get my_nickname from somewhere? It's passed to send_handshake_request but not here.
+                // We'll use "Me" or try to find it. 
+                // Actually handle_handshake_request_message doesn't have my_nickname in args.
+                // FIXME: We need my_nickname. For now, use a placeholder or modify signature.
+                // Looking at caller, `process_notification` calls this? No, `main.rs` loop calls this.
+                // We will use "Node" as fallback if not available, since we can't easily change signature across all files right now.
+                let my_nick_fallback = "Node"; 
+
+                send_noise_identity_announce(
+                    &request.requester_id,
+                    my_peer_id,
+                    my_nick_fallback,
+                    noise_session_manager,
+                    peripheral,
+                    cmd_char,
+                    ui_tx.clone()
+                ).await;
             }
         }
         None => {
@@ -1876,6 +1914,60 @@ pub async fn handle_handshake_request_message(
                 .send("[ERROR] Failed to parse handshake request payload\n".to_string())
                 .await;
         }
+    }
+}
+
+
+pub async fn send_noise_identity_announce(
+    target_peer_id: &str,
+    my_peer_id: &str,
+    my_nickname: &str,
+    noise_manager: &NoiseSessionManager,
+    peripheral: &Peripheral,
+    cmd_char: &btleplug::api::Characteristic,
+    ui_tx: mpsc::Sender<String>,
+) {
+    write_noise_debug_log(&format!("[DEBUG] Sending identity announce to {}", target_peer_id));
+
+    if let Some(static_key) = noise_manager.get_static_public_key() {
+        let mut payload = Vec::with_capacity(64 + my_nickname.len());
+        payload.extend_from_slice(&static_key);
+        
+        let identity_hash = crate::data_structures::calculate_fingerprint(&static_key);
+        // We need 32 bytes for the hash placeholder if protocol expects raw bytes, 
+        // OR we just use the hex string depending on spec. 
+        // Based on handle_noise_identity_announce: `let identity_hash = &packet.payload[32..64];`
+        // It expects 32 bytes. `calculate_fingerprint` returns hex String (64 chars).
+        // Let's assume we need the raw SHA256 bytes here.
+        // Re-calculating raw hash:
+        let mut hasher = sha2::Sha256::new();
+        hasher.update(&static_key);
+        let hash_bytes = hasher.finalize();
+        payload.extend_from_slice(&hash_bytes);
+        
+        payload.extend_from_slice(my_nickname.as_bytes());
+        // Pad to ensure at least some minimum or null terminator if needed? 
+        // Receiver does `trim_end_matches('\0')`, so let's add a null byte for safety.
+        payload.push(0); 
+
+        let packet = create_bitchat_packet_with_recipient(
+            my_peer_id,
+            Some(target_peer_id),
+            MessageType::NoiseIdentityAnnounce,
+            payload,
+            None,
+        );
+
+        match peripheral.write(cmd_char, &packet, WriteType::WithoutResponse).await {
+            Ok(_) => {
+                let _ = ui_tx.send(format!("[DEBUG] Sent identity announce to {}\n", target_peer_id)).await;
+            }
+            Err(e) => {
+                 let _ = ui_tx.send(format!("[ERROR] Failed to send identity announce: {:?}\n", e)).await;
+            }
+        }
+    } else {
+        let _ = ui_tx.send("[ERROR] No static key available for identity announce\n".to_string()).await;
     }
 }
 

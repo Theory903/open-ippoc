@@ -1,0 +1,122 @@
+# IPPOC-OS Kubernetes Deployment
+# For Google Cloud Run / AWS EKS / Azure AKS
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ippoc-os
+
+---
+# PostgreSQL with pgvector
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: ippoc-os
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: pgvector/pgvector:16-bookworm
+        env:
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: ippoc-secrets
+              key: postgres-password
+        - name: POSTGRES_DB
+          value: ippoc_hidb
+        ports:
+        - containerPort: 5432
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+      volumes:
+      - name: postgres-data
+        persistentVolumeClaim:
+          claimName: postgres-pvc
+
+---
+# IPPOC Node (Body)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ippoc-node
+  namespace: ippoc-os
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ippoc-node
+  template:
+    metadata:
+      labels:
+        app: ippoc-node
+    spec:
+      containers:
+      - name: ippoc-node
+        image: gcr.io/PROJECT_ID/ippoc-node:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: DATABASE_URL
+          value: postgresql://postgres:$(POSTGRES_PASSWORD)@postgres:5432/ippoc_hidb
+        - name: REDIS_URL
+          value: redis://redis:6379
+        - name: NODE_ROLE
+          value: reasoning
+
+---
+# OpenClaw Cortex (Mind)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openclaw-cortex
+  namespace: ippoc-os
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openclaw-cortex
+  template:
+    metadata:
+      labels:
+        app: openclaw-cortex
+    spec:
+      containers:
+      - name: openclaw-cortex
+        image: gcr.io/PROJECT_ID/openclaw-cortex:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: DATABASE_URL
+          value: postgresql://postgres:$(POSTGRES_PASSWORD)@postgres:5432/ippoc_hidb
+        - name: REDIS_URL
+          value: redis://redis:6379
+        - name: NODE_HOST
+          value: ippoc-node
+        - name: NODE_PORT
+          value: "8080"
+
+---
+# Service for OpenClaw Cortex
+apiVersion: v1
+kind: Service
+metadata:
+  name: openclaw-cortex
+  namespace: ippoc-os
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 3000
+    targetPort: 3000
+  selector:
+    app: openclaw-cortex

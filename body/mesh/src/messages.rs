@@ -30,7 +30,37 @@ pub enum MessageType {
     Handshake,
 }
 
-/// Handshake kinds
+/// LangChain-compatible Message Types (Strict Alignment)
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "type")]
+pub enum LcMessage {
+    #[serde(rename = "human")]
+    Human { content: String },
+    
+    #[serde(rename = "ai")]
+    Ai { 
+        content: String, 
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        tool_calls: Vec<LcToolCall> 
+    },
+    
+    #[serde(rename = "system")]
+    System { content: String },
+    
+    #[serde(rename = "tool")]
+    Tool { content: String, tool_call_id: String },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct LcToolCall {
+    pub id: String,
+    pub name: String,
+    pub args: serde_json::Value,
+    #[serde(rename = "type")]
+    pub kind: String, // usually "tool_call" or "function"
+}
+
+/// Start of Handshake kinds
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum HandshakeKind {
     /// SYN (Initiation)

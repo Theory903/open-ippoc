@@ -12,10 +12,12 @@ pub enum CapabilityToken {
 }
 
 #[allow(dead_code)]
+#[derive(Clone)]
 pub struct Sandbox {
     engine: Engine,
 }
 
+#[allow(dead_code)]
 impl Sandbox {
     pub fn new() -> Result<Self> {
         let mut config = Config::new();

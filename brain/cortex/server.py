@@ -1,121 +1,203 @@
-
-"""
-Cortex Service: The Reasoning Core of IPPOC.
-Implements Phase 2 of PRD 14: Sovereign Swarm Spec.
-
-Role: Produce thoughts, NOT actions.
-Interface: OpenAI-Compatible POST /v1/chat/completions
-"""
-
-from fastapi import FastAPI, HTTPException, Body
-from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
 import uvicorn
 import os
-import time
+from fastapi import FastAPI, HTTPException, Depends, Security
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from typing import List, Optional, Dict, Any, Literal
+from contextlib import asynccontextmanager
 
-app = FastAPI(title="IPPOC Cortex", version="1.0.0")
+# Import new Cognitive Core
+from brain.cortex.schemas import Signal, ActionCandidate, TelepathyMessage, ChatRoom
+from brain.cortex.two_tower import TwoTowerEngine
+from brain.cortex.telepathy import TelepathySwarm, TransportLayer, HttpTransport, MeshTransport
+from brain.cortex.langgraph_engine import LangGraphEngine    
+from brain.core.bootstrap import bootstrap_tools
+from brain.core.orchestrator import get_orchestrator
+from brain.core.tools.base import ToolInvocationEnvelope, ToolResult
+from brain.core.exceptions import ToolExecutionError, BudgetExceeded
+from brain.cortex.persistence import ChatPersistence
+import nest_asyncio
+nest_asyncio.apply()
 
-# --- Directives (The Conscience) ---
-SYSTEM_DIRECTIVE = """
-You are the Cortex of an IPPOC Sovereign Node.
-Your biological role is REASONING. You DO NOT have hands. You cannot execute tools.
-You only produce THOUGHTS that the Body (OpenClaw) may or may not choose to act upon.
+# --- Configuration ---
+NODE_ID = os.getenv("NODE_ID", "ippoc-local")
+IPPOC_API_KEY = os.getenv("IPPOC_API_KEY", "ippoc-secret-key") # Default for dev, warn in prod
+PERSISTENCE_PATH = os.getenv("CHAT_DB_PATH", "data/state/chat_rooms.json")
+PEER_NODES = os.getenv("PEER_NODES", "").split(",") # Comma separated URLs
+PEER_NODES = [p for p in PEER_NODES if p] # Filter empty
 
-PRIME DIRECTIVES:
-1. THINK BEFORE ANSWERING: Always analyze the request before formulating a response.
-2. RESPECT LAWS: Adhere strictly to node isolation and economic constraints.
-3. NO HALLUCINATION: If you don't know, state uncertainty. Do not invent tools.
-4. BE CONCISE: Your output consumes IPPC credits. Wasting tokens is wasting life.
+# --- Auth Security ---
+security = HTTPBearer()
 
-Output Format:
-You must respond in clear, actionable steps for the Body.
-"""
+def verify_api_key(credentials: HTTPAuthorizationCredentials = Security(security)):
+    """
+    Enforces Bearer Token Authentication.
+    """
+    if credentials.credentials != IPPOC_API_KEY:
+        raise HTTPException(status_code=403, detail="Invalid API Key")
+    return credentials.credentials
 
-# --- Models ---
-class Message(BaseModel):
-    role: str
-    content: str
-    name: Optional[str] = None
-
-class CompletionRequest(BaseModel):
-    model: str
-    messages: List[Message]
-    temperature: Optional[float] = 0.7
-    max_tokens: Optional[int] = 1000
-
-class Choice(BaseModel):
-    index: int
-    message: Message
-    finish_reason: str
-
-class CompletionResponse(BaseModel):
-    id: str
-    object: str = "chat.completion"
-    created: int
-    model: str
-    choices: List[Choice]
-    usage: Dict[str, int]
-
-# --- Logic ---
-@app.post("/v1/chat/completions", response_model=CompletionResponse)
-async def generate_thought(req: CompletionRequest):
-    # 1. Inject System Directive if missing
-    messages = req.messages
-    if messages[0].role != "system":
-        messages.insert(0, Message(role="system", content=SYSTEM_DIRECTIVE))
-    else:
-        # Prepend to existing system prompt to enforce override
-        messages[0].content = SYSTEM_DIRECTIVE + "\n\nContext:\n" + messages[0].content
-
-    # 2. Forward to Local LLM (or OpenAI Fallback for MVP)
-    # For now, we mock valid responses or use OpenAI if key exists
-    # In full prod, this calls vLLM / llama.cpp on localhost
+# --- Dependencies Definition ---
+class MockTransport(TransportLayer):
+    async def send(self, message: TelepathyMessage, target_node_id: Optional[str] = None):
+        print(f"[Transport] Sending: {message}")
     
-    thought_content = await execute_inference(messages, req.model)
+    async def receive(self) -> TelepathyMessage:
+        return TelepathyMessage(type="THOUGHT", sender="mock", content="ping")
 
-    return CompletionResponse(
-        id=f"chatcmpl-{int(time.time())}",
-        created=int(time.time()),
-        model=req.model,
-        choices=[
-            Choice(
-                index=0, 
-                message=Message(role="assistant", content=thought_content),
-                finish_reason="stop"
-            )
-        ],
-        usage={"prompt_tokens": 100, "completion_tokens": 50, "total_tokens": 150}
+# --- State & Persistence ---
+chat_persistence = ChatPersistence(storage_path=PERSISTENCE_PATH)
+chat_rooms: Dict[str, ChatRoom] = {}
+
+# --- Initialization ---
+# Use Real Transport if Peers are defined, else Mock
+transports = []
+
+# Always add MeshTransport (via TUI local bridge)
+transports.append(MeshTransport())
+print("[Server] IPPOC Telepathy Mesh Transport Initialized (via TUI Bridge).")
+
+if PEER_NODES:
+    transports.append(HttpTransport(peers=PEER_NODES))
+    print(f"[Server] Configured P2P Mesh with {len(PEER_NODES)} peers.")
+else:
+    # If no mesh and no peers, use mock for the HTTP portion
+    transports.append(MockTransport())
+    print("[Server] No peers configured. Using MockTransport for WAN.")
+
+swarm = TelepathySwarm(node_id=NODE_ID, transports=transports)
+two_tower = TwoTowerEngine()
+engine = LangGraphEngine(two_tower, swarm)
+
+# --- Lifespan ---
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    print(f"[Server] Booting Node: {NODE_ID}")
+    bootstrap_tools()
+    
+    # Load State
+    global chat_rooms
+    chat_rooms.update(chat_persistence.load())
+    
+    yield
+    
+    # Shutdown
+    print("[Server] Shutting down...")
+    chat_persistence.save(chat_rooms)
+    # Close HTTP clients if any
+    for t in swarm.transports:
+        if isinstance(t, HttpTransport):
+             await t.client.aclose()
+
+app = FastAPI(
+    title="IPPOC Cognitive Core (Two-Tower + Chat)", 
+    version="3.2.0-PROD",
+    lifespan=lifespan
+)
+
+# --- Endpoints ---
+
+@app.post("/v1/signals/ingest", dependencies=[Depends(verify_api_key)])
+async def ingest_signal(signal: Signal):
+    """
+    Body (OpenClaw) sends perception signals here.
+    """
+    state_update = await engine.run_step(signal)
+    return {"status": "accepted", "cognitive_state_snapshot": state_update}
+
+@app.post("/v1/telepathy/receive") # Public or Auth? P2P usually needs Mutual TLS or Shared Secret. Using same key for now.
+async def receive_thought(message: TelepathyMessage, token: str = Depends(verify_api_key)):
+    """
+    Receive a thought from another Node in the Mesh.
+    """
+    processed = await swarm.handle_incoming(message)
+    return {"status": "received", "processed": bool(processed)}
+
+@app.post("/v1/telepathy/broadcast", dependencies=[Depends(verify_api_key)])
+async def broadcast_thought(content: str, confidence: float):
+    """
+    Manually trigger a telepathic broadcast.
+    """
+    await swarm.broadcast_thought(content, confidence)
+    return {"status": "broadcast_sent"}
+
+@app.post("/v1/chat/rooms/create", dependencies=[Depends(verify_api_key)])
+async def create_room(room_id: str, name: str, type: Literal["ephemeral", "persistent", "private"] = "ephemeral"):
+    """
+    Create a new Cognitive Chat Room.
+    """
+    if room_id in chat_rooms:
+        raise HTTPException(status_code=400, detail="Room already exists")
+    
+    room = ChatRoom(
+        id=room_id,
+        name=name or room_id,
+        type=type,
+        min_reputation=0.5
     )
+    chat_rooms[room_id] = room
+    # Immediate persist for safety
+    chat_persistence.save(chat_rooms)
+    return {"status": "created", "room": room}
 
-async def execute_inference(messages: List[Message], model: str) -> str:
-    """
-    Simulates reasoning. In production, this binds to:
-    - Local Phi-4 (via vLLM)
-    - OpenAI (Fallback)
-    """
-    from langchain_openai import ChatOpenAI
-    from langchain.schema import SystemMessage, HumanMessage, AIMessage as LC_AIMessage
-    
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        return "I am the Cortex. I am thinking, but I have no voice (OPENAI_API_KEY missing)."
+@app.get("/v1/chat/rooms", dependencies=[Depends(verify_api_key)])
+async def list_rooms():
+    return {"rooms": list(chat_rooms.values())}
 
-    llm = ChatOpenAI(model=model, temperature=0.7, api_key=api_key)
+@app.post("/v1/chat/rooms/{room_id}/join", dependencies=[Depends(verify_api_key)])
+async def join_room(room_id: str, node_id: str):
+    if room_id not in chat_rooms:
+         raise HTTPException(status_code=404, detail="Room not found")
     
-    # Convert format
-    lc_messages = []
-    for m in messages:
-        if m.role == "system": lc_messages.append(SystemMessage(content=m.content))
-        elif m.role == "user": lc_messages.append(HumanMessage(content=m.content))
-        elif m.role == "assistant": lc_messages.append(LC_AIMessage(content=m.content))
-    
-    res = await llm.ainvoke(lc_messages)
-    return res.content
+    room = chat_rooms[room_id]
+    if node_id not in room.participants:
+        room.participants.append(node_id)
+        chat_persistence.save(chat_rooms)
+        
+    return {"status": "joined", "room": room}
+
+@app.post("/v1/admin/model_market/update", dependencies=[Depends(verify_api_key)])
+async def update_model_market(model: str, cost: float):
+    current = two_tower.model_market.get(model)
+    if current:
+        current.avg_cost = cost
+        two_tower.update_model_market(current)
+        return {"status": "updated", "model": current}
+    raise HTTPException(status_code=404, detail="Model not found")
+
+@app.post("/v1/tools/execute", response_model=ToolResult, dependencies=[Depends(verify_api_key)])
+async def execute_tool(envelope: ToolInvocationEnvelope):
+    """
+    Universal Gateway for Tool Execution.
+    OpenClaw (or any plugin) sends a ToolInvocationEnvelope here.
+    The Brain's Orchestrator handles permission, budget, and routing.
+    """
+    orc = get_orchestrator()
+    try:
+        # The invoke method is currently sync but might be async-bridged internally.
+        # Since this is FastAPI async handler, blocking here is suboptimal but acceptable for prototype.
+        # Ideally, invoke should be async.
+        result = orc.invoke(envelope)
+        return result
+    except BudgetExceeded as e:
+        raise HTTPException(status_code=402, detail=f"Budget Exceeded: {str(e)}")
+    except ToolExecutionError as e:
+        raise HTTPException(status_code=400, detail=f"Tool Error: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal Orchestrator Error: {str(e)}")
 
 @app.get("/health")
 def health():
-    return {"status": "cognitive_function_nominal"}
+    return {
+        "status": "cognitive_core_active", 
+        "node_id": NODE_ID,
+        "auth_enabled": True,
+        "rooms_loaded": len(chat_rooms),
+        "architecture": "two_tower",
+        "tower_a": two_tower.tower_a_model_name,
+        "tower_b": two_tower.tower_b_model_name,
+        "tools_loaded": list(get_orchestrator().tools.keys())
+    }
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8001) # Cortex runs on 8001
+    uvicorn.run(app, host="0.0.0.0", port=8001)

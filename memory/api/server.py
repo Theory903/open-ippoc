@@ -1,135 +1,117 @@
+from fastapi import FastAPI, HTTPException, BackgroundTasks
+from pydantic import BaseModel, Field
+from typing import List, Dict, Any, Optional
+import time
 import os
-from fastapi import FastAPI, HTTPException, Body
-from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
-from dotenv import load_dotenv
-from ..semantic.rag import SemanticManager
-from ..episodic.manager import EpisodicManager
-from ..logic.consolidator import MemoryConsolidator
-from ..graph.manager import GraphManager
-from ..procedural.manager import ProceduralManager
 
-# Load environment variables
-load_dotenv()
+# Import the Graph Builder (Phase 1)
+from memory.logic.graph import build_memory_graph
+from memory.logic.state import MemoryState, MemoryEvent
 
-app = FastAPI(
-    title="IPPOC Memory Service",
-    description="Unified Episodic & Semantic Memory API for OpenClaw interaction",
-    version="0.1.0"
-)
+# Import LangChain components for the builder
+from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
+from langchain_community.vectorstores import PGVector # legacy import wrapper or direct?
+# We used valid imports in rag.py, let's reuse what works. 
+# Ideally we inject dependencies.
 
-# Initialize Managers
-semantic = SemanticManager()
-episodic = EpisodicManager()
-consolidator = MemoryConsolidator(episodic, semantic)
-graph = GraphManager()
-procedural = ProceduralManager(semantic)
+app = FastAPI(title="IPPOC Hippocampus", version="2.0.0")
 
-@app.on_event("startup")
-async def startup():
-    print("Initializing DBs...")
-    await episodic.init_db()
-    await graph.init_db()
+# --- Dependency Injection (Simple Global for now) ---
+# In production, use lifespan events or dependency overrides
+llm = ChatGoogleGenerativeAI(model="gemini-flash-latest", temperature=0) # Smart model for extraction
+embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+try:
+    vector_store = PGVector(
+        connection_string=os.getenv("DATABASE_URL", "postgresql://ippoc:ippoc@localhost:5432/ippoc"),
+        embedding_function=embeddings,
+        collection_name="hippocampus_v2",
+    )
+except Exception as e:
+    if "could not open extension control file" in str(e) or "vector" in str(e):
+        print("\n\033[91mCRITICAL ERROR: 'pgvector' extension missing from PostgreSQL.\033[0m")
+        print("Please install it (e.g., 'brew install pgvector' or 'sudo apt install postgresql-14-pgvector').")
+        print(f"Details: {e}\n")
+        import sys; sys.exit(1)
+    raise e
 
+memory_graph = build_memory_graph(llm, vector_store, embeddings)
 
-# --- Data Models ---
-class ObservationPacket(BaseModel):
+# --- API Models ---
+
+class EventInput(BaseModel):
     content: str
+    source: str = "unknown"
+    confidence: float = 0.5
     metadata: Dict[str, Any] = {}
-    source: str = "openclaw"
-    modality: str = "text"
 
-class SearchQuery(BaseModel):
+class SearchInput(BaseModel):
     query: str
     limit: int = 5
-    min_score: float = 0.7
-    filter: Optional[Dict[str, Any]] = None
 
-class SearchResult(BaseModel):
-    content: str
-    score: float
-    metadata: Dict[str, Any]
-    type: str  # "episodic" or "semantic"
+class MemoryResponse(BaseModel):
+    status: str
+    cycle_id: str
+    facts_extracted: int
 
 # --- Endpoints ---
 
-@app.get("/health")
-async def health_check():
-    return {"status": "active", "organ": "memory"}
-
-@app.post("/v1/memory/search", response_model=List[SearchResult])
-async def search_memory(query: SearchQuery):
+@app.post("/v1/memory/search")
+async def search_memory(search: SearchInput):
     """
-    Hybrid search: Queries both Episodic (Time) and Semantic (Knowledge) stores.
+    Semantic search over the vector store.
     """
-    results = []
-    
-    # 1. Semantic Search (HiDB/PGVector)
     try:
-        sem_results = await semantic.search(query.query, limit=query.limit)
-        results.extend([SearchResult(**r) for r in sem_results])
+        results = await vector_store.asimilarity_search_with_score(search.query, k=search.limit)
+        return [
+            {"content": doc.page_content, "metadata": doc.metadata, "score": score} 
+            for doc, score in results
+        ]
     except Exception as e:
-        print(f"Semantic Search Error: {e}")
-    
-    # 2. Episodic Search (Recent logs/Keywords)
-    try:
-        epi_results = await episodic.search(query.query, limit=query.limit)
-        results.extend([SearchResult(**r) for r in epi_results])
-    except Exception as e:
-        print(f"Episodic Search Error: {e}")
-    
-    return results
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/v1/memory/observe")
-async def observe(packet: ObservationPacket):
+@app.post("/v1/memory/consolidate", response_model=MemoryResponse)
+async def consolidate_memory(event: EventInput, background_tasks: BackgroundTasks):
     """
-    Ingest a new observation. Routes to appropriate storage layers.
+    Triggers a memory consolidation cycle.
+    This accepts an episodic event and runs it through the Cognitive Graph.
     """
-    # 1. Store in Episodic Log (Postgres)
-    eid = await episodic.write(
-        content=packet.content,
-        source=packet.source,
-        modality=packet.modality,
-        metadata=packet.metadata
+    
+    # Create initial state
+    input_state = MemoryState(
+        new_events=[
+            MemoryEvent(
+                event_id=f"evt-{time.time()}",
+                timestamp=time.time(),
+                source=event.source,
+                content=event.content,
+                confidence=event.confidence,
+                metadata=event.metadata
+            )
+        ]
     )
+
+    # Run Graph
+    # We await here for synchronous feedback, or use background tasks if slow.
+    # For now, let's await to confirm it works.
     
-    # 2. Always Embed for now (Plasticity logic to be added)
-    await semantic.index(packet.content, packet.metadata)
-    
-    return {"status": "ingested", "id": str(eid)}
+    try:
+        final_state = await memory_graph.ainvoke(input_state)
+        # Type check: final_state might be a dict or object depending on langgraph version
+        # StateGraph usually returns the state dictionary.
+        
+        facts_count = len(final_state.get("extracted_facts", []))
+        
+        return MemoryResponse(
+            status="consolidated",
+            cycle_id=str(final_state.get("cycle_started_at")),
+            facts_extracted=facts_count
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/v1/memory/reflect")
-async def reflect():
-    """
-    Triggers the Self-Improvement loop.
-    Consolidates recent episodes into long-term semantic knowledge.
-    """
-    summary = await consolidator.consolidate_recent()
-    return {"status": "completed", "summary": summary}
-
-@app.post("/v1/memory/graph/add")
-async def add_knowledge(source: str, relation: str, target: str):
-    """
-    Explicitly add a relationship to the Knowledge Graph.
-    """
-    res = await graph.add_triple(source, relation, target)
-    return {"status": res}
-
-@app.get("/v1/memory/graph/context")
-async def get_graph_context(entity: str):
-    """
-    Get 1-hop neighbors from the Knowledge Graph.
-    """
-    neighbors = await graph.get_neighbors(entity)
-    return {"entity": entity, "context": neighbors}
-
-@app.post("/v1/memory/procedural/register")
-async def register_skill(name: str, code: str, description: str):
-    """
-    Teach the agent a new skill (code snippet).
-    """
-    res = await procedural.register_skill(name, code, description)
-    return {"status": res}
+@app.get("/health")
+def health():
+    return {"status": "hippocampus_active", "mode": "graph_v1"}
 
 if __name__ == "__main__":
     import uvicorn

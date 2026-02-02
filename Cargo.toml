@@ -7,7 +7,9 @@ members = [
     "body/immune/git-evolution",
     "brain/cerebellum",
     "brain/evolution",
+    "brain/worldmodel",
     "memory",
+    "mind/tui",
 ]
 
 [workspace.dependencies]

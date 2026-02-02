@@ -630,6 +630,11 @@ impl NoiseSessionManager {
         self.calculate_fingerprint(&public_key)
     }
 
+    pub fn get_static_public_key(&self) -> Option<[u8; 32]> {
+        let public_key = PublicKey::from(&self.local_static_key);
+        Some(public_key.to_bytes())
+    }
+
     fn calculate_fingerprint(&self, public_key: &PublicKey) -> String {
         let mut hasher = Sha256::new();
         // Use to_bytes() which should match Swift's rawRepresentation for Curve25519

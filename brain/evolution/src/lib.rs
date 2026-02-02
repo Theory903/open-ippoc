@@ -25,7 +25,7 @@ impl BrainMutationResolver for EvolutionEngine {
         let theirs_loc = conflict.hunk_theirs.lines().count();
         
         if ours_loc > 300 || theirs_loc > 300 {
-            return Err(anyhow::anyhow!("Rule 6 Violation: Conflict exceeds 300 LOC limit (ours: {}, theirs: {})", ours_loc, theirs_loc));
+            return Err(anyhow::anyhow!("Rule 6 Violation: Conflict exceeds 300 LOC limit (ours: {ours_loc}, theirs: {theirs_loc})"));
         }
 
         // 2. Rule 3: Organ Boundary Check BEFORE reasoning
@@ -53,7 +53,7 @@ impl BrainMutationResolver for EvolutionEngine {
         // 5. Final LOC check
         let res_loc = resolution.lines().count();
         if res_loc > 300 {
-             return Err(anyhow::anyhow!("Rule 6 Violation: Resolution ({}) exceeds 300 LOC limit.", res_loc));
+             return Err(anyhow::anyhow!("Rule 6 Violation: Resolution ({res_loc}) exceeds 300 LOC limit."));
         }
         
         info!("Brain: Resolution generated for {} (valid LOC and boundaries)", conflict.file_path);
@@ -92,9 +92,8 @@ impl BrainMutationResolver for EvolutionEngine {
         info!("Brain: Performing structural immune review on patch");
         
         let query = format!(
-            "Task: Structural Immune Review\nPatch:\n{}\n\nConstraint: Does this patch follow Rule 6 (LOC limit), Rule 8 (Naming), and Rule 10 (Safety)? Return JSON: {{ \"safe\": bool, \"reason\": \"string\" }}",
-            patch_content
-        );
+        "Task: Structural Immune Review\nPatch:\n{patch_content}\n\nConstraint: Does this patch violate Rule 0 (Intent), Rule 6 (Scope), or Rule 10 (Safety)?\nReturn: JSON {{ \"approved\": bool, \"reason\": string }}"
+    );
 
         let req = cerebellum::ThoughtRequest {
             query,
@@ -109,9 +108,8 @@ impl BrainMutationResolver for EvolutionEngine {
         info!("Brain: Scanning for governance violations in proposed evolution");
         
         let query = format!(
-            "Task: Governance Audit\nProposed Change Summary:\n{}\n\nConstraint: Check against rules.md (Rule 2: Canon, Rule 3: Organ, Rule 9: Invariants). Return a list of violations. If none, return an empty list. Format: [\"Violation 1\", ...]",
-            summary
-        );
+        "Task: Governance Audit\nProposed Change Summary:\n{summary}\n\nConstraint: Identify any violations of IPPOC Constitution (Rules 0-22).\nReturn: List of violation strings. Empty if safe."
+    );
 
         let req = cerebellum::ThoughtRequest {
             query,

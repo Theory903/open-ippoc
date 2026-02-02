@@ -14,6 +14,7 @@ pub struct RoleManager {
     sys: System,
 }
 
+#[allow(dead_code)]
 impl RoleManager {
     pub fn new() -> Self {
         Self {

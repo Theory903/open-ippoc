@@ -92,7 +92,15 @@ export function processEvent(ctx: CallManagerContext, event: NormalizedEvent): v
 
   if (!call && event.direction === "inbound" && event.providerCallId) {
     if (!shouldAcceptInbound(ctx.config, event.from)) {
-      // TODO: Could hang up the call here.
+      console.log(`[voice-call] Rejecting inbound call from ${event.from} (policy denied)`);
+      // Explicitly hang up the call on the provider side
+      if (ctx.provider) {
+          ctx.provider.hangupCall({
+              callId: "rejected-pre-creation", // innovative usage
+              providerCallId: event.providerCallId,
+              reason: "rejected"
+          }).catch(err => console.error("Failed to hangup rejected call:", err));
+      }
       return;
     }
 

@@ -37,6 +37,10 @@ serde_json = "1.0"
 dirs = "5.0"
 getrandom = "0.2"
 thiserror = "1.0"
+reqwest = { version = "0.11", features = ["json"] }
+anyhow = "1.0"
+tracing = "0.1"
+tracing-subscriber = "0.3"
 
 # For Cryptography
 x25519-dalek = { version = "2.0", features = ["static_secrets", "getrandom"] }
@@ -46,6 +50,8 @@ curve25519-dalek = "4.1.1"
 chacha20poly1305 = "0.10"
 hmac = "0.12"
 generic-array = "0.14"
+axum = "0.8.8"
+tower-http = "0.6.8"
 
 # Platform-specific dependencies for Linux builds
 [target.'cfg(target_os = "linux")'.dependencies]
