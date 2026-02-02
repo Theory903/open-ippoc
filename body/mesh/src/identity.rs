@@ -169,7 +169,7 @@ pub fn load_or_create_identity(base_dir: &Path, role: &str, name: &str) -> Resul
                 // Check for identity.key inside
                 let key_path = path.join("data").join("identity.key");
                 if key_path.exists() {
-                    println!("Found existing node identity at {:?}", key_path);
+                    println!("Found existing node identity at {key_path:?}");
                     let identity = PersistentIdentity::load_and_verify(&key_path)?;
                     println!("Hardware Binding Verified. Identity: {}", identity.identity.id);
                     return Ok((identity, path));
@@ -192,8 +192,8 @@ pub fn load_or_create_identity(base_dir: &Path, role: &str, name: &str) -> Resul
     // 3. Persist with strict permissions (0600)
     new_identity.save(&key_path)?;
     
-    println!("Genesis Complete. Sovereign Node Created: {}", node_id);
-    println!("Root: {:?}", node_root);
+    println!("Genesis Complete. Sovereign Node Created: {node_id}");
+    println!("Root: {node_root:?}");
     
     Ok((new_identity, node_root))
 }

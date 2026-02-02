@@ -8,6 +8,10 @@ use std::path::PathBuf;
 use anyhow::Result;
 use crate::crypto::{NodeIdentity, SharedSecret};
 
+/// Unique identifier for a peer (NodeID)
+#[allow(dead_code)]
+pub type PeerId = String;
+
 /// Status of a peer connection
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PeerStatus {

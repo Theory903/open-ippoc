@@ -20,3 +20,4 @@ pub mod prelude {
     pub use crate::{AiMesh, MeshConfig, AiMessage, MessageType, Peer, NodeIdentity};
 }
 pub mod economy;
+pub mod lifecycle;

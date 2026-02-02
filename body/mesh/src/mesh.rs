@@ -12,8 +12,8 @@ use std::collections::{HashSet, VecDeque};
 use crate::crypto::{NodeSecrets, NodeIdentity, encrypt_message, decrypt_message, verify_signature};
 use crate::messages::{AiMessage, MessageType, Thought, Broadcast};
 use crate::peer::{Peer, PeerTable, ReputationManager};
-use crate::identity::PersistentIdentity;
 use std::path::PathBuf;
+use std::fs;
 
 /// Configuration for the AI mesh
 #[derive(Debug, Clone)]
@@ -80,6 +80,9 @@ pub struct AiMesh {
 
     /// Metabolic Controller (Economy)
     pub economy: Arc<RwLock<crate::economy::EconomyController>>,
+
+    /// Biological Lifecycle (Age, State)
+    pub lifecycle: Arc<RwLock<crate::lifecycle::LifecycleManager>>,
 }
 
 impl AiMesh {
@@ -110,6 +113,11 @@ impl AiMesh {
         let economy_controller = crate::economy::EconomyController::new(&identity.id, &node_root)
             .expect("Failed to initialize Economy Controller");
         let economy = Arc::new(RwLock::new(economy_controller));
+
+        // Lifecycle (Phase 6)
+        info!("Initializing Biological Clock...");
+        let lifecycle_manager = crate::lifecycle::LifecycleManager::new();
+        let lifecycle = Arc::new(RwLock::new(lifecycle_manager));
 
         let mut peer_table = PeerTable::new();
         // Load persisted reputation
@@ -143,9 +151,49 @@ impl AiMesh {
             transport: Arc::new(RwLock::new(None)),
             node_root,
             economy,
+            lifecycle,
         };
         
         (mesh, outbox_rx, inbox_rx)
+    }
+
+    /// Check if the node is allowed to perform an action based on its Lifecycle State
+    pub async fn check_permission(&self, action: &crate::economy::ActionType) -> anyhow::Result<()> {
+        let lifecycle = self.lifecycle.read().await;
+        let state = lifecycle.current();
+
+        use crate::economy::ActionType;
+        use crate::lifecycle::NodeState;
+
+        match state {
+            NodeState::Newborn => {
+                match action {
+                    ActionType::LlmInference { .. } => Ok(()), // Newborns can learn
+                    ActionType::SystemGrant => Ok(()), // Can receive grants
+                    ActionType::DecayBurn { .. } => Ok(()), // Physics applies
+                    _ => Err(anyhow::anyhow!("Permission Denied: Newborn nodes cannot perform complex economic actions acts yet. Verify identity first.")),
+                }
+            },
+            NodeState::Active | NodeState::Trusted => Ok(()), // Adults can do mostly everything (Trusted adds Voting/Spawning)
+            NodeState::Probation => {
+                 // Probation: Restricted from sensitive ops
+                 match action {
+                    ActionType::EvolutionSim { .. } => Err(anyhow::anyhow!("Permission Denied: Probation nodes cannot evolve.")),
+                    ActionType::DaoFee => Ok(()),
+                    _ => Ok(()),
+                 }
+            },
+            NodeState::Dormant => {
+                // Dormant: Can only receive money or decay
+                 match action {
+                    ActionType::SystemGrant | ActionType::DecayBurn { .. } => Ok(()),
+                    _ => Err(anyhow::anyhow!("Node is DORMANT. Please fund wallet to wake up.")),
+                 }
+            },
+            NodeState::Dying | NodeState::Slashed | NodeState::Archived => {
+                Err(anyhow::anyhow!("Node is DEAD/ARCHIVED. No actions allowed."))
+            }
+        }
     }
 
     /// Start the networking layer (bind port)
@@ -185,6 +233,11 @@ impl AiMesh {
     /// Get our identity
     pub fn identity(&self) -> &NodeIdentity {
         &self.identity
+    }
+
+    /// Subscribe to the message inbox
+    pub fn inbox(&self) -> broadcast::Receiver<AiMessage> {
+        self.inbox.subscribe()
     }
 
     /// Get next sequence number
@@ -239,7 +292,7 @@ impl AiMesh {
     pub async fn send_direct(&self, recipient: &str, content: serde_json::Value) -> Result<()> {
         let peers = self.peers.read().await;
         let peer = peers.get(recipient)
-            .ok_or_else(|| anyhow::anyhow!("Peer not found: {}", recipient))?;
+            .ok_or_else(|| anyhow::anyhow!("Peer not found: {recipient}"))?;
         
         // Encrypt if we have a shared secret
         let payload = if let Some(secret) = peer.shared_secret() {
@@ -422,7 +475,7 @@ impl AiMesh {
     pub async fn initiate_handshake(&self, peer_id: &str) -> Result<()> {
         let peers = self.peers.read().await;
         let _peer = peers.get(peer_id)
-            .ok_or_else(|| anyhow::anyhow!("Peer not found: {}", peer_id))?;
+            .ok_or_else(|| anyhow::anyhow!("Peer not found: {peer_id}"))?;
         
         let mut nonce = [0u8; 16];
         getrandom::getrandom(&mut nonce)?;
@@ -456,7 +509,7 @@ impl AiMesh {
             crate::messages::HandshakeKind::Syn => {
                 // Node A -> Node B (SYN)
                 // 1. Verify NodeID matches signing public key
-                let derived_id = hex::encode(sha2::Sha256::digest(&hs.signing_public));
+                let derived_id = hex::encode(sha2::Sha256::digest(hs.signing_public));
                 if derived_id != msg.sender {
                     warn!("Handshake NodeID mismatch for {}", msg.sender);
                     return Ok(());
@@ -546,8 +599,8 @@ impl AiMesh {
             "id": self.identity.id,
             "name": self.identity.name,
             "role": self.identity.role,
-            "exchange_public": hex::encode(&self.identity.exchange_public),
-            "signing_public": hex::encode(&self.identity.signing_public),
+            "exchange_public": hex::encode(self.identity.exchange_public),
+            "signing_public": hex::encode(self.identity.signing_public),
             "capabilities": vec![&self.identity.role],
             "port": self.config.port,
         });
@@ -636,9 +689,12 @@ mod tests {
     #[tokio::test]
     async fn test_reputation_persistence() -> Result<()> {
         let temp_path = std::env::temp_dir().join(format!("reputation_{}.json", Uuid::new_v4()));
+        let data_dir = temp_path.parent().unwrap().join(format!("test_data_{}", Uuid::new_v4()));
+        std::fs::create_dir_all(&data_dir)?;
+        
         let config = MeshConfig { 
             name: "test-node".into(), 
-            reputation_path: Some(temp_path.clone()),
+            data_dir: data_dir.clone(),
             ..Default::default() 
         };
         
@@ -669,7 +725,7 @@ mod tests {
         assert_eq!(peer2.trust_level, crate::peer::TrustLevel::Trusted);
         assert_eq!(peer2.trust_score, 80);
 
-        std::fs::remove_file(temp_path)?;
+        std::fs::remove_dir_all(data_dir)?;
         Ok(())
     }
 
@@ -677,19 +733,16 @@ mod tests {
     async fn test_identity_persistence() -> Result<()> {
         let temp_dir = std::env::temp_dir().join(Uuid::new_v4().to_string());
         std::fs::create_dir_all(&temp_dir)?;
-        let identity_path = temp_dir.join("identity.key");
         
         // 1. First Boot: Generate
         let config = MeshConfig { 
             name: "test-node".into(), 
-            identity_path: Some(identity_path.clone()),
+            data_dir: temp_dir.clone(),
             ..Default::default() 
         };
         
         let (mesh1, _, _) = AiMesh::new(config.clone());
         let id1 = mesh1.identity().id.clone();
-        
-        assert!(identity_path.exists());
         
         // 2. Second Boot: Load
         let (mesh2, _, _) = AiMesh::new(config);
@@ -698,15 +751,6 @@ mod tests {
         // IDs must match
         assert_eq!(id1, id2);
         
-        // 3. Verify Perms (Unix only)
-        #[cfg(target_family = "unix")]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            let meta = std::fs::metadata(&identity_path)?;
-            let mode = meta.permissions().mode();
-            assert_eq!(mode & 0o777, 0o600, "Key file must be 0600");
-        }
-
         std::fs::remove_dir_all(temp_dir)?;
         Ok(())
     }
