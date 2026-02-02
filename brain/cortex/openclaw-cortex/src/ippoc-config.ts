@@ -10,6 +10,13 @@ export const ippocConfig: IPPOCConfig = {
   // Database connections
   databaseUrl: process.env.DATABASE_URL || "postgresql://postgres:ippoc_secret@localhost:5432/ippoc_hidb",
   redisUrl: process.env.REDIS_URL || "redis://localhost:6379",
+
+  // Orchestrator configuration
+  orchestratorMode: (process.env.IPPOC_ORCHESTRATOR_MODE as any) || "auto",
+  orchestratorUrl: process.env.IPPOC_BRAIN_URL || "http://localhost:8001",
+  orchestratorCli: process.env.IPPOC_ORCH_CLI,
+  pythonPath: process.env.IPPOC_PYTHON,
+  apiKey: process.env.IPPOC_API_KEY,
   
   // Node configuration
   nodePort: parseInt(process.env.NODE_PORT || "9000"),
