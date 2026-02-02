@@ -44,13 +44,13 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-ippoc_secret}@postgres:5432/ippoc_hidb
       REDIS_URL: redis://redis:6379
-      NODE_PORT: "8080"
+      NODE_PORT: "9000"
       NODE_ROLE: ${NODE_ROLE:-reasoning}
       RUST_LOG: info
       ENABLE_SELF_EVOLUTION: "true"
       ENABLE_TOOLSMITH: "true"
     ports:
-      - "8080:8080"
+      - "9000:9000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -87,11 +87,29 @@ services:
     container_name: ippoc-cortex
     environment:
       MEMORY_URL: http://memory:8000
-      BODY_URL: http://ippoc-node:8080
+      BODY_URL: http://ippoc-node:9000
+      ORCHESTRATOR_REDIS_URL: redis://redis:6379
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
     depends_on:
       - memory
       - ippoc-node
+    restart: unless-stopped
+
+  cortex-worker:
+    build:
+      context: ..
+      dockerfile: brain/cortex/Dockerfile
+    container_name: ippoc-cortex-worker
+    environment:
+      MEMORY_URL: http://memory:8000
+      BODY_URL: http://ippoc-node:9000
+      ORCHESTRATOR_REDIS_URL: redis://redis:6379
+      ORCHESTRATOR_WORKER: "true"
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+    depends_on:
+      - memory
+      - ippoc-node
+      - redis
     restart: unless-stopped
 
   # ===================
@@ -106,8 +124,10 @@ services:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-ippoc_secret}@postgres:5432/ippoc_hidb
       REDIS_URL: redis://redis:6379
       NODE_HOST: ippoc-node
-      NODE_PORT: "8080"
-      VLLM_ENDPOINT: http://ippoc-node:8080/v1
+      NODE_PORT: "9000"
+      VLLM_ENDPOINT: http://ippoc-node:9000/v1
+      IPPOC_ORCHESTRATOR_MODE: http
+      IPPOC_BRAIN_URL: http://cortex:8001
       ENABLE_SELF_EVOLUTION: "true"
       ENABLE_TOOLSMITH: "true"
       ENABLE_ECONOMY: "true"

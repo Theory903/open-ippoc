@@ -1,7 +1,10 @@
 # Dependencies
 node_modules/
-/target/
+target/
 dist/
+**/node_modules/
+**/target/
+**/dist/
 .next/
 .turbo/
 .pnpm-debug.log

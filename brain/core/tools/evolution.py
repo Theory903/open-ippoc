@@ -34,6 +34,11 @@ class EvolutionAdapter(IPPOC_Tool):
         env_type = envelope.context.get("environment")
         if env_type not in ["sandbox", "stable"]:
             raise ToolExecutionError(envelope.tool_name, "Context missing valid 'environment' (sandbox|stable)")
+
+        if env_type == "stable" and not envelope.requires_validation:
+            raise SecurityViolation("Stable evolution requires validation flag")
+        if envelope.sandboxed and env_type == "stable":
+            raise SecurityViolation("Sandboxed executions cannot mutate stable environment")
             
         diff_code = envelope.context.get("diff")
         if not diff_code:

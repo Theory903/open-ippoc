@@ -8,6 +8,8 @@ from brain.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult
 from brain.core.exceptions import ToolExecutionError
 
 BODY_URL = os.getenv("BODY_URL", "http://localhost:9000")
+BODY_ALLOWLIST = set(filter(None, os.getenv("BODY_ALLOWLIST", "").split(",")))
+BODY_ENFORCE_ALLOWLIST = os.getenv("BODY_ENFORCE_ALLOWLIST", "false").lower() == "true"
 
 class BodyAdapter(IPPOC_Tool):
     """
@@ -50,6 +52,10 @@ class BodyAdapter(IPPOC_Tool):
     async def _remote_exec(self, envelope: ToolInvocationEnvelope) -> ToolResult:
         cmd = envelope.context.get("command") or envelope.action
         params = envelope.context.get("params", {})
+
+        if (envelope.sandboxed or BODY_ENFORCE_ALLOWLIST) and BODY_ALLOWLIST:
+            if cmd not in BODY_ALLOWLIST:
+                raise ToolExecutionError(envelope.tool_name, f"Command not allowed: {cmd}")
         
         payload = {
             "action": cmd,

@@ -9,6 +9,10 @@ from brain.core.exceptions import ToolExecutionError
 
 # Configuration
 MEMORY_URL = os.getenv("MEMORY_URL", "http://localhost:8000")
+HIDB_URL = os.getenv("HIDB_URL", os.getenv("BODY_URL", "http://localhost:9000"))
+MEMORY_BACKEND = os.getenv("MEMORY_BACKEND", "api")  # api|hidb|auto
+MEMORY_TIMEOUT_MS = int(os.getenv("MEMORY_TIMEOUT_MS", "8000"))
+MEMORY_MAX_RETRIES = int(os.getenv("MEMORY_MAX_RETRIES", "1"))
 
 class MemoryAdapter(IPPOC_Tool):
     """
@@ -63,52 +67,100 @@ class MemoryAdapter(IPPOC_Tool):
         content = envelope.context.get("content")
         if not content:
              raise ToolExecutionError(envelope.tool_name, "Missing 'content' in context")
-            
+
         payload = {
             "content": content,
             "source": envelope.context.get("source", "tool_orchestrator"),
             "confidence": envelope.context.get("confidence", 1.0),
             "metadata": envelope.context.get("metadata", {})
         }
-        
-        async with aiohttp.ClientSession() as session:
-            try:
-                # Assuming /v1/memory/consolidate is the endpoint
-                async with session.post(f"{MEMORY_URL}/v1/memory/consolidate", json=payload) as resp:
-                    if resp.status == 200:
-                        data = await resp.json()
-                        return ToolResult(
-                            success=True,
-                            output=data,
-                            memory_written=True,
-                            cost_spent=0.5
-                        )
-                    else:
-                        raise ToolExecutionError(envelope.tool_name, f"Memory API Error: {resp.status}")
-            except Exception as e:
-                raise ToolExecutionError(envelope.tool_name, f"Connection Failed: {e}")
+
+        backend = MEMORY_BACKEND.lower()
+        if backend == "auto":
+            backend = "api"
+
+        if backend == "api":
+            return await self._post_with_retries(
+                f"{MEMORY_URL}/v1/memory/consolidate",
+                payload,
+                envelope,
+                success_message="consolidated"
+            )
+
+        if backend == "hidb":
+            vector = envelope.context.get("vector")
+            if not vector:
+                return ToolResult(success=False, output="Missing vector for HiDB store", warnings=["hidb requires vector"])
+            payload_hidb = {"content": content, "vector": vector}
+            return await self._post_with_retries(
+                f"{HIDB_URL}/v1/memory/store",
+                payload_hidb,
+                envelope,
+                success_message="stored"
+            )
+
+        return ToolResult(success=False, output=f"Unknown memory backend: {MEMORY_BACKEND}")
 
     async def _retrieve_memory(self, envelope: ToolInvocationEnvelope) -> ToolResult:
         query = envelope.context.get("query")
         if not query:
              raise ToolExecutionError(envelope.tool_name, "Missing 'query' in context")
 
-        # Re-adding the missing search functionality assumed in older plan
         limit = envelope.context.get("limit", 5)
         payload = {"query": query, "limit": limit}
-        
-        async with aiohttp.ClientSession() as session:
-             try:
-                # Assuming /v1/memory/search exists or will exist
-                async with session.post(f"{MEMORY_URL}/v1/memory/search", json=payload) as resp:
-                     if resp.status == 200:
-                         data = await resp.json()
-                         return ToolResult(
-                             success=True,
-                             output=data,
-                             cost_spent=0.1
-                         )
-                     else:
-                         return ToolResult(success=False, output=f"Search failed: {resp.status}", warnings=[f"HTTP {resp.status}"])
-             except Exception as e:
-                 raise ToolExecutionError(envelope.tool_name, f"Connection Failed: {e}")
+
+        backend = MEMORY_BACKEND.lower()
+        if backend == "auto":
+            backend = "api"
+
+        if backend == "api":
+            return await self._post_with_retries(
+                f"{MEMORY_URL}/v1/memory/search",
+                payload,
+                envelope,
+                success_message="search"
+            )
+
+        if backend == "hidb":
+            vector = envelope.context.get("vector")
+            if not vector:
+                return ToolResult(success=False, output="Missing vector for HiDB search", warnings=["hidb requires vector"])
+            payload_hidb = {"vector": vector, "limit": limit}
+            return await self._post_with_retries(
+                f"{HIDB_URL}/v1/memory/search",
+                payload_hidb,
+                envelope,
+                success_message="search"
+            )
+
+        return ToolResult(success=False, output=f"Unknown memory backend: {MEMORY_BACKEND}")
+
+    async def _post_with_retries(self, url: str, payload: dict, envelope: ToolInvocationEnvelope, success_message: str) -> ToolResult:
+        timeout_ms = envelope.deadline_ms or envelope.context.get("timeout_ms") or MEMORY_TIMEOUT_MS
+        max_retries = envelope.context.get("max_retries", MEMORY_MAX_RETRIES)
+        attempt = 0
+
+        while attempt <= max_retries:
+            try:
+                timeout = aiohttp.ClientTimeout(total=timeout_ms / 1000)
+                async with aiohttp.ClientSession(timeout=timeout) as session:
+                    async with session.post(url, json=payload) as resp:
+                        if resp.status == 200:
+                            data = await resp.json()
+                            return ToolResult(
+                                success=True,
+                                output=data,
+                                memory_written=True if success_message == "consolidated" else False,
+                                cost_spent=self.estimate_cost(envelope)
+                            )
+                        if resp.status in (500, 502, 503):
+                            attempt += 1
+                            if attempt > max_retries:
+                                return ToolResult(success=False, output=f"{success_message} failed: {resp.status}", warnings=[f"HTTP {resp.status}"])
+                            continue
+                        return ToolResult(success=False, output=f"{success_message} failed: {resp.status}", warnings=[f"HTTP {resp.status}"])
+            except Exception as e:
+                attempt += 1
+                if attempt > max_retries:
+                    raise ToolExecutionError(envelope.tool_name, f"Connection Failed: {e}")
+        return ToolResult(success=False, output=f"{success_message} failed after retries")

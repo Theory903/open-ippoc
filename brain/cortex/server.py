@@ -1,7 +1,11 @@
 import uvicorn
 import os
-from fastapi import FastAPI, HTTPException, Depends, Security
+import time
+import uuid
+import asyncio
+from fastapi import FastAPI, HTTPException, Depends, Security, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.responses import JSONResponse, PlainTextResponse
 from typing import List, Optional, Dict, Any, Literal
 from contextlib import asynccontextmanager
 
@@ -13,10 +17,31 @@ from brain.cortex.langgraph_engine import LangGraphEngine
 from brain.core.bootstrap import bootstrap_tools
 from brain.core.orchestrator import get_orchestrator
 from brain.core.tools.base import ToolInvocationEnvelope, ToolResult
-from brain.core.exceptions import ToolExecutionError, BudgetExceeded
+from brain.core.exceptions import ToolExecutionError, BudgetExceeded, SecurityViolation
+from brain.core.ledger import get_ledger, ExecutionStatus
+from brain.core.queue import get_queue
 from brain.cortex.persistence import ChatPersistence
 import nest_asyncio
 nest_asyncio.apply()
+
+try:
+    from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+except Exception:  # pragma: no cover
+    Counter = Histogram = None
+    generate_latest = None
+    CONTENT_TYPE_LATEST = "text/plain"
+
+try:
+    from opentelemetry import trace  # type: ignore
+    from opentelemetry.sdk.resources import Resource  # type: ignore
+    from opentelemetry.sdk.trace import TracerProvider  # type: ignore
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor  # type: ignore
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter  # type: ignore
+except Exception:  # pragma: no cover
+    trace = None
+    TracerProvider = None
+    BatchSpanProcessor = None
+    OTLPSpanExporter = None
 
 # --- Configuration ---
 NODE_ID = os.getenv("NODE_ID", "ippoc-local")
@@ -24,6 +49,26 @@ IPPOC_API_KEY = os.getenv("IPPOC_API_KEY", "ippoc-secret-key") # Default for dev
 PERSISTENCE_PATH = os.getenv("CHAT_DB_PATH", "data/state/chat_rooms.json")
 PEER_NODES = os.getenv("PEER_NODES", "").split(",") # Comma separated URLs
 PEER_NODES = [p for p in PEER_NODES if p] # Filter empty
+
+# Optional OpenTelemetry
+if trace and TracerProvider and OTLPSpanExporter:
+    otel_endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+    if otel_endpoint:
+        provider = TracerProvider(resource=Resource.create({"service.name": "ippoc-cortex"}))
+        processor = BatchSpanProcessor(OTLPSpanExporter(endpoint=otel_endpoint))
+        provider.add_span_processor(processor)
+        trace.set_tracer_provider(provider)
+
+# Orchestrator runtime
+ledger = get_ledger()
+queue = get_queue()
+
+# Metrics
+if Counter and Histogram:
+    ORCH_REQUESTS = Counter("ippoc_orchestrator_requests_total", "Orchestrator requests", ["tool", "status"])
+    ORCH_LATENCY = Histogram("ippoc_orchestrator_latency_seconds", "Orchestrator latency", ["tool"])
+else:  # pragma: no cover
+    ORCH_REQUESTS = ORCH_LATENCY = None
 
 # --- Auth Security ---
 security = HTTPBearer()
@@ -74,6 +119,15 @@ async def lifespan(app: FastAPI):
     # Startup
     print(f"[Server] Booting Node: {NODE_ID}")
     bootstrap_tools()
+    try:
+        await ledger.init()
+    except Exception as e:
+        print(f"[Server] Ledger init failed: {e}")
+
+    worker_task = None
+    if queue and os.getenv("ORCHESTRATOR_WORKER", "false").lower() == "true":
+        print("[Server] Starting orchestrator worker...")
+        worker_task = asyncio.create_task(queue.consume(_queue_handler))
     
     # Load State
     global chat_rooms
@@ -84,6 +138,8 @@ async def lifespan(app: FastAPI):
     # Shutdown
     print("[Server] Shutting down...")
     chat_persistence.save(chat_rooms)
+    if worker_task:
+        worker_task.cancel()
     # Close HTTP clients if any
     for t in swarm.transports:
         if isinstance(t, HttpTransport):
@@ -94,6 +150,119 @@ app = FastAPI(
     version="3.2.0-PROD",
     lifespan=lifespan
 )
+
+# Request ID middleware
+@app.middleware("http")
+async def add_request_id(request: Request, call_next):
+    req_id = request.headers.get("x-request-id") or str(uuid.uuid4())
+    response = await call_next(request)
+    response.headers["x-request-id"] = req_id
+    return response
+
+# --- Orchestrator Helpers ---
+
+def _record_metrics(tool_name: str, status: str, duration: float) -> None:
+    if ORCH_REQUESTS:
+        ORCH_REQUESTS.labels(tool=tool_name, status=status).inc()
+    if ORCH_LATENCY:
+        ORCH_LATENCY.labels(tool=tool_name).observe(duration)
+
+
+def _tool_error_response(code: str, message: str, retryable: bool = False, details: Any = None) -> ToolResult:
+    return ToolResult(
+        success=False,
+        output=None,
+        cost_spent=0.0,
+        memory_written=False,
+        warnings=[],
+        error_code=code,
+        message=message,
+        retryable=retryable,
+        details=details,
+    )
+
+
+async def _execute_envelope(envelope: ToolInvocationEnvelope) -> ToolResult:
+    orc = get_orchestrator()
+    start = time.monotonic()
+    tool_name = envelope.tool_name
+    try:
+        result = await orc.invoke_async(envelope)
+        _record_metrics(tool_name, "success", time.monotonic() - start)
+        return result
+    except BudgetExceeded as e:
+        _record_metrics(tool_name, "budget_exceeded", time.monotonic() - start)
+        return _tool_error_response("budget_exceeded", str(e), retryable=False)
+    except SecurityViolation as e:
+        _record_metrics(tool_name, "security_violation", time.monotonic() - start)
+        return _tool_error_response("security_violation", str(e), retryable=False)
+    except ToolExecutionError as e:
+        _record_metrics(tool_name, "tool_error", time.monotonic() - start)
+        return _tool_error_response("tool_error", str(e), retryable=True)
+    except Exception as e:
+        _record_metrics(tool_name, "internal_error", time.monotonic() - start)
+        return _tool_error_response("internal_error", str(e), retryable=True)
+
+
+async def _execute_with_ledger(envelope: ToolInvocationEnvelope) -> ToolResult:
+    execution_id = envelope.request_id or str(uuid.uuid4())
+    idempotency_key = envelope.idempotency_key
+
+    if idempotency_key:
+        existing = await ledger.get_by_idempotency(idempotency_key)
+        if existing and existing.get("result"):
+            return ToolResult(**existing["result"])
+
+    await ledger.create(
+        {
+            "execution_id": execution_id,
+            "status": ExecutionStatus.running.value,
+            "tool_name": envelope.tool_name,
+            "domain": envelope.domain,
+            "action": envelope.action,
+            "request_id": envelope.request_id,
+            "idempotency_key": envelope.idempotency_key,
+            "trace_id": envelope.trace_id,
+            "caller": envelope.caller,
+            "tenant": envelope.tenant,
+            "source": envelope.source,
+            "priority": envelope.priority,
+        }
+    )
+
+    started = time.monotonic()
+    result = await _execute_envelope(envelope)
+    duration_ms = int((time.monotonic() - started) * 1000)
+
+    await ledger.update(
+        execution_id,
+        status=ExecutionStatus.completed.value if result.success else ExecutionStatus.failed.value,
+        duration_ms=duration_ms,
+        cost_spent=result.cost_spent or 0.0,
+        result=result.model_dump() if hasattr(result, "model_dump") else result.dict(),
+        error_code=result.error_code,
+        error_message=result.message,
+    )
+    return result
+
+
+async def _queue_handler(execution_id: str, envelope_payload: Dict[str, Any]) -> None:
+    record = await ledger.get(execution_id)
+    if record and record.get("status") == ExecutionStatus.cancelled.value:
+        return
+    envelope = ToolInvocationEnvelope(**envelope_payload)
+    started = time.monotonic()
+    result = await _execute_envelope(envelope)
+    duration_ms = int((time.monotonic() - started) * 1000)
+    await ledger.update(
+        execution_id,
+        status=ExecutionStatus.completed.value if result.success else ExecutionStatus.failed.value,
+        duration_ms=duration_ms,
+        cost_spent=result.cost_spent or 0.0,
+        result=result.model_dump() if hasattr(result, "model_dump") else result.dict(),
+        error_code=result.error_code,
+        error_message=result.message,
+    )
 
 # --- Endpoints ---
 
@@ -172,19 +341,111 @@ async def execute_tool(envelope: ToolInvocationEnvelope):
     OpenClaw (or any plugin) sends a ToolInvocationEnvelope here.
     The Brain's Orchestrator handles permission, budget, and routing.
     """
-    orc = get_orchestrator()
-    try:
-        # The invoke method is currently sync but might be async-bridged internally.
-        # Since this is FastAPI async handler, blocking here is suboptimal but acceptable for prototype.
-        # Ideally, invoke should be async.
-        result = orc.invoke(envelope)
+    result = await _execute_with_ledger(envelope)
+    if result.success:
         return result
-    except BudgetExceeded as e:
-        raise HTTPException(status_code=402, detail=f"Budget Exceeded: {str(e)}")
-    except ToolExecutionError as e:
-        raise HTTPException(status_code=400, detail=f"Tool Error: {str(e)}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal Orchestrator Error: {str(e)}")
+    status = 500
+    if result.error_code == "budget_exceeded":
+        status = 402
+    elif result.error_code == "security_violation":
+        status = 403
+    elif result.error_code == "tool_error":
+        status = 400
+    return JSONResponse(status_code=status, content=result.model_dump() if hasattr(result, "model_dump") else result.dict())
+
+
+@app.post("/v1/orchestrator/execute", response_model=ToolResult, dependencies=[Depends(verify_api_key)])
+async def orchestrator_execute(envelope: ToolInvocationEnvelope):
+    result = await _execute_with_ledger(envelope)
+    if result.success:
+        return result
+    status = 500
+    if result.error_code == "budget_exceeded":
+        status = 402
+    elif result.error_code == "security_violation":
+        status = 403
+    elif result.error_code == "tool_error":
+        status = 400
+    return JSONResponse(status_code=status, content=result.model_dump() if hasattr(result, "model_dump") else result.dict())
+
+
+@app.post("/v1/orchestrator/execute:batch", dependencies=[Depends(verify_api_key)])
+async def orchestrator_execute_batch(envelopes: List[ToolInvocationEnvelope]):
+    results: List[Dict[str, Any]] = []
+    for envelope in envelopes:
+        result = await _execute_with_ledger(envelope)
+        results.append(result.model_dump() if hasattr(result, "model_dump") else result.dict())
+    return {"results": results}
+
+
+@app.post("/v1/orchestrator/execute:async", dependencies=[Depends(verify_api_key)])
+async def orchestrator_execute_async(envelope: ToolInvocationEnvelope):
+    if queue is None:
+        raise HTTPException(status_code=503, detail="Async queue not configured")
+
+    execution_id = envelope.request_id or str(uuid.uuid4())
+    if envelope.idempotency_key:
+        existing = await ledger.get_by_idempotency(envelope.idempotency_key)
+        if existing:
+            return {"execution_id": existing.get("execution_id"), "status": existing.get("status")}
+    await ledger.create(
+        {
+            "execution_id": execution_id,
+            "status": ExecutionStatus.queued.value,
+            "tool_name": envelope.tool_name,
+            "domain": envelope.domain,
+            "action": envelope.action,
+            "request_id": envelope.request_id,
+            "idempotency_key": envelope.idempotency_key,
+            "trace_id": envelope.trace_id,
+            "caller": envelope.caller,
+            "tenant": envelope.tenant,
+            "source": envelope.source,
+            "priority": envelope.priority,
+        }
+    )
+    await queue.enqueue(execution_id, envelope.model_dump() if hasattr(envelope, "model_dump") else envelope.dict())
+    return {"execution_id": execution_id, "status": ExecutionStatus.queued.value}
+
+
+@app.get("/v1/orchestrator/executions/{execution_id}", dependencies=[Depends(verify_api_key)])
+async def orchestrator_execution_status(execution_id: str):
+    record = await ledger.get(execution_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Execution not found")
+    return record
+
+
+@app.post("/v1/orchestrator/executions/{execution_id}/cancel", dependencies=[Depends(verify_api_key)])
+async def orchestrator_cancel(execution_id: str):
+    record = await ledger.get(execution_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Execution not found")
+    if record.get("status") in [ExecutionStatus.completed.value, ExecutionStatus.failed.value]:
+        return {"execution_id": execution_id, "status": record.get("status")}
+    await ledger.update(execution_id, status=ExecutionStatus.cancelled.value)
+    return {"execution_id": execution_id, "status": ExecutionStatus.cancelled.value}
+
+
+@app.get("/healthz")
+def healthz():
+    return {"status": "ok"}
+
+
+@app.get("/readyz")
+async def readyz():
+    # Minimal readiness check: ledger init + orchestrator tools
+    return {
+        "status": "ready",
+        "tools_loaded": list(get_orchestrator().tools.keys())
+    }
+
+
+@app.get("/metrics")
+def metrics():
+    if not generate_latest:
+        raise HTTPException(status_code=503, detail="Prometheus client not available")
+    return PlainTextResponse(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 @app.get("/health")
 def health():

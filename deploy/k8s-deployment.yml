@@ -1,5 +1,5 @@
-# IPPOC-OS Kubernetes Deployment
-# For Google Cloud Run / AWS EKS / Azure AKS
+# IPPOC-OS Kubernetes Deployment (multi-node)
+# Targets: EKS/GKE/AKS
 
 apiVersion: v1
 kind: Namespace
@@ -7,7 +7,33 @@ metadata:
   name: ippoc-os
 
 ---
-# PostgreSQL with pgvector
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ippoc-secrets
+  namespace: ippoc-os
+type: Opaque
+data:
+  # base64-encoded values
+  postgres-password: c2VjdXJlX3Bhc3M=
+  ippoc-api-key: aXBwb2Mtc2VjcmV0LWtleQ==
+  database-url: cG9zdGdyZXNxbDovL3Bvc3RncmVzOnNlY3VyZV9wYXNzQHBvc3RncmVzOjU0MzIvaXBwb2NfaGlkYg==
+  redis-url: cmVkaXM6Ly9yZWRpczo2Mzc5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: ippoc-os
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    app: postgres
+
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -45,7 +71,54 @@ spec:
           claimName: postgres-pvc
 
 ---
-# IPPOC Node (Body)
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: ippoc-os
+spec:
+  ports:
+    - port: 6379
+      targetPort: 6379
+  selector:
+    app: redis
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: ippoc-os
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        ports:
+        - containerPort: 6379
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ippoc-node
+  namespace: ippoc-os
+spec:
+  ports:
+    - port: 9000
+      targetPort: 9000
+  selector:
+    app: ippoc-node
+
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -65,17 +138,174 @@ spec:
       - name: ippoc-node
         image: gcr.io/PROJECT_ID/ippoc-node:latest
         ports:
-        - containerPort: 8080
+        - containerPort: 9000
         env:
         - name: DATABASE_URL
-          value: postgresql://postgres:$(POSTGRES_PASSWORD)@postgres:5432/ippoc_hidb
+          valueFrom:
+            secretKeyRef:
+              name: ippoc-secrets
+              key: database-url
         - name: REDIS_URL
-          value: redis://redis:6379
+          valueFrom:
+            secretKeyRef:
+              name: ippoc-secrets
+              key: redis-url
         - name: NODE_ROLE
           value: reasoning
 
 ---
-# OpenClaw Cortex (Mind)
+apiVersion: v1
+kind: Service
+metadata:
+  name: ippoc-memory
+  namespace: ippoc-os
+spec:
+  ports:
+    - port: 8000
+      targetPort: 8000
+  selector:
+    app: ippoc-memory
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ippoc-memory
+  namespace: ippoc-os
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ippoc-memory
+  template:
+    metadata:
+      labels:
+        app: ippoc-memory
+    spec:
+      containers:
+      - name: ippoc-memory
+        image: gcr.io/PROJECT_ID/ippoc-memory:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: ippoc-secrets
+              key: database-url
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: ippoc-secrets
+              key: redis-url
+        - name: GOOGLE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ippoc-secrets
+              key: ippoc-api-key
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ippoc-cortex
+  namespace: ippoc-os
+spec:
+  ports:
+    - port: 8001
+      targetPort: 8001
+  selector:
+    app: ippoc-cortex
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ippoc-cortex
+  namespace: ippoc-os
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ippoc-cortex
+  template:
+    metadata:
+      labels:
+        app: ippoc-cortex
+    spec:
+      containers:
+      - name: ippoc-cortex
+        image: gcr.io/PROJECT_ID/ippoc-cortex:latest
+        ports:
+        - containerPort: 8001
+        env:
+        - name: MEMORY_URL
+          value: http://ippoc-memory:8000
+        - name: BODY_URL
+          value: http://ippoc-node:9000
+        - name: ORCHESTRATOR_REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: ippoc-secrets
+              key: redis-url
+        - name: IPPOC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ippoc-secrets
+              key: ippoc-api-key
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ippoc-cortex-worker
+  namespace: ippoc-os
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ippoc-cortex-worker
+  template:
+    metadata:
+      labels:
+        app: ippoc-cortex-worker
+    spec:
+      containers:
+      - name: ippoc-cortex-worker
+        image: gcr.io/PROJECT_ID/ippoc-cortex:latest
+        env:
+        - name: MEMORY_URL
+          value: http://ippoc-memory:8000
+        - name: BODY_URL
+          value: http://ippoc-node:9000
+        - name: ORCHESTRATOR_REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: ippoc-secrets
+              key: redis-url
+        - name: ORCHESTRATOR_WORKER
+          value: \"true\"
+        - name: IPPOC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ippoc-secrets
+              key: ippoc-api-key
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openclaw-cortex
+  namespace: ippoc-os
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 3000
+      targetPort: 3000
+  selector:
+    app: openclaw-cortex
+
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -97,26 +327,53 @@ spec:
         ports:
         - containerPort: 3000
         env:
-        - name: DATABASE_URL
-          value: postgresql://postgres:$(POSTGRES_PASSWORD)@postgres:5432/ippoc_hidb
-        - name: REDIS_URL
-          value: redis://redis:6379
         - name: NODE_HOST
           value: ippoc-node
         - name: NODE_PORT
-          value: "8080"
+          value: "9000"
+        - name: IPPOC_ORCHESTRATOR_MODE
+          value: http
+        - name: IPPOC_BRAIN_URL
+          value: http://ippoc-cortex:8001
 
 ---
-# Service for OpenClaw Cortex
-apiVersion: v1
-kind: Service
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
 metadata:
-  name: openclaw-cortex
+  name: ippoc-cortex-hpa
   namespace: ippoc-os
 spec:
-  type: LoadBalancer
-  ports:
-  - port: 3000
-    targetPort: 3000
-  selector:
-    app: openclaw-cortex
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ippoc-cortex
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ippoc-memory-hpa
+  namespace: ippoc-os
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ippoc-memory
+  minReplicas: 1
+  maxReplicas: 4
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70

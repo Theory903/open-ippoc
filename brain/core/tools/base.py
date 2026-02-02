@@ -16,6 +16,17 @@ class ToolInvocationEnvelope(BaseModel):
     context: Dict[str, Any] = Field(default_factory=dict, description="Contextual metadata (caller, reason, etc.)")
     risk_level: Literal["low", "medium", "high"] = Field(default="low", description="Risk assessment of the action")
     estimated_cost: float = Field(default=0.0, description="Estimated economic cost (tokens/credits)")
+
+    # Orchestrator metadata (optional, backwards compatible)
+    request_id: Optional[str] = Field(default=None, description="Client-provided request id")
+    idempotency_key: Optional[str] = Field(default=None, description="Idempotency key for replay protection")
+    deadline_ms: Optional[int] = Field(default=None, description="Execution deadline in milliseconds")
+    trace_id: Optional[str] = Field(default=None, description="Distributed trace id")
+    caller: Optional[str] = Field(default=None, description="Caller identity")
+    tenant: Optional[str] = Field(default=None, description="Tenant or account id")
+    source: Optional[str] = Field(default=None, description="Source system or subsystem")
+    priority: Optional[int] = Field(default=None, description="Priority hint (higher = more important)")
+    sandboxed: Optional[bool] = Field(default=None, description="Force safe execution path")
     
     requires_validation: bool = Field(default=False, description="If True, requires explicit approval/validation step")
     rollback_allowed: bool = Field(default=False, description="If True, the action must support rollback")
@@ -32,6 +43,11 @@ class ToolResult(BaseModel):
     
     rollback_token: Optional[str] = None
     warnings: List[str] = Field(default_factory=list)
+    # Error details (optional)
+    error_code: Optional[str] = None
+    message: Optional[str] = None
+    retryable: Optional[bool] = None
+    details: Optional[Any] = None
 
 class IPPOC_Tool(ABC):
     """
