@@ -6,7 +6,8 @@ echo ""
 
 # 1. Build the Rust workspace
 echo "[1/3] Building Rust workspace..."
-cd /Users/abhishekjha/Downloads/ippoc
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO_ROOT"
 cargo build --workspace 2>&1 | tail -n 5
 
 if [ $? -ne 0 ]; then

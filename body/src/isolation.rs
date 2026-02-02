@@ -7,6 +7,7 @@ pub struct NodeIsolation {
     pub root_dir: PathBuf,
 }
 
+#[allow(dead_code)]
 impl NodeIsolation {
     pub fn init(node_id: &str) -> Result<Self> {
         // Canonical Root: /tmp/ippoc/nodes/<node_id> (Using /tmp for portability in this environment, normally /var/lib/ippoc)
@@ -23,12 +24,12 @@ impl NodeIsolation {
         for subdir in &subdirs {
             let path = root_dir.join(subdir);
             fs::create_dir_all(&path)
-                .with_context(|| format!("Failed to create isolation directory: {:?}", path))?;
+                .with_context(|| format!("Failed to create isolation directory: {path:?}"))?;
         }
 
         // Rule 2.3: Physical Isolation Law - Verify absolute path usage
         if !root_dir.is_absolute() {
-             anyhow::bail!("Isolation root must be an absolute path: {:?}", root_dir);
+             anyhow::bail!("Isolation root must be an absolute path: {root_dir:?}");
         }
 
         Ok(Self { root_dir })

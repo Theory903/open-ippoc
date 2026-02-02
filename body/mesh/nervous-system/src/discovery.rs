@@ -3,7 +3,6 @@ use mdns_sd::{ServiceDaemon, ServiceInfo};
 use std::collections::HashMap;
 use std::net::IpAddr;
 use tracing::info;
-
 use std::sync::{Arc, Mutex};
 
 pub struct Discovery {
@@ -57,6 +56,11 @@ impl Discovery {
                             p.insert(info.get_fullname().to_string(), *ip);
                         }
                     }
+                    mdns_sd::ServiceEvent::ServiceRemoved(info) => {
+                        info!("NervousSystem: Peer removed: {}", info.get_fullname());
+                        let mut p = peers.lock().unwrap();
+                        p.remove(&info.get_fullname().to_string());
+                    }
                     _ => {}
                 }
             }
@@ -65,5 +69,13 @@ impl Discovery {
 
     pub fn get_peers(&self) -> HashMap<String, IpAddr> {
         self.peers.lock().unwrap().clone()
+    }
+
+    pub fn peer_count(&self) -> usize {
+        self.peers.lock().unwrap().len()
+    }
+
+    pub fn is_peer_available(&self, peer_id: &str) -> bool {
+        self.peers.lock().unwrap().contains_key(peer_id)
     }
 }

@@ -69,7 +69,7 @@ services:
   # ===================
   openclaw-cortex:
     build:
-      context: ./apps/openclaw-cortex
+      context: ./brain/cortex/openclaw-cortex
       dockerfile: Dockerfile
     container_name: ippoc-cortex
     environment:

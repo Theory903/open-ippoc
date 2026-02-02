@@ -9,6 +9,7 @@ pub struct VllmSidecar {
     port: u16,
 }
 
+#[allow(dead_code)]
 impl VllmSidecar {
     pub fn new(port: u16) -> Self {
         Self { process: None, port }

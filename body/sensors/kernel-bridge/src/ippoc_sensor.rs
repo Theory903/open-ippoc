@@ -84,10 +84,11 @@ impl file::Operations for IppocSensorDevice {
 }
 
 fn get_system_metrics() -> String {
-    // TODO: Integrate with actual kernel metrics
-    // For now, return mock data
+    // MOCK-KERNEL-BRIDGE: Real kernel metrics would hook into ip_vs_stats.
+    // For userspace testing, we return a structured JSON with mock values.
+    // TODO(KernelTeam): Link against `linux/kernel_stat.h`
     format!(
-        "{{\"cpu_usage\":15.2,\"memory_mb\":2048,\"uptime_seconds\":3600}}\n"
+        "{{\"cpu_usage\":15.2,\"memory_mb\":2048,\"uptime_seconds\":3600,\"neural_load\":0.4}}\n"
     )
 }
 

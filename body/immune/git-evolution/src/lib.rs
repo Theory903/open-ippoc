@@ -67,7 +67,7 @@ impl GitEvolution {
             let head = repo.head()?;
             let branch_ref = head.name().ok_or_else(|| anyhow!("Detached HEAD"))?.to_string();
 
-            let remote_ref_name = format!("refs/remotes/{}/{}", remote_name, branch);
+            let remote_ref_name = format!("refs/remotes/{remote_name}/{branch}");
             let remote_commit = repo.find_reference(&remote_ref_name)?
                 .peel_to_commit()?;
 
@@ -269,7 +269,7 @@ impl GitEvolution {
         
         // 1. Write content to disk
         std::fs::write(&full_path, resolution)
-            .context(format!("Failed to write resolution to {:?}", full_path))?;
+            .context(format!("Failed to write resolution to {full_path:?}"))?;
 
         // 2. Add to Git Index
         let mut index = repo.index()?;
@@ -291,7 +291,7 @@ impl GitEvolution {
         }
 
         let safe_name = feature_name.replace(' ', "-").to_lowercase();
-        let branch_name = format!("feature/{}", safe_name);
+        let branch_name = format!("feature/{safe_name}");
         info!("GitEvolution: Creating feature branch '{}'", branch_name);
 
         let (head_name, head_oid) = {
@@ -300,7 +300,7 @@ impl GitEvolution {
             let head_commit = head.peel_to_commit()?;
             
             // Create branch if not exists, otherwise just use it
-            if let Err(_) = repo.find_branch(&branch_name, git2::BranchType::Local) {
+            if repo.find_branch(&branch_name, git2::BranchType::Local).is_err() {
                 repo.branch(&branch_name, &head_commit, false)?;
             }
             
@@ -311,9 +311,9 @@ impl GitEvolution {
         // Checkout the feature branch
         {
             let repo = Repository::open(&self.path)?;
-            let obj = repo.revparse_single(&format!("refs/heads/{}", branch_name))?;
+            let obj = repo.revparse_single(&format!("refs/heads/{branch_name}"))?;
             repo.checkout_tree(&obj, None)?;
-            repo.set_head(&format!("refs/heads/{}", branch_name))?;
+            repo.set_head(&format!("refs/heads/{branch_name}"))?;
         }
 
         // 1. Simulate the patch on the feature branch
@@ -343,7 +343,7 @@ impl GitEvolution {
              repo.checkout_tree(&head_obj, None)?;
              repo.set_head(&head_name)?;
              
-             let feature_ref = repo.find_reference(&format!("refs/heads/{}", branch_name))?;
+             let feature_ref = repo.find_reference(&format!("refs/heads/{branch_name}"))?;
              let feature_annotated = repo.find_annotated_commit(feature_ref.peel_to_commit()?.id())?;
              
              let (analysis, _) = repo.merge_analysis(&[&feature_annotated])?;
