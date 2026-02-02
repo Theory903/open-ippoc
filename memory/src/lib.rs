@@ -52,7 +52,7 @@ impl HiDB {
             VALUES ($1, $2, $3, $4, $5, $6)
             "#
         )
-        .bind(&memory.id)
+        .bind(memory.id)
         .bind(&memory.embedding)
         .bind(&memory.content)
         .bind(memory.confidence)

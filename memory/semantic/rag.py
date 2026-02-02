@@ -1,50 +1,40 @@
-import os
-from typing import List, Dict, Any
-from langchain_community.vectorstores import PGVector
-from langchain_openai import OpenAIEmbeddings
-from langchain.schema import Document
-from pydantic import BaseModel
-
-class SemanticConfig(BaseModel):
-    connection_string: str = os.getenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/ippoc")
-    collection_name: str = "hippocampus_v1"
-    embedding_model: str = "text-embedding-3-small"
+from typing import List, Optional, Dict
+from langchain_core.documents import Document
+from langchain_core.embeddings import Embeddings
+from langchain_core.vectorstores import VectorStore
+# Ideally use langchain_postgres if available, else standard interface
+# We define the class to accept a generic VectorStore to be implementation agnostic
 
 class SemanticManager:
-    def __init__(self, config: SemanticConfig = SemanticConfig()):
-        self.config = config
-        self.embeddings = OpenAIEmbeddings(model=config.embedding_model)
-        
-        # Initialize PGVector (requires pgvector extension in DB)
-        self.vector_store = PGVector(
-            connection_string=self.config.connection_string,
-            embedding_function=self.embeddings,
-            collection_name=self.config.collection_name,
-            use_jsonb=True,
-        )
+    """
+    Manages semantic memory retrieval and storage.
+    Strictly uses LangChain Core interfaces.
+    """
+    def __init__(self, vector_store: VectorStore, embeddings: Embeddings):
+        self.vector_store = vector_store
+        self.embeddings = embeddings
 
-    async def search(self, query: str, limit: int = 5, min_score: float = 0.7) -> List[Dict[str, Any]]:
+    async def add_memory(self, text: str, metadata: Dict) -> List[str]:
         """
-        Semantic search using HNSW index
+        Adds a single memory content to the vector store.
+        Returns the list of IDs added.
         """
-        docs_with_scores = await self.vector_store.asimilarity_search_with_relevance_scores(
-            query, k=limit
-        )
-        
-        results = []
-        for doc, score in docs_with_scores:
-            if score >= min_score:
-                results.append({
-                    "content": doc.page_content,
-                    "score": score,
-                    "metadata": doc.metadata,
-                    "type": "semantic"
-                })
-        return results
+        doc = Document(page_content=text, metadata=metadata)
+        # generic add_documents usually returns IDs
+        return await self.vector_store.aadd_documents([doc])
 
-    async def index(self, content: str, metadata: Dict[str, Any]):
+    async def retrieve_relevant(self, query: str, k: int = 5) -> List[Document]:
         """
-        Embed and store knowledge
+        Retrieves top-k relevant documents for a query.
         """
-        doc = Document(page_content=content, metadata=metadata)
-        await self.vector_store.aadd_documents([doc])
+        # use as_retriever is the LCEL way, but direct search is also fine for a manager class
+        # if this class is used within a chain, it should expose a generic runnable
+        
+        # Pure retrieval
+        return await self.vector_store.asimilarity_search(query, k=k)
+
+    def as_retriever(self, **kwargs):
+        """
+        Exposes the vector store as a standard LCEL retrieval runnable.
+        """
+        return self.vector_store.as_retriever(**kwargs)
