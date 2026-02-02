@@ -21,6 +21,14 @@ export const ippocConfig: IPPOCConfig = {
   // Feature flags
   enableSelfEvolution: process.env.ENABLE_SELF_EVOLUTION !== "false",
   enableToolSmith: process.env.ENABLE_TOOLSMITH !== "false",
+  enableEconomy: process.env.ENABLE_ECONOMY !== "false",
+  enableHardening: process.env.ENABLE_HARDENING !== "false",
+  
+  // Economic configuration
+  walletPath: process.env.WALLET_PATH || "./wallet.json",
+  
+  // Security configuration
+  reputationThreshold: parseInt(process.env.REPUTATION_THRESHOLD || "80"),
 };
 
 /**

@@ -1,5 +1,6 @@
 use anyhow::Result;
-// use async_trait::async_trait;
+pub mod chat;
+use chat::ChatLobe;
 use tracing::info;
 use serde::{Deserialize, Serialize};
 
@@ -23,6 +24,7 @@ use std::sync::Arc;
 pub struct Cerebrum {
     search: SearchLobe,
     memories: MemoryLobe,
+    pub chat: ChatLobe,
 }
 
 impl Cerebrum {
@@ -30,7 +32,12 @@ impl Cerebrum {
         Self {
             search: SearchLobe::new(),
             memories: MemoryLobe::new(hidb),
+            chat: ChatLobe::new(),
         }
+    }
+
+    pub async fn recall(&self, query: &str) -> Result<Vec<String>> {
+        self.memories.recall(query).await
     }
 
     pub async fn think(&self, req: ThoughtRequest) -> Result<ThoughtResponse> {
@@ -47,27 +54,65 @@ impl Cerebrum {
         // 2. Information Retrieval (Search)
         let search_results = self.search.search(&req.query).await.unwrap_or_default();
 
-        // 3. Synthesis (LLM Call - Simulated for now, or use OpenRouter via env?)
-        // For this step, we'll confirm we *found* info.
+        // 3. Synthesis (LLM Call)
+        let endpoint = std::env::var("VLLM_ENDPOINT").unwrap_or_else(|_| "http://localhost:11434/v1".to_string());
         
-        // TODO: In real implementation, this calls the local LLM or OpenAI with the context.
-        // For the "I am weak" fix, we'll make it return a grounded simulation.
-        
-        let answer = if search_results.is_empty() {
-            format!("{}I pondered '{}' but found no external info, and my internal weights are uncertain.", memory_context, req.query)
+        // Determine model based on context (Genetic vs Cognition)
+        let model = if req.context_history.iter().any(|s| s.contains("Evolution Engine")) {
+            "codegemma"
         } else {
-            format!(
-                "{}Based on my research ({})\n{}\n\nSource: {}", 
-                memory_context,
-                search_results[0].title,
-                search_results[0].snippet, 
-                search_results[0].url
-            )
+            "gemma:2b"
+        };
+        
+        let system_prompt = if !req.context_history.is_empty() {
+            req.context_history.join("\n")
+        } else {
+            "You are IPPOC, a sovereign AI node.".to_string()
+        };
+
+        let mut context_block = String::new();
+        if !memory_context.is_empty() {
+             context_block.push_str(&format!("Internal Memory:\n{}\n", memory_context));
+        }
+        if !search_results.is_empty() {
+             context_block.push_str("External Search Results:\n");
+             for res in &search_results {
+                 context_block.push_str(&format!("- {} ({})\n  {}\n", res.title, res.url, res.snippet));
+             }
+        }
+
+        let client = reqwest::Client::new();
+        let url = format!("{}/chat/completions", endpoint.trim_end_matches('/'));
+        
+        info!("Cerebrum: Synapsing to {} using model {}", url, model);
+
+        let body = serde_json::json!({
+            "model": model,
+            "messages": [
+                { "role": "system", "content": system_prompt },
+                { "role": "system", "content": context_block },
+                { "role": "user", "content": req.query }
+            ],
+            "temperature": 0.2,
+            "stream": false
+        });
+
+        let answer = match client.post(&url).json(&body).send().await {
+            Ok(resp) => {
+                if resp.status().is_success() {
+                    let json: serde_json::Value = resp.json().await.unwrap_or_default();
+                    json["choices"][0]["message"]["content"]
+                        .as_str()
+                        .unwrap_or("Error: Empty response from Neural Engine")
+                        .to_string()
+                } else {
+                    format!("Error: Neural Engine returned {}", resp.status())
+                }
+            }
+            Err(e) => format!("Error: Could not reach Neural Engine: {}", e),
         };
 
         // 4. Memorize this interaction (Hippocampal consolidation)
-        // We store the query + answer as a memory trace
-        // In real system, this happens async or in background
         if let Err(e) = self.memories.memorize(&req.query, &answer).await {
             tracing::warn!("Failed to consolidate memory: {}", e);
         }
@@ -118,7 +163,7 @@ impl MemoryLobe {
         info!("Consolidating memory: '{}' -> ...", query);
         
         // 1. Create content blob
-        let content = format!("Q: {}\nA: {}", query, answer);
+        let content = format!("Q: {query}\nA: {answer}");
         
         // 2. Generate Embedding (Mock)
         // Ideally we embed the Question or Q+A

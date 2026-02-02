@@ -3,20 +3,14 @@
 MODULE: brain.worldmodel
 
 ROLE:
-    Simulation metaverse.
-    Tests code, strategies, and economic decisions in a safe sandbox before reality.
+    Simulation metaverse for safe testing.
 
-OWNERSHIP:
-    Brain subsystem.
+GOVERNANCE:
+    Managed by `brain/core/tools/worldmodel.py`.
+    DO NOT import specific functions directly.
+    USE `ToolOrchestrator` with tool_name="simulation".
 
-DO NOT:
-    - Affect reality (No real network calls, no real spending)
-    - Leak simulation data to production
-
-PUBLIC API:
-    - simulate_action(action) -> Outcome
-    - test_patch(diff) -> TestResults
-
-ENTRYPOINTS:
-    brain.worldmodel.run
+PUBLIC API (via Orchestrator):
+    - simulation.simulate_action(action)
+    - simulation.test_patch(diff_id)
 """

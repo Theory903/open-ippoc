@@ -7,14 +7,16 @@
         "dev": "nodemon src/cortex.ts"
     },
     "dependencies": {
+        "axios": "^1.6.0",
         "capnp-ts": "^0.7.0",
         "fs-extra": "^11.2.0",
-        "openclaw": "file:../../openclaw-main",
+        "openclaw": "file:../../../mind/openclaw",
         "simple-git": "^3.22.0",
         "zod": "^3.22.4"
     },
     "devDependencies": {
-        "@types/node": "^20.10.0",
+        "@types/fs-extra": "^11.0.4",
+        "@types/node": "^20.19.30",
         "ts-node": "^10.9.2",
         "tsx": "^4.21.0",
         "typescript": "^5.3.3"

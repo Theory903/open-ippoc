@@ -3,21 +3,14 @@
 MODULE: brain.cerebellum
 
 ROLE:
-    Paper-to-Code learning engine.
-    Ingests research papers and translates them into executable code proposals.
-    The "Research Assistant" lobe.
+    Paper-to-Code learning engine (Research Assistant).
 
-OWNERSHIP:
-    Brain subsystem.
+GOVERNANCE:
+    Managed by `brain/core/tools/cerebellum.py`.
+    DO NOT import specific functions directly.
+    USE `ToolOrchestrator` with tool_name="research".
 
-DO NOT:
-    - Deploy code (Delegate to Evolution)
-    - Access production DB
-
-PUBLIC API:
-    - digest_paper(pdf_url) -> CodeProposal
-    - learn_skill(topic) -> SkillUpdate
-
-ENTRYPOINTS:
-    brain.cerebellum.digest
+PUBLIC API (via Orchestrator):
+    - research.digest_paper(url)
+    - research.learn_skill(topic)
 """
