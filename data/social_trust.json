@@ -1,0 +1,32 @@
+{
+  "peers": {
+    "evil_node_001": {
+      "node_id": "evil_node_001",
+      "trust_score": 0.0,
+      "interactions": 1,
+      "last_interaction": 1770073371.110346,
+      "notes": "Detected Evil"
+    },
+    "friend_node_777": {
+      "node_id": "friend_node_777",
+      "trust_score": 1.0,
+      "interactions": 1,
+      "last_interaction": 1770073371.115453,
+      "notes": "Initial bonding"
+    },
+    "stranger_x": {
+      "node_id": "stranger_x",
+      "trust_score": 0.0,
+      "interactions": 15,
+      "last_interaction": 1770074234.882879,
+      "notes": "Unknown; Unknown; Unknown; Unknown; Unknown; Unknown; Unknown; Unknown; Unknown; Unknown; Unknown; Unknown; Unknown; Unknown; Unknown"
+    },
+    "system_pain": {
+      "node_id": "system_pain",
+      "trust_score": 1.0,
+      "interactions": 5,
+      "last_interaction": 1770074234.870707,
+      "notes": "Internal Pain; Internal Pain; Internal Pain; Internal Pain; Internal Pain"
+    }
+  }
+}

@@ -1,0 +1,142 @@
+{
+  "budget": 15.0,
+  "reserve": 100.0,
+  "regen_rate": 0.0,
+  "last_tick": 1770072833.962759,
+  "total_spent": 11.5,
+  "total_value": 0.0,
+  "tool_stats": {
+    "buggy_tool": {
+      "calls": 15,
+      "failures": 15,
+      "total_spent": 1.5000000000000002,
+      "total_value": 0.0
+    },
+    "money_pit": {
+      "calls": 1,
+      "failures": 0,
+      "total_spent": 10.0,
+      "total_value": 0.0
+    }
+  },
+  "events": [
+    {
+      "kind": "spend",
+      "tool": "buggy_tool",
+      "cost": 0.1,
+      "failed": true,
+      "ts": 1770072833.959542
+    },
+    {
+      "kind": "spend",
+      "tool": "buggy_tool",
+      "cost": 0.1,
+      "failed": true,
+      "ts": 1770072833.959727
+    },
+    {
+      "kind": "spend",
+      "tool": "buggy_tool",
+      "cost": 0.1,
+      "failed": true,
+      "ts": 1770072833.959876
+    },
+    {
+      "kind": "spend",
+      "tool": "buggy_tool",
+      "cost": 0.1,
+      "failed": true,
+      "ts": 1770072833.960028
+    },
+    {
+      "kind": "spend",
+      "tool": "buggy_tool",
+      "cost": 0.1,
+      "failed": true,
+      "ts": 1770072833.960178
+    },
+    {
+      "kind": "spend",
+      "tool": "buggy_tool",
+      "cost": 0.1,
+      "failed": true,
+      "ts": 1770072833.960334
+    },
+    {
+      "kind": "spend",
+      "tool": "buggy_tool",
+      "cost": 0.1,
+      "failed": true,
+      "ts": 1770072833.9604962
+    },
+    {
+      "kind": "spend",
+      "tool": "buggy_tool",
+      "cost": 0.1,
+      "failed": true,
+      "ts": 1770072833.9606621
+    },
+    {
+      "kind": "spend",
+      "tool": "buggy_tool",
+      "cost": 0.1,
+      "failed": true,
+      "ts": 1770072833.9608378
+    },
+    {
+      "kind": "spend",
+      "tool": "buggy_tool",
+      "cost": 0.1,
+      "failed": true,
+      "ts": 1770072833.96102
+    },
+    {
+      "kind": "spend",
+      "tool": "buggy_tool",
+      "cost": 0.1,
+      "failed": true,
+      "ts": 1770072833.961219
+    },
+    {
+      "kind": "spend",
+      "tool": "buggy_tool",
+      "cost": 0.1,
+      "failed": true,
+      "ts": 1770072833.96141
+    },
+    {
+      "kind": "spend",
+      "tool": "buggy_tool",
+      "cost": 0.1,
+      "failed": true,
+      "ts": 1770072833.9616141
+    },
+    {
+      "kind": "spend",
+      "tool": "buggy_tool",
+      "cost": 0.1,
+      "failed": true,
+      "ts": 1770072833.961808
+    },
+    {
+      "kind": "spend",
+      "tool": "buggy_tool",
+      "cost": 0.1,
+      "failed": true,
+      "ts": 1770072833.9621341
+    },
+    {
+      "kind": "spend",
+      "tool": "money_pit",
+      "cost": 10.0,
+      "failed": false,
+      "ts": 1770072833.962368
+    },
+    {
+      "kind": "value",
+      "tool": "money_pit",
+      "value": 0.0,
+      "ts": 1770072833.9624991
+    }
+  ]
+}

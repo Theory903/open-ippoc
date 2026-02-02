@@ -3,6 +3,7 @@
 import aiohttp
 import asyncio
 import os
+import json
 import nest_asyncio
 from brain.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult
 from brain.core.exceptions import ToolExecutionError
@@ -13,6 +14,8 @@ HIDB_URL = os.getenv("HIDB_URL", os.getenv("BODY_URL", "http://localhost:9000"))
 MEMORY_BACKEND = os.getenv("MEMORY_BACKEND", "api")  # api|hidb|auto
 MEMORY_TIMEOUT_MS = int(os.getenv("MEMORY_TIMEOUT_MS", "8000"))
 MEMORY_MAX_RETRIES = int(os.getenv("MEMORY_MAX_RETRIES", "1"))
+IDENTITY_PATH = os.getenv("IDENTITY_MEMORY_PATH", "data/identity_memory.json")
+SKILL_PATH = os.getenv("SKILL_MEMORY_PATH", "data/skill_memory.json")
 
 class MemoryAdapter(IPPOC_Tool):
     """
@@ -60,6 +63,14 @@ class MemoryAdapter(IPPOC_Tool):
             return await self._store_memory(envelope)
         elif action == "retrieve":
             return await self._retrieve_memory(envelope)
+        elif action == "store_identity":
+            return self._store_identity(envelope)
+        elif action == "get_identity":
+            return self._get_identity()
+        elif action == "store_skill":
+            return self._store_skill(envelope)
+        elif action == "get_skills":
+            return self._get_skills()
         else:
              raise ToolExecutionError(envelope.tool_name, f"Unknown action: {action}")
 
@@ -164,3 +175,49 @@ class MemoryAdapter(IPPOC_Tool):
                 if attempt > max_retries:
                     raise ToolExecutionError(envelope.tool_name, f"Connection Failed: {e}")
         return ToolResult(success=False, output=f"{success_message} failed after retries")
+
+    def _load_json(self, path: str, default: dict) -> dict:
+        if os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                return default
+        return default
+
+    def _save_json(self, path: str, data: dict) -> None:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+
+    def _store_identity(self, envelope: ToolInvocationEnvelope) -> ToolResult:
+        identity = envelope.context.get("identity")
+        if not isinstance(identity, dict):
+            raise ToolExecutionError(envelope.tool_name, "Missing identity dict")
+        data = self._load_json(IDENTITY_PATH, {})
+        data.update(identity)
+        self._save_json(IDENTITY_PATH, data)
+        return ToolResult(success=True, output={"identity": data}, memory_written=True, cost_spent=0.1)
+
+    def _get_identity(self) -> ToolResult:
+        data = self._load_json(IDENTITY_PATH, {})
+        return ToolResult(success=True, output={"identity": data}, cost_spent=0.05)
+
+    def _store_skill(self, envelope: ToolInvocationEnvelope) -> ToolResult:
+        skill = envelope.context.get("skill")
+        success = bool(envelope.context.get("success", True))
+        if not skill:
+            raise ToolExecutionError(envelope.tool_name, "Missing skill name")
+        data = self._load_json(SKILL_PATH, {})
+        entry = data.get(skill, {"success": 0, "fail": 0})
+        if success:
+            entry["success"] += 1
+        else:
+            entry["fail"] += 1
+        data[skill] = entry
+        self._save_json(SKILL_PATH, data)
+        return ToolResult(success=True, output={"skill": skill, "stats": entry}, memory_written=True, cost_spent=0.1)
+
+    def _get_skills(self) -> ToolResult:
+        data = self._load_json(SKILL_PATH, {})
+        return ToolResult(success=True, output={"skills": data}, cost_spent=0.05)

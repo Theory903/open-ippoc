@@ -89,6 +89,9 @@ class BaseLedger:
     async def get_by_idempotency(self, key: str) -> Optional[Dict[str, Any]]:
         raise NotImplementedError
 
+    async def list_recent(self, limit: int = 50) -> list[Dict[str, Any]]:
+        raise NotImplementedError
+
 
 class InMemoryLedger(BaseLedger):
     def __init__(self) -> None:
@@ -136,6 +139,11 @@ class InMemoryLedger(BaseLedger):
             if record.idempotency_key == key:
                 return asdict(record)
         return None
+
+    async def list_recent(self, limit: int = 50) -> list[Dict[str, Any]]:
+        records = list(self._data.values())
+        records.sort(key=lambda r: r.updated_at or 0, reverse=True)
+        return [asdict(r) for r in records[:limit]]
 
 
 class SqlLedger(BaseLedger):
@@ -245,6 +253,37 @@ class SqlLedger(BaseLedger):
                 "error_code": record.error_code,
                 "error_message": record.error_message,
             }
+
+    async def list_recent(self, limit: int = 50) -> list[Dict[str, Any]]:
+        async with self.session_factory() as session:
+            stmt = select(ExecutionRecord).order_by(ExecutionRecord.updated_at.desc()).limit(limit)
+            res = await session.execute(stmt)
+            records = res.scalars().all()
+            results: list[Dict[str, Any]] = []
+            for record in records:
+                results.append({
+                    "execution_id": record.execution_id,
+                    "status": record.status,
+                    "tool_name": record.tool_name,
+                    "domain": record.domain,
+                    "action": record.action,
+                    "request_id": record.request_id,
+                    "idempotency_key": record.idempotency_key,
+                    "trace_id": record.trace_id,
+                    "caller": record.caller,
+                    "tenant": record.tenant,
+                    "source": record.source,
+                    "priority": record.priority,
+                    "created_at": record.created_at.isoformat() if record.created_at else None,
+                    "updated_at": record.updated_at.isoformat() if record.updated_at else None,
+                    "duration_ms": record.duration_ms,
+                    "retries": record.retries,
+                    "cost_spent": record.cost_spent,
+                    "result": json.loads(record.result_json or "{}"),
+                    "error_code": record.error_code,
+                    "error_message": record.error_message,
+                })
+            return results
 
 
 _ledger_instance: Optional[BaseLedger] = None

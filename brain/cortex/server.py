@@ -1,6 +1,7 @@
 import uvicorn
 import os
 import time
+import json
 import uuid
 import asyncio
 from fastapi import FastAPI, HTTPException, Depends, Security, Request
@@ -20,6 +21,7 @@ from brain.core.tools.base import ToolInvocationEnvelope, ToolResult
 from brain.core.exceptions import ToolExecutionError, BudgetExceeded, SecurityViolation
 from brain.core.ledger import get_ledger, ExecutionStatus
 from brain.core.queue import get_queue
+from brain.core.autonomy import run_autonomy_loop
 from brain.cortex.persistence import ChatPersistence
 import nest_asyncio
 nest_asyncio.apply()
@@ -73,13 +75,27 @@ else:  # pragma: no cover
 # --- Auth Security ---
 security = HTTPBearer()
 
-def verify_api_key(credentials: HTTPAuthorizationCredentials = Security(security)):
+# Token scopes (token -> list of scopes). If not provided, fallback to IPPOC_API_KEY with admin scope.
+TOKEN_SCOPES: Dict[str, List[str]] = {}
+scopes_raw = os.getenv("ORCHESTRATOR_TOKENS_JSON")
+if scopes_raw:
+    try:
+        TOKEN_SCOPES = json.loads(scopes_raw)
+    except Exception:
+        TOKEN_SCOPES = {}
+if IPPOC_API_KEY:
+    TOKEN_SCOPES.setdefault(IPPOC_API_KEY, ["*"])
+
+def verify_api_key(request: Request, credentials: HTTPAuthorizationCredentials = Security(security)):
     """
     Enforces Bearer Token Authentication.
     """
-    if credentials.credentials != IPPOC_API_KEY:
+    token = credentials.credentials
+    if token not in TOKEN_SCOPES:
         raise HTTPException(status_code=403, detail="Invalid API Key")
-    return credentials.credentials
+    request.state.scopes = TOKEN_SCOPES.get(token, [])
+    request.state.token = token
+    return token
 
 # --- Dependencies Definition ---
 class MockTransport(TransportLayer):
@@ -125,9 +141,14 @@ async def lifespan(app: FastAPI):
         print(f"[Server] Ledger init failed: {e}")
 
     worker_task = None
+    autonomy_task = None
     if queue and os.getenv("ORCHESTRATOR_WORKER", "false").lower() == "true":
         print("[Server] Starting orchestrator worker...")
         worker_task = asyncio.create_task(queue.consume(_queue_handler))
+    if os.getenv("IPPOC_AUTONOMY", "false").lower() == "true":
+        interval = int(os.getenv("IPPOC_HEARTBEAT_SECONDS", "60"))
+        print(f"[Server] Starting autonomy loop (every {interval}s)...")
+        autonomy_task = asyncio.create_task(run_autonomy_loop(interval))
     
     # Load State
     global chat_rooms
@@ -140,6 +161,8 @@ async def lifespan(app: FastAPI):
     chat_persistence.save(chat_rooms)
     if worker_task:
         worker_task.cancel()
+    if autonomy_task:
+        autonomy_task.cancel()
     # Close HTTP clients if any
     for t in swarm.transports:
         if isinstance(t, HttpTransport):
@@ -180,6 +203,48 @@ def _tool_error_response(code: str, message: str, retryable: bool = False, detai
         retryable=retryable,
         details=details,
     )
+
+
+def _require_tls(request: Request) -> None:
+    if os.getenv("ORCHESTRATOR_REQUIRE_TLS", "false").lower() != "true":
+        return
+    proto = request.headers.get("x-forwarded-proto") or request.url.scheme
+    if proto != "https":
+        raise HTTPException(status_code=400, detail="TLS required")
+
+
+def _authorize_scopes(scopes: List[str], envelope: ToolInvocationEnvelope) -> None:
+    if "*" in scopes:
+        return
+    domain = envelope.domain
+    action = envelope.action
+    required = [
+        f"{domain}:*",
+        f"{domain}:{action}",
+        "orchestrator:admin",
+    ]
+    if not any(scope in scopes for scope in required):
+        raise HTTPException(status_code=403, detail="Insufficient scope")
+
+
+def _authorize_simple(scopes: List[str], required: str) -> None:
+    if "*" in scopes or required in scopes or "orchestrator:admin" in scopes:
+        return
+    raise HTTPException(status_code=403, detail="Insufficient scope")
+
+
+def _normalize_envelope(request: Request, envelope: ToolInvocationEnvelope) -> ToolInvocationEnvelope:
+    if not envelope.request_id:
+        envelope.request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
+    if not envelope.trace_id:
+        envelope.trace_id = request.headers.get("x-trace-id") or envelope.request_id
+    if not envelope.caller:
+        envelope.caller = request.headers.get("x-caller") or "api"
+    if not envelope.tenant:
+        envelope.tenant = request.headers.get("x-tenant")
+    if not envelope.source:
+        envelope.source = "api"
+    return envelope
 
 
 async def _execute_envelope(envelope: ToolInvocationEnvelope) -> ToolResult:
@@ -341,7 +406,11 @@ async def update_model_market(model: str, cost: float):
     raise HTTPException(status_code=404, detail="Model not found")
 
 @app.post("/v1/tools/execute", response_model=ToolResult, dependencies=[Depends(verify_api_key)])
-async def execute_tool(envelope: ToolInvocationEnvelope):
+async def execute_tool(envelope: ToolInvocationEnvelope, request: Request):
+    _require_tls(request)
+    scopes = getattr(request.state, "scopes", [])
+    _authorize_scopes(scopes, envelope)
+    envelope = _normalize_envelope(request, envelope)
     """
     Universal Gateway for Tool Execution.
     OpenClaw (or any plugin) sends a ToolInvocationEnvelope here.
@@ -361,7 +430,11 @@ async def execute_tool(envelope: ToolInvocationEnvelope):
 
 
 @app.post("/v1/orchestrator/execute", response_model=ToolResult, dependencies=[Depends(verify_api_key)])
-async def orchestrator_execute(envelope: ToolInvocationEnvelope):
+async def orchestrator_execute(envelope: ToolInvocationEnvelope, request: Request):
+    _require_tls(request)
+    scopes = getattr(request.state, "scopes", [])
+    _authorize_scopes(scopes, envelope)
+    envelope = _normalize_envelope(request, envelope)
     result = await _execute_with_ledger(envelope)
     if result.success:
         return result
@@ -376,8 +449,14 @@ async def orchestrator_execute(envelope: ToolInvocationEnvelope):
 
 
 @app.post("/v1/orchestrator/execute:batch", dependencies=[Depends(verify_api_key)])
-async def orchestrator_execute_batch(envelopes: List[ToolInvocationEnvelope]):
-    tasks = [asyncio.create_task(_execute_with_ledger(envelope)) for envelope in envelopes]
+async def orchestrator_execute_batch(envelopes: List[ToolInvocationEnvelope], request: Request):
+    _require_tls(request)
+    scopes = getattr(request.state, "scopes", [])
+    normalized: List[ToolInvocationEnvelope] = []
+    for envelope in envelopes:
+        _authorize_scopes(scopes, envelope)
+        normalized.append(_normalize_envelope(request, envelope))
+    tasks = [asyncio.create_task(_execute_with_ledger(envelope)) for envelope in normalized]
     raw_results = await asyncio.gather(*tasks, return_exceptions=True)
     results: List[Dict[str, Any]] = []
     for item in raw_results:
@@ -390,7 +469,11 @@ async def orchestrator_execute_batch(envelopes: List[ToolInvocationEnvelope]):
 
 
 @app.post("/v1/orchestrator/execute:async", dependencies=[Depends(verify_api_key)])
-async def orchestrator_execute_async(envelope: ToolInvocationEnvelope):
+async def orchestrator_execute_async(envelope: ToolInvocationEnvelope, request: Request):
+    _require_tls(request)
+    scopes = getattr(request.state, "scopes", [])
+    _authorize_scopes(scopes, envelope)
+    envelope = _normalize_envelope(request, envelope)
     if queue is None:
         raise HTTPException(status_code=503, detail="Async queue not configured")
 
@@ -423,7 +506,9 @@ async def orchestrator_execute_async(envelope: ToolInvocationEnvelope):
 
 
 @app.get("/v1/orchestrator/executions/{execution_id}", dependencies=[Depends(verify_api_key)])
-async def orchestrator_execution_status(execution_id: str):
+async def orchestrator_execution_status(execution_id: str, request: Request):
+    _require_tls(request)
+    _authorize_simple(getattr(request.state, "scopes", []), "orchestrator:read")
     record = await ledger.get(execution_id)
     if not record:
         raise HTTPException(status_code=404, detail="Execution not found")
@@ -431,7 +516,9 @@ async def orchestrator_execution_status(execution_id: str):
 
 
 @app.post("/v1/orchestrator/executions/{execution_id}/cancel", dependencies=[Depends(verify_api_key)])
-async def orchestrator_cancel(execution_id: str):
+async def orchestrator_cancel(execution_id: str, request: Request):
+    _require_tls(request)
+    _authorize_simple(getattr(request.state, "scopes", []), "orchestrator:write")
     record = await ledger.get(execution_id)
     if not record:
         raise HTTPException(status_code=404, detail="Execution not found")
@@ -439,6 +526,41 @@ async def orchestrator_cancel(execution_id: str):
         return {"execution_id": execution_id, "status": record.get("status")}
     await ledger.update(execution_id, status=ExecutionStatus.cancelled.value)
     return {"execution_id": execution_id, "status": ExecutionStatus.cancelled.value}
+
+
+@app.get("/v1/orchestrator/timeline", dependencies=[Depends(verify_api_key)])
+async def orchestrator_timeline(request: Request, limit: int = 50):
+    _require_tls(request)
+    _authorize_simple(getattr(request.state, "scopes", []), "orchestrator:read")
+    return {"executions": await ledger.list_recent(limit)}
+
+
+@app.get("/v1/orchestrator/budget", dependencies=[Depends(verify_api_key)])
+async def orchestrator_budget(request: Request):
+    _require_tls(request)
+    _authorize_simple(getattr(request.state, "scopes", []), "economy:read")
+    return {"budget": get_orchestrator().get_budget()}
+
+
+@app.get("/v1/orchestrator/explain/latest", dependencies=[Depends(verify_api_key)])
+async def orchestrator_explain_latest(request: Request):
+    _require_tls(request)
+    _authorize_simple(getattr(request.state, "scopes", []), "orchestrator:read")
+    path = os.getenv("AUTONOMY_EXPLAIN_PATH", "data/explainability.json")
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="No explainability data")
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+@app.get("/v1/orchestrator/explain/{execution_id}", dependencies=[Depends(verify_api_key)])
+async def orchestrator_explain_execution(execution_id: str, request: Request):
+    _require_tls(request)
+    _authorize_simple(getattr(request.state, "scopes", []), "orchestrator:read")
+    record = await ledger.get(execution_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Execution not found")
+    return record
 
 
 @app.get("/healthz")

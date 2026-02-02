@@ -1,0 +1,23 @@
+{
+  "time": 1770074234.9071,
+  "decision": {
+    "action": "idle",
+    "reason": "no_intent"
+  },
+  "observation": {
+    "pain_score": 0.0,
+    "pressure_sources": [],
+    "trend": "degrading",
+    "confidence": 0.9,
+    "raw_metrics": {
+      "error_rate": 0.1,
+      "avg_latency": 10.0,
+      "total_cost": 0.0,
+      "sample_size": 100
+    },
+    "errors_last_hour": 10,
+    "avg_cost": 0.0,
+    "success_rate": 0.9
+  },
+  "result": "idle"
+}

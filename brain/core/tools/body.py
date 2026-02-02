@@ -62,10 +62,14 @@ class BodyAdapter(IPPOC_Tool):
             "params": params,
             "source": envelope.context.get("source", "tool_orchestrator")
         }
-        
+        headers = {}
+        internal_key = os.getenv("IPPOC_INTERNAL_KEY")
+        if internal_key:
+            headers["X-IPPOC-Key"] = internal_key
+
         async with aiohttp.ClientSession() as session:
             try:
-                async with session.post(f"{BODY_URL}/v1/execute", json=payload) as resp:
+                async with session.post(f"{BODY_URL}/v1/execute", json=payload, headers=headers) as resp:
                     if resp.status == 200:
                         text = await resp.text()
                         return ToolResult(

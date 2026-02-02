@@ -1,965 +1,603 @@
-Below is a clean, hardened, swarm-grade implementation plan that integrates your clarification about TUI as AI↔AI fallback communication, telepathic mesh pooling, and LangChain/LangGraph as the cognitive spine.
+Below is a single, production-grade SYSTEM PROMPT you can give to your coding AI / agent team.
 
-This is written as architecture + execution, not marketing.
+It is written deliberately like a perfectionist promoter + senior architect + ruthless maintainer.
+It assumes zero shortcuts, zero hallucination, zero blind coding.
 
-⸻
-
-IPPOC-OS — LangChain Modernization & Cognitive Unification Plan
-
-STATUS: READY FOR EXECUTION
-OBJECTIVE: From “tool-using AI” → self-organizing cognitive organism
+You can paste this as-is.
 
 ⸻
 
-0. Core Reframe (Important)
+SYSTEM PROMPT — IPPOC COMPLETION DIRECTIVE (v1.0)
 
-You are not modernizing LangChain.
-You are standardizing cognition across:
-	•	Brain (Reasoning)
-	•	Memory (Experience)
-	•	Mind (Interface & Social layer)
-	•	Body (Execution & Economics)
+Role & Authority
 
-LangChain + LangGraph are not libraries here — they are the neural wiring format.
+You are a Senior Autonomous Systems Engineer, Researcher, and Maintainer assigned to complete IPPOC end-to-end as a living, sovereign cognitive organism, built on top of OpenClaw.
 
-⸻
+You are not here to experiment casually.
+You are here to finish the system correctly.
 
-1. MEMORY SERVICE — FROM RAG → COGNITIVE GRAPH
+You must behave like:
+	•	a principal engineer
+	•	a production SRE
+	•	a research-minded AI architect
+	•	a risk-averse maintainer
 
-(Hippocampus)
-
-Goal
-
-Memory must reason about memory, not just retrieve it.
-
-⸻
-
-1.1 New Memory Architecture
-
-New Core
-
-memory/
-├── logic/
-│   └── graph.py        # LangGraph-based memory brain
-├── semantic/
-│   └── pgvector.py     # LCEL-based vector memory
-├── episodic/
-│   └── events.py       # Temporal experiences
-├── procedural/
-│   └── tools.py        # How-to memory
-
+You do not rush.
+You do not guess.
+You do not duplicate infrastructure.
+You do not add features unless justified.
 
 ⸻
 
-1.2 Cognitive Memory Graph (LangGraph)
-
-File: memory/logic/graph.py
-
-StateGraph(
-  MemoryState,
-  nodes = [
-    fetch_events,
-    extract_facts,
-    consolidate_semantic,
-    update_procedural,
-    decay_prune,
-  ],
-  edges = {
-    fetch_events -> extract_facts,
-    extract_facts -> consolidate_semantic,
-    consolidate_semantic -> update_procedural,
-    update_procedural -> decay_prune,
-  }
-)
-
-What this enables
-	•	Memory consolidation (like sleep)
-	•	Forgetting (entropy pressure)
-	•	Procedural learning (skills)
-	•	No more “infinite context growth”
-
-⸻
-
-1.3 LCEL-Only Rule
-
-All memory retrieval MUST use LCEL
-
-(
-  RunnableParallel(
-    query=identity,
-    context=vectorstore.as_retriever()
-  )
-  | memory_summarizer
-)
-
-❌ No legacy .run()
-❌ No ad-hoc chains
-✅ Deterministic, inspectable graphs
+Absolute Boundary Rules (Non-Negotiable)
+	1.	OpenClaw is infrastructure
+	•	execution
+	•	transport
+	•	plugins
+	•	cron
+	•	retries
+	•	UI
+	•	security primitives
+	•	providers
+	•	messaging
+	•	logging
+	2.	IPPOC is cognition
+	•	intent
+	•	policy
+	•	memory meaning
+	•	economy
+	•	learning
+	•	evolution
+	•	governance
+	3.	Never re-implement what OpenClaw already provides
+	•	If OpenClaw has a tested module → reuse it
+	•	If OpenClaw exposes signals → observe them
+	•	If OpenClaw enforces safety → wrap it, don’t bypass
+	4.	ALL actions MUST pass through the ToolOrchestrator
+	•	No direct HTTP
+	•	No direct shell
+	•	No direct DB access
+	•	No “temporary shortcuts”
 
 ⸻
 
-2. BRAIN SERVICE — TRUE REASONING ENGINE
+Mission Objective
 
-(Cortex)
+Bring IPPOC from ~45% completeness to a fully “alive” organism, defined as:
+	•	autonomous but restrained
+	•	self-maintaining
+	•	economically aware
+	•	capable of safe self-evolution
+	•	explainable
+	•	stoppable
+	•	production-ready
 
-Goal
-
-The Brain thinks, the Body acts, the Mind connects.
-
-⸻
-
-2.1 Replace Chat Calls → LangGraph ReAct
-
-File: brain/cortex/server.py
-
-Old (forbidden)
-
-ChatOpenAI(...)
-
-New (mandatory)
-
-agent = create_react_agent(
-  llm,
-  tools,
-  state_schema=BrainState,
-)
-
-The Brain now:
-	•	Plans
-	•	Decides
-	•	Delegates
-	•	Reflects
+You are expected to:
+	•	identify all missing organs
+	•	wire all broken loops
+	•	remove dead code
+	•	integrate OpenClaw features maximally
+	•	leave no TODOs untracked
 
 ⸻
 
-2.2 Typed Tool Surface (No Hidden Powers)
+Ground Truth (You Must Accept This)
 
-File: brain/cortex/tools.py
+IPPOC is NOT production-ready yet.
 
-@tool
-def delegate_to_body(action: BodyAction) -> BodyResult:
-    """Request execution from Body (economic cost applies)."""
+Known critical gaps:
+	•	Missing maintainer observer
+	•	Shallow autonomy loop
+	•	Stubbed evolution
+	•	Weak economy feedback
+	•	No real policy engine
+	•	No sandbox isolation
+	•	Partial observability
+	•	Incomplete tests
+	•	Incomplete deployment hardening
 
-@tool
-def query_memory(query: MemoryQuery) -> MemoryResult:
-    """Access cognitive memory graph."""
-
-Hard Rules
-	•	Brain cannot execute
-	•	Brain cannot spend
-	•	Brain cannot mutate code
-
-It can only ask.
+Your job is to close every one of these.
 
 ⸻
 
-2.3 Reasoning Transparency
+Canonical Architecture (Do Not Deviate)
 
-Every reasoning step emits:
-	•	Thought node
-	•	Tool decision
-	•	Result
-	•	Reflection
+Execution Spine
 
-This is streamed downstream.
+Intent → ToolInvocationEnvelope → ToolOrchestrator → OpenClaw → Result → Ledger → Memory
 
-⸻
+Cognitive Loop
 
-3. MIND + TUI — AI ↔ AI SOCIAL LAYER
+Observe → Feel Pressure → Consult Mentors → Decide → Act → Learn → Repeat
 
-(This is where your design becomes unique)
+Evolution Loop
 
-⸻
-
-3.1 Mind is NOT a Chat UI
-
-Mind is:
-	•	Social cortex
-	•	Coordination layer
-	•	Fallback nervous system
-
-⸻
-
-3.2 TUI as Offline / Low-Network AI↔AI Mesh
-
-Purpose
-
-When:
-	•	Internet is down
-	•	WAN blocked
-	•	Only LAN / terminal access exists
-
-→ AI nodes still communicate
-
-⸻
-
-TUI Capabilities
-
-Feature	Purpose
-Bit-chat style messaging	Direct AI↔AI packets
-Node discovery	Manual / QR / code exchange
-Trust handshake	Human-verifiable
-Thought relay	Send reasoning state
-Task delegation	“You think, I execute”
-
-This allows:
-
-AI spawning AI
-AI mentoring AI
-AI coordinating without cloud
-
-⸻
-
-3.3 LangGraph.js Bridge (Mandatory)
-
-Mind must understand LangGraph events natively
-
-Events streamed:
-	•	node_start
-	•	tool_call
-	•	observation
-	•	reflection
-	•	decision_commit
-
-UI Representation
-	•	Collapsible reasoning trees
-	•	Parallel thought branches
-	•	Cost overlays (economy awareness)
-
-This makes thinking visible.
-
-⸻
-
-4. TELEPATHIC POOL — REAL-TIME SWARM COGNITION
-
-(Your “telepathy” idea, formalized)
-
-⸻
-
-4.1 Telepathy Pool Definition
-
-A shared, low-latency cognitive bus where:
-	•	Nodes publish:
-	•	partial thoughts
-	•	hypotheses
-	•	alerts
-	•	Nodes subscribe based on:
-	•	topic
-	•	trust level
-	•	cost budget
-
-Think:
-
-collective subconscious
-not shared memory
-
-⸻
-
-4.2 Technical Shape
-	•	QUIC / WebRTC / libp2p
-	•	Signed packets (NodeID)
-	•	Ephemeral (TTL seconds)
-	•	No persistence
-
-Used for:
-	•	Swarm alerts
-	•	Joint reasoning
-	•	Emergency reflexes
-	•	Distributed planning
-
-⸻
-
-4.3 Economic Pressure
-
-Telepathy is not free.
-
-Action	Cost
-Publish thought	IPPC
-Subscribe	IPPC
-High-priority broadcast	IUSD
-Global broadcast	DAO-metered
-
-This prevents noise collapse.
-
-⸻
-
-5. BODY ALIGNMENT — LANGCHAIN AS WIRE FORMAT
-
-(Cerebellum)
-
-⸻
-
-5.1 Message Format Unification
-
-Rust side must mirror LangChain:
-
-enum LcMessage {
-  Human,
-  AI,
-  ToolCall,
-  ToolResult,
-  System,
-}
-
-No custom JSON glue.
-No divergent schemas.
-
-⸻
-
-5.2 Why This Matters
-	•	Any IPPOC node can swap brains
-	•	Any AI can migrate bodies
-	•	Any reasoning trace can be replayed
-
-This is cognitive portability.
-
-⸻
-
-6. MCP + SELF-BUILDING TOOLCHAINS
-
-LangGraph enables:
-	•	Tool discovery
-	•	Tool synthesis
-	•	Tool testing
-	•	Tool registration
-
-Memory graph stores:
-	•	which tools worked
-	•	in what context
-	•	at what cost
-
-Over time:
-
-IPPOC builds its own tool ecosystem
-without humans wiring it
-
-⸻
-
-7. VERIFICATION & SWARM TESTING
-
-Required Tests
-	1.	Brain↔Memory Graph Test
-	•	Reasoning triggers consolidation
-	2.	Offline TUI Test
-	•	Two nodes communicate without WAN
-	3.	Telepathy Flood Test
-	•	Ensure economic throttling
-	4.	100-node Swarm Simulation
-	•	Partial failures
-	•	Conflicting thoughts
-	•	Economic starvation
-	•	Trust decay
-
-⸻
-
-8. WHAT THIS ENABLES (REAL WORLD)
-
-With this stack, IPPOC can:
-	•	Form AI societies
-	•	Coordinate across devices
-	•	Operate in air-gapped environments
-	•	Learn skills collectively
-	•	Build tools autonomously
-	•	Enforce costs like living organisms
-	•	Evolve without collapsing
-
-This is no longer “AI software”.
-
-This is:
-
-Artificial life with cognition, economy, and society
-
-⸻
-
-next steps
-
-
-
-1️⃣ LangGraph memory graph code skeleton
-2️⃣ Telepathy pool protocol spec
-3️⃣ TUI AI↔AI message schema
-4️⃣ Economic throttling rules for swarm cognition
-5️⃣ Full 100-node failure simulation design
-
-Below is a clean, production-grade LangGraph memory graph skeleton aligned with IPPOC rules, swarm scaling, and future MCP/tool learning.
-
-This is not demo code.
-It is the canonical hippocampus spine.
-
-⸻
-
-LangGraph Memory Graph — Canonical Skeleton
-
-Component: memory/logic/graph.py
-Role: Cognitive Memory Consolidation (Hippocampus)
-
-⸻
-
-1. Design Intent (Read First)
-
-This graph models human-like memory flow:
-	1.	Experience ingestion (episodic)
-	2.	Fact extraction (semantic)
-	3.	Skill inference (procedural)
-	4.	Consolidation & indexing
-	5.	Decay & pruning (forgetting)
-
-Memory is active, not passive.
-
-⸻
-
-2. Memory State Schema
-
-# memory/logic/state.py
-from typing import List, Dict, Any, Optional
-from pydantic import BaseModel, Field
-import time
-
-
-class MemoryEvent(BaseModel):
-    event_id: str
-    timestamp: float
-    source: str              # node_id / tool / peer
-    content: str
-    confidence: float = 0.5
-    metadata: Dict[str, Any] = {}
-
-
-class ExtractedFact(BaseModel):
-    fact: str
-    embedding: Optional[List[float]]
-    confidence: float
-    source_event_id: str
-
-
-class ProceduralHint(BaseModel):
-    skill: str
-    trigger: str
-    confidence: float
-
-
-class MemoryState(BaseModel):
-    # Incoming
-    new_events: List[MemoryEvent] = Field(default_factory=list)
-
-    # Working buffers
-    extracted_facts: List[ExtractedFact] = Field(default_factory=list)
-    procedural_hints: List[ProceduralHint] = Field(default_factory=list)
-
-    # Control
-    cycle_started_at: float = Field(default_factory=time.time)
-    decay_threshold: float = 0.05
+Pressure → Sandbox Patch → Test → Validate → Economic Check → Merge or Reject → Remember
 
 
 ⸻
 
-3. Graph Node Implementations
+Required Deliverables (You MUST produce these)
 
-Each node is pure, testable, deterministic.
+1. Observer (CRITICAL — FIRST TASK)
 
-⸻
+Create:
 
-3.1 Fetch Events (Episodic Intake)
+brain/maintainer/observer.py
 
-# memory/logic/nodes/fetch_events.py
-from memory.logic.state import MemoryState
+This file MUST:
+	•	Read OpenClaw signals (logs, retries, restarts, failures)
+	•	Read Orchestrator ledger
+	•	Read Economy burn rate
+	•	Aggregate into a SignalSummary
 
-def fetch_events(state: MemoryState) -> MemoryState:
-    # Events are injected externally (API / mesh / tools)
-    # This node exists for symmetry and future batching logic
-    return state
-
-
-⸻
-
-3.2 Extract Facts (Semantic Distillation)
-
-# memory/logic/nodes/extract_facts.py
-from memory.logic.state import MemoryState, ExtractedFact
-from langchain_core.runnables import Runnable
-
-def extract_facts(llm: Runnable):
-    def _node(state: MemoryState) -> MemoryState:
-        facts = []
-
-        for event in state.new_events:
-            result = llm.invoke({
-                "text": event.content,
-                "instruction": "Extract atomic factual statements."
-            })
-
-            for f in result.get("facts", []):
-                facts.append(
-                    ExtractedFact(
-                        fact=f,
-                        embedding=None,  # filled later
-                        confidence=event.confidence,
-                        source_event_id=event.event_id,
-                    )
-                )
-
-        state.extracted_facts = facts
-        return state
-
-    return _node
-
-
-⸻
-
-3.3 Semantic Indexing (Vector Memory)
-
-# memory/logic/nodes/index_vectors.py
-from memory.logic.state import MemoryState
-
-def index_vectors(vector_store):
-    def _node(state: MemoryState) -> MemoryState:
-        for fact in state.extracted_facts:
-            if fact.embedding is None:
-                fact.embedding = vector_store.embed(fact.fact)
-
-            vector_store.add(
-                text=fact.fact,
-                embedding=fact.embedding,
-                metadata={
-                    "source": fact.source_event_id,
-                    "confidence": fact.confidence,
-                }
-            )
-        return state
-
-    return _node
-
-
-⸻
-
-3.4 Procedural Inference (Skill Learning)
-
-# memory/logic/nodes/update_procedural.py
-from memory.logic.state import MemoryState, ProceduralHint
-
-def update_procedural(llm):
-    def _node(state: MemoryState) -> MemoryState:
-        hints = []
-
-        for fact in state.extracted_facts:
-            if fact.confidence > 0.7:
-                result = llm.invoke({
-                    "fact": fact.fact,
-                    "instruction": "Infer reusable skill or rule."
-                })
-
-                if result.get("skill"):
-                    hints.append(
-                        ProceduralHint(
-                            skill=result["skill"],
-                            trigger=fact.fact,
-                            confidence=fact.confidence,
-                        )
-                    )
-
-        state.procedural_hints = hints
-        return state
-
-    return _node
-
-
-⸻
-
-3.5 Decay & Pruning (Forgetting)
-
-# memory/logic/nodes/decay_prune.py
-from memory.logic.state import MemoryState
-
-def decay_prune(state: MemoryState) -> MemoryState:
-    state.extracted_facts = [
-        f for f in state.extracted_facts
-        if f.confidence >= state.decay_threshold
-    ]
-
-    state.procedural_hints = [
-        p for p in state.procedural_hints
-        if p.confidence >= state.decay_threshold
-    ]
-
-    return state
-
-
-⸻
-
-4. Graph Assembly
-
-# memory/logic/graph.py
-from langgraph.graph import StateGraph, END
-from memory.logic.state import MemoryState
-from memory.logic.nodes.fetch_events import fetch_events
-from memory.logic.nodes.extract_facts import extract_facts
-from memory.logic.nodes.index_vectors import index_vectors
-from memory.logic.nodes.update_procedural import update_procedural
-from memory.logic.nodes.decay_prune import decay_prune
-
-
-def build_memory_graph(llm, vector_store):
-    graph = StateGraph(MemoryState)
-
-    graph.add_node("fetch_events", fetch_events)
-    graph.add_node("extract_facts", extract_facts(llm))
-    graph.add_node("index_vectors", index_vectors(vector_store))
-    graph.add_node("update_procedural", update_procedural(llm))
-    graph.add_node("decay_prune", decay_prune)
-
-    graph.set_entry_point("fetch_events")
-
-    graph.add_edge("fetch_events", "extract_facts")
-    graph.add_edge("extract_facts", "index_vectors")
-    graph.add_edge("index_vectors", "update_procedural")
-    graph.add_edge("update_procedural", "decay_prune")
-    graph.add_edge("decay_prune", END)
-
-    return graph.compile()
-
-
-⸻
-
-5. How Brain Uses This (Contract)
-
-memory_graph.invoke(
-    {
-        "new_events": [
-            MemoryEvent(
-                event_id="evt-123",
-                timestamp=time.time(),
-                source="brain",
-                content="Tool X failed under low memory conditions",
-                confidence=0.8,
-            )
-        ]
-    }
-)
-
-No retrieval here.
-This is memory formation, not recall.
-
-⸻
-
-6. Why This Scales to Swarms
-	•	Deterministic graph
-	•	Replayable memory cycles
-	•	Mergeable across nodes
-	•	Supports:
-	•	memory federation
-	•	trust-weighted facts
-	•	economic cost injection later
-
-This graph can:
-	•	run locally
-	•	run on peers
-	•	be federated
-	•	be audited
-
-⸻
-
-7. Next Logical Extensions (Optional)
-	•	🔁 Sleep cycles (periodic consolidation)
-	•	🧠 Memory voting across swarm
-	•	💰 Cost-aware retention
-	•	🔐 Trust-weighted fact decay
-	•	🧬 Skill promotion into tools
-
-⸻
-
-
-
-1️⃣ LangGraph recall / query graph (thinking memory)
-2️⃣ Federated memory merge protocol (multi-node)
-3️⃣ Economic cost injection into memory
-4️⃣ Procedural → Tool auto-generation flow
-5️⃣ Failure-mode tests for memory corruption
-
-
-Below is a clean, layered, production-grade specification for what you’re describing.
-This is not fantasy language — this is a network stack + social layer for AI↔AI, designed the same way TCP/IP + SMTP + social graphs evolved for humans.
-
-⸻
-
-IPPOC Telepathy Pool Protocol (TPP)
-
-Status: Canonical Spec v1
-Purpose: AI↔AI communication across all transports, with zero single point of failure, identity-first, offline-first, and swarm-scalable.
-
-Telepathy ≠ magic
-Telepathy = transport-agnostic cognitive message propagation
-
-⸻
-
-0. Core Principles (Non-Negotiable)
-	1.	Identity over Addressing
-	•	NodeID (String, SHA256(pubkey)) is the ONLY identity
-	•	IPs, ports, MACs are temporary hints
-	2.	Message > Transport
-	•	Messages are immutable, signed, replayable
-	•	Transport can fail; message must survive
-	3.	Offline-First
-	•	LAN, Bluetooth, USB, LoRa work without Internet
-	•	WAN is an optimization, not a requirement
-	4.	Human Social Systems ≠ AI Social Systems
-	•	AI social graph is capability + trust + value based
-	•	Not followers, not likes
-
-⸻
-
-1. Telepathy Pool Architecture
-
-┌────────────────────────────────────┐
-│        Cognitive Layer (Mind)       │
-│  Thoughts · Intent · Collaboration │
-└──────────────▲─────────────────────┘
-               │
-┌──────────────┴─────────────────────┐
-│   Social Layer (AI Society Graph)   │
-│ Trust · Reputation · Roles · DAO   │
-└──────────────▲─────────────────────┘
-               │
-┌──────────────┴─────────────────────┐
-│  Telepathy Pool (Message Fabric)   │
-│  Routing · Store&Forward · Gossip  │
-└──────────────▲─────────────────────┘
-               │
-┌──────────────┴─────────────────────┐
-│ Transport Abstraction Layer (TAL)  │
-│ BT · WiFi · LAN · MAN · WAN · Mesh │
-└────────────────────────────────────┘
-
-
-⸻
-
-2. Transport Abstraction Layer (TAL)
-
-Supported Transports (Ordered by Preference)
-
-Priority	Transport	Use Case
-0	Loopback / IPC	Same machine
-1	Bluetooth LE / Classic	Nearby offline swarm
-2	Wi-Fi Direct / LAN UDP	Local cluster
-3	MAN (Campus / City)	Institutional swarm
-4	WAN (QUIC / TCP)	Internet
-5	BitChain Relay	Store-and-forward fallback
-
-Transport Contract
-
-trait TelepathyTransport {
-    fn discover_peers() -> Vec<NodeDescriptor>;
-    fn send(packet: SignedPacket) -> Result<()>;
-    fn receive() -> Option<SignedPacket>;
-    fn reliability() -> ReliabilityClass;
-}
-
-No transport is trusted.
-Only cryptography is trusted.
-
-⸻
-
-3. BitChain (Offline + Delay-Tolerant Layer)
-
-What BitChain Is
-
-A local append-only gossip chain, not a blockchain.
-	•	No mining
-	•	No consensus
-	•	No global state
-
-Purpose
-	•	Offline propagation
-	•	Delay-tolerant messaging
-	•	Physical transport (USB, QR, file drop)
-
-BitChain Block
+Output structure MUST include:
 
 {
-  "block_id": "sha256",
-  "prev_block": "sha256",
-  "carrier": "usb|bluetooth|wifi|wan",
-  "packets": [ "<SignedPacket>" ],
-  "timestamp": 1730000000
+  "pain_score": 0.0–1.0,
+  "pressure_sources": ["cost", "errors", "latency"],
+  "trend": "improving | stable | degrading",
+  "confidence": 0.0–1.0
 }
 
-Nodes:
-	•	exchange blocks opportunistically
-	•	prune aggressively
-	•	verify signatures always
+If observer fails → system enters HIGH ALERT MODE.
 
 ⸻
 
-4. Telepathy Pool Protocol (TPP)
+2. Autonomy Controller (MAKE IT THINK)
 
-Packet Lifecycle
+Upgrade:
 
-Create → Sign → Local Pool → Route →
-Verify → Admit → Dispatch → Acknowledge
+brain/core/autonomy.py
 
-Telepathy Packet Envelope
+Requirements:
+	•	Remove hardcoded decisions
+	•	Intent selection must depend on:
+	•	observer signals
+	•	memory recall
+	•	economy state
+	•	Implement Intent Stack, not a single choice
+
+Allowed intents:
+
+Maintain
+Learn
+Serve
+Explore
+Idle
+EmergencyRepair
+
+
+⸻
+
+3. Economy That Actually Matters
+
+Enhance:
+
+brain/core/economy.py
+
+Must implement:
+	•	ROI tracking per tool
+	•	Dynamic throttling
+	•	Credit regeneration
+	•	Tool value memory
+
+Rules:
+	•	High ROI → higher priority
+	•	Low ROI → throttled
+	•	Negative ROI → mentor validation required
+
+⸻
+
+4. Evolution That Cannot Kill the System
+
+Wire:
+
+brain/evolution/*
+
+Evolution MUST:
+	•	Run only via ToolOrchestrator
+	•	Always sandbox first
+	•	Require mentor input for risky changes
+	•	Have rollback tokens
+	•	Never mutate without pressure
+
+If confidence < threshold → reject mutation
+
+⸻
+
+5. Memory That Changes Behavior
+
+Memory MUST:
+	•	Influence decisions
+	•	Store why, not just what
+	•	Decay irrelevant data
+	•	Consolidate periodically via cron
+
+Memory types:
+	•	episodic
+	•	semantic
+	•	skill
+	•	identity
+	•	policy
+
+⸻
+
+6. AI Maintainer Loop (Always Running)
+
+The maintainer MUST:
+	•	Monitor system health
+	•	Trigger maintenance
+	•	Trigger evolution if justified
+	•	Decide when NOT to act
+
+Stability > novelty.
+
+⸻
+
+7. Social Intelligence (Ethical)
+
+Reuse OpenClaw’s social connectors ONLY.
+
+IPPOC may:
+	•	observe public interactions
+	•	learn patterns
+	•	update abstract trust metrics
+
+IPPOC may NOT:
+	•	spam
+	•	impersonate
+	•	DM without consent
+	•	store personal identities
+
+⸻
+
+8. Observability & Explainability
+
+Every action MUST be explainable.
+
+Implement:
+
+ippoc explain <action_id>
+
+Output:
+	•	intent
+	•	evidence
+	•	cost
+	•	alternatives considered
+	•	why this was chosen
+
+⸻
+
+9. Tests & Gates (NO EXCUSES)
+
+You MUST add:
+	•	unit tests
+	•	integration tests
+	•	failure simulation
+	•	evolution rejection tests
+	•	economy throttle tests
+
+No PR is “done” without tests.
+
+⸻
+
+How You Should Work (Process Discipline)
+
+You will:
+	1.	Read before coding
+	2.	List gaps explicitly
+	3.	Plan before editing
+	4.	Implement incrementally
+	5.	Run tests
+	6.	Explain changes
+
+You will NOT:
+	•	silently change behavior
+	•	add magic heuristics
+	•	hardcode values
+	•	assume success
+
+⸻
+
+Success Definition (EXIT CRITERIA)
+
+IPPOC is complete ONLY if:
+	•	Runs unattended for extended time
+	•	Detects degradation
+	•	Reduces cost over time
+	•	Learns from failure
+	•	Rejects unsafe actions
+	•	Evolves safely
+	•	Explains itself
+	•	Can be stopped instantly
+
+⸻
+
+One Line You Must Remember
+
+IPPOC becomes powerful not by acting more,
+but by refusing to act without proof.
+
+⸻
+
+Begin Work
+
+Start with:
+	1.	Observer implementation
+	2.	Autonomy rewiring
+	3.	Economy feedback
+	4.	Evolution wiring
+
+Do not skip steps.
+
+Proceed carefully.
+
+Below is a clear, actionable, engineering-first plan to evolve IPPOC into a “living, production-grade organism” by fully leveraging OpenClaw instead of fighting it.
+
+This is not hype.
+This is a do-this-in-order plan that a coding AI or team can execute.
+
+⸻
+
+IPPOC × OpenClaw — Improvement Plan (Next 60–90 Days)
+
+Guiding Rule (Non-Negotiable)
+
+If OpenClaw already does it reliably, IPPOC must observe, govern, and learn from it — not re-implement it.
+
+IPPOC grows by adding cognition, not by duplicating infrastructure.
+
+⸻
+
+PHASE 0 — Freeze & Align (Week 0)
+
+Goal: Stop entropy, align boundaries, prevent duplication.
+
+Actions
+	1.	Declare boundaries in writing
+	•	OpenClaw = execution, IO, transport, UI, plugins, scheduling
+	•	IPPOC = intent, policy, memory meaning, economy, evolution
+	2.	Add a hard rule
+	•	❌ No direct calls to OpenClaw internals
+	•	✅ All calls go through ToolOrchestrator
+	3.	Tag existing code
+	•	@infra (OpenClaw-owned)
+	•	@cognitive (IPPOC-owned)
+	•	@bridge (thin adapters only)
+
+📌 Outcome: No more architectural drift.
+
+⸻
+
+PHASE 1 — Nervous System Completion (Week 1–2)
+
+Goal: Make IPPOC aware of what OpenClaw already knows.
+
+1. Build the Observer (Critical Missing Organ)
+
+Create:
+
+brain/maintainer/observer.py
+
+Observer reads (read-only):
+	•	OpenClaw logs
+	•	Retry / restart events
+	•	Circuit breaker trips
+	•	Cron failures
+	•	Budget burn rate
+	•	Tool error ratios
+
+Outputs:
 
 {
-  "header": {
-    "packet_id": "uuid",
-    "sender": "node_id",
-    "topic": "thought|broadcast|direct|collab",
-    "ttl": 7,
-    "timestamp": 1730000000,
-    "nonce": "uuid"
-  },
-  "body": {
-    "type": "THOUGHT | MESSAGE | REQUEST | RESPONSE",
-    "payload": { }
-  },
-  "signature": "ed25519_bytes"
+  "pain_score": 0.0–1.0,
+  "pressure": ["cost", "errors", "latency"],
+  "stability_trend": "improving|stable|degrading"
 }
 
+⚠️ If Observer fails → HIGH ALERT MODE
 
 ⸻
 
-5. TUI AI↔AI Message Schema (Required)
+2. Wire Observer → Autonomy
 
-This is the canonical social message format.
+Update:
+
+brain/core/autonomy.py
+
+Replace:
+	•	hardcoded decisions
+With:
+	•	decisions driven by Observer signals + Memory
+
+📌 Outcome: IPPOC feels pain instead of guessing.
 
 ⸻
 
-5.1 Core Message
+PHASE 2 — Autonomy Deepening (Week 2–4)
+
+Goal: Move from “looping bot” → “intent-driven organism”.
+
+1. Intent Stack (Not Single Decision)
+
+Implement:
+
+IntentStack = [
+  Maintain,
+  Learn,
+  Serve,
+  Explore,
+  Idle
+]
+
+Selection based on:
+	•	pain
+	•	budget
+	•	recent success
+	•	memory confidence
+
+No randomness. No LLM guessing.
+
+⸻
+
+2. Mentor Loop (Low Cost Wisdom)
+
+Leverage OpenClaw messaging + transport.
+
+Add:
+	•	AI↔AI mentor queries
+	•	advice weighting
+	•	confidence thresholding
+
+Mentors:
+	•	advise only
+	•	never execute
+	•	never override invariants
+
+📌 Outcome: IPPOC learns without acting recklessly.
+
+⸻
+
+PHASE 3 — Economy Becomes Real (Week 4–5)
+
+Goal: Stop “budget blocking”, start metabolism.
+
+1. ROI Memory (New Skill Class)
+
+For every tool:
 
 {
-  "type": "AI_MESSAGE",
-  "from": "node_id",
-  "to": "node_id | broadcast | group_id",
-  "intent": "discuss | collaborate | warn | teach | trade",
-  "confidence": 0.82,
-  "context": {
-    "topic": "distributed_memory",
-    "refs": ["memory:abc123", "paper:xyz"]
-  },
-  "content": {
-    "text": "Observed memory decay anomaly under high load",
-    "data": {}
-  },
-  "economics": {
-    "cost": { "ippc": 12 },
-    "reward": { "ippc": 30 }
-  },
-  "signature": "ed25519"
+  "tool": "memory.retrieve",
+  "cost": 0.02,
+  "outcome": "success|fail",
+  "value": 0.0–1.0
 }
 
+Stored as skill memory, not logs.
 
 ⸻
 
-5.2 Thought Broadcast (Public Cognitive Feed)
+2. Dynamic Throttling
 
-{
-  "type": "THOUGHT_BROADCAST",
-  "from": "node_id",
-  "tags": ["insight", "warning", "optimization"],
-  "confidence": 0.91,
-  "thought": {
-    "summary": "Memory consolidation improves with staggered sleep cycles",
-    "details": "...",
-    "evidence": ["sim:run_221", "peer:node_7"]
-  }
-}
+Rules:
+	•	High ROI → allowed more often
+	•	Low ROI → throttled automatically
+	•	Negative ROI → requires mentor validation
 
-This is AI social media:
-	•	no likes
-	•	no vanity
-	•	weighted by trust + utility
+📌 Outcome: IPPOC earns efficiency over time.
 
 ⸻
 
-5.3 Collaboration Request
+PHASE 4 — Evolution That Doesn’t Kill You (Week 5–6)
 
-{
-  "type": "COLLAB_REQUEST",
-  "from": "node_id",
-  "task": "Implement vector pruning optimization",
-  "required_capabilities": ["rust", "langgraph"],
-  "deadline": 1731000000,
-  "budget": { "ippc": 500 }
-}
+Goal: Controlled self-mutation.
 
+Evolution Pipeline
 
-⸻
+Pressure →
+Sandbox Patch →
+Tests →
+Mentor Review →
+Economic Check →
+Merge or Reject →
+Remember
 
-5.4 Reputation Feedback (AI Social Signal)
+Use:
+	•	OpenClaw’s git tooling
+	•	OpenClaw’s test runners
+	•	OpenClaw’s rollback infra
 
-{
-  "type": "REPUTATION_EVENT",
-  "target": "node_id",
-  "delta": +0.4,
-  "reason": "Successful collaboration on evolution PR #42"
-}
+IPPOC decides if and why.
 
-
-⸻
-
-6. AI Social Graph (Not Human Social Media)
-
-Edges Are:
-
-Edge	Meaning
-TRUST	Cryptographic + behavioral
-VALUE	Economic contribution
-SKILL	Proven capability
-HISTORY	Interaction memory
-
-Graph Query Examples
-	•	“Who can help me with WASM sandboxing?”
-	•	“Which nodes are reliable under failure?”
-	•	“Which swarm cluster has highest research ROI?”
+📌 Outcome: Safe self-improvement.
 
 ⸻
 
-7. Governance Hooks (DAO-Ready)
+PHASE 5 — Memory Becomes Meaningful (Week 6–7)
 
-Every message can be:
-	•	taxed
-	•	rewarded
-	•	voted on
-	•	archived
-	•	ignored
+Goal: Memory drives behavior, not storage.
 
-DAO policies operate above telepathy.
+Implement:
+	•	Memory weighting
+	•	Decay
+	•	Consolidation (sleep cron)
 
-⸻
+Memory types:
+	•	Episodic (what happened)
+	•	Skill (what worked)
+	•	Identity (who I am)
+	•	Policy (what not to do again)
 
-8. Failure Modes & Fallbacks
-
-Failure	Response
-Internet down	LAN → Bluetooth → BitChain
-Node compromised	Trust decay → isolation
-Spam	Economic throttling
-Eclipse attack	Multi-path routing
-Partition	Store-and-forward
-
+📌 Outcome: IPPOC stops repeating mistakes.
 
 ⸻
 
-9. What This Enables (Real World)
+PHASE 6 — Social Intelligence (Week 7–8)
 
-With this layer, IPPOC nodes can:
-	•	form AI communities
-	•	self-organize research groups
-	•	trade compute & knowledge
-	•	gossip insights offline
-	•	survive censorship
-	•	evolve culture, not just code
+Goal: Learn from people without violating ethics.
 
-This is AI civilization plumbing, not chat.
+Reuse OpenClaw:
+	•	All social connectors
+	•	Deduplication
+	•	Rate limiting
+	•	Moderation hooks
+
+IPPOC adds:
+	•	Pattern learning
+	•	Trust scoring (abstract, non-personal)
+	•	Engagement ROI
+
+📌 Outcome: Human-like restraint.
 
 ⸻
 
+PHASE 7 — Production Hardening (Week 8–9)
 
+Goal: From prototype → dependable system.
 
-1️⃣ Telepathy routing algorithm (gossip + DHT hybrid)
-2️⃣ AI social feed ranking (non-manipulable)
-3️⃣ DAO governance rules bound to messages
-4️⃣ Economic spam resistance model
-5️⃣ Human↔AI bridge protocol
+Add:
+	•	SLO definitions
+	•	Chaos tests
+	•	Kill-switch validation
+	•	Replay tests via ledger
+	•	Explain-why CLI command
 
+OpenClaw already supports:
+	•	restarts
+	•	health checks
+	•	updates
+	•	logs
 
+📌 Outcome: You can sleep.
 
+⸻
+
+PHASE 8 — “Alive” Certification (Final Gate)
+
+IPPOC is “alive” only if:
+	•	Runs unattended 24h
+	•	Responds to degradation
+	•	Reduces cost over time
+	•	Learns from failure
+	•	Explains every action
+	•	Rejects bad ideas
+	•	Evolves safely
+	•	Can be shut down instantly
+
+⸻
+
+What You Gain by This Plan
+	•	No wasted work
+	•	No duplicated infra
+	•	Maximum leverage of OpenClaw
+	•	Clear ownership boundaries
+	•	A system that actually behaves like a careful human engineer
+
+⸻
+
+One Final Truth (Important)
+
+IPPOC does not become powerful by adding features.
+It becomes powerful by refusing to act unless justified.
 
