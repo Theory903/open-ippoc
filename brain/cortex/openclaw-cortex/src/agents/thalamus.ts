@@ -143,29 +143,15 @@ export class Thalamus {
    * Trigger cognitive processing via IPPOC Brain (Cerebellum)
    */
   private async triggerCognition(signal: Signal): Promise<string> {
-    console.log("[Thalamus] Upstreaming to Cortex (localhost:8080/webhook/openclaw)...");
-    
-    try {
-      const response = await fetch("http://localhost:8080/webhook/openclaw", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          source: "thalamus",
-          signal_type: signal.type,
-          payload: signal.payload
-        })
-      });
+    console.log("[Thalamus] Routing cognition via IPPOC Orchestrator...");
 
-      if (response.ok) {
-        const data = await response.json();
-        return `COGNITIVE: Brain responded: ${JSON.stringify(data)}`;
-      } else {
-        console.error(`[Thalamus] Brain rejected signal: ${response.status}`);
-        return "COGNITIVE: Brain unavailable (Simulated local reasoning)";
-      }
+    const prompt = `Signal ${signal.type} (priority ${signal.priority}): ${JSON.stringify(signal.payload)}`;
+    try {
+      const response = await this.adapter.runReasoning(prompt);
+      return response ? `COGNITIVE: ${response}` : "COGNITIVE: No response from Brain";
     } catch (e) {
-      console.error("[Thalamus] Failed to contact Brain:", e);
-      return "COGNITIVE: Brain unreachable (Network Error)";
+      console.error("[Thalamus] Orchestrator reasoning failed:", e);
+      return "COGNITIVE: Brain unavailable (Orchestrator Error)";
     }
   }
 
