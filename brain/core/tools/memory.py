@@ -3,6 +3,7 @@
 import aiohttp
 import asyncio
 import os
+import nest_asyncio
 from brain.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult
 from brain.core.exceptions import ToolExecutionError
 
@@ -18,7 +19,7 @@ class MemoryAdapter(IPPOC_Tool):
 
     def estimate_cost(self, envelope: ToolInvocationEnvelope) -> float:
         # Writes are expensive, reads are cheap
-        if "store" in envelope.tool_name:
+        if "store" in envelope.action:
             return 0.5
         return 0.1
 
@@ -37,6 +38,15 @@ class MemoryAdapter(IPPOC_Tool):
         # Given this is "The Spine", we should move to async.
         # For immediate compatibility with the plan, I will use a sync wrapper here.
         
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop:
+            nest_asyncio.apply()
+            return loop.run_until_complete(self._async_execute(envelope))
+
         return asyncio.run(self._async_execute(envelope))
         
     async def _async_execute(self, envelope: ToolInvocationEnvelope) -> ToolResult:
@@ -84,7 +94,8 @@ class MemoryAdapter(IPPOC_Tool):
              raise ToolExecutionError(envelope.tool_name, "Missing 'query' in context")
 
         # Re-adding the missing search functionality assumed in older plan
-        payload = {"query": query, "limit": 5}
+        limit = envelope.context.get("limit", 5)
+        payload = {"query": query, "limit": limit}
         
         async with aiohttp.ClientSession() as session:
              try:

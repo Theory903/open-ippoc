@@ -1,10 +1,12 @@
 # brain/core/tools/cerebellum.py
 
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from brain.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult
 import asyncio
 import os
 import nest_asyncio # Imported here for consistency, though it's in execute method in snippet
+import importlib.util
+from pathlib import Path
 
 class CerebellumAdapter(IPPOC_Tool):
     """
@@ -95,10 +97,38 @@ class CerebellumAdapter(IPPOC_Tool):
                 "skill": skill_name,
                 "proficiency": 0.1
             }
+        elif action in ["think", "reason", "analyze"]:
+            prompt = kwargs.get("prompt") or kwargs.get("query") or ""
+            context = kwargs.get("context") or []
+            engine = self._load_phi4()
+            if engine:
+                return engine.reason(prompt, context)
+            return {
+                "thought": "Reasoning engine unavailable. Returning fallback response.",
+                "conclusion": prompt[:200],
+                "confidence": 0.5
+            }
         else:
             # Assuming ToolExecutionError is defined elsewhere or needs to be added
             # For now, returning a generic error dict
             return {"error": f"Unknown action: {action}"}
+
+    def _load_phi4(self) -> Optional[Any]:
+        """
+        Load the Phi-4 reasoning engine via file path (directory name contains a hyphen).
+        """
+        phi_path = Path(__file__).resolve().parents[2] / "cortex" / "reasoning-engine" / "phi4.py"
+        if not phi_path.exists():
+            return None
+        try:
+            spec = importlib.util.spec_from_file_location("ippoc_phi4", str(phi_path))
+            if spec is None or spec.loader is None:
+                return None
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module.Phi4Reasoning()
+        except Exception:
+            return None
 
     # The original _digest_paper and _learn_skill methods are replaced by the new _async_execute logic.
     # Keeping the original _digest_paper method signature as it was part of the original document
