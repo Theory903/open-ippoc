@@ -15,7 +15,8 @@ const MemoryWriteSchema = Type.Object({
 });
 
 export function registerMemoryTools(api: OpenClawPluginApi) {
-  
+  const pluginConfig = (api.pluginConfig ?? {}) as Record<string, any>;
+
   // 1. Memory Search -> Brain -> MemoryAdapter.retrieve
   api.registerTool((context) => {
     return {
@@ -25,9 +26,8 @@ export function registerMemoryTools(api: OpenClawPluginApi) {
       parameters: MemorySearchSchema,
       execute: async (_id, params: any) => {
         // Use Brain for retrieval (no local embedding needed)
-        const { config } = context;
-        const apiKey = config?.ippocApiKey || process.env.IPPOC_API_KEY || "";
-        const baseUrl = config?.ippocNodeUrl || process.env.IPPOC_BRAIN_URL || "http://localhost:8001";
+        const apiKey = pluginConfig.ippocApiKey || process.env.IPPOC_API_KEY || "";
+        const baseUrl = pluginConfig.ippocNodeUrl || process.env.IPPOC_BRAIN_URL || "http://localhost:8001";
         
         try {
             const envelope: ToolEnvelope = {
@@ -42,7 +42,12 @@ export function registerMemoryTools(api: OpenClawPluginApi) {
                 estimated_cost: 0.1
             };
 
-            const result = await executeIppocTool(envelope, baseUrl, apiKey);
+            const result = await executeIppocTool(envelope, baseUrl, apiKey, {
+                workspaceDir: context.workspaceDir,
+                mode: pluginConfig.orchestratorMode,
+                orchestratorCli: pluginConfig.orchestratorCli,
+                pythonPath: pluginConfig.pythonPath
+            });
             
             return {
                 content: [{ type: "text", text: JSON.stringify(result.output, null, 2) }],
@@ -65,9 +70,9 @@ export function registerMemoryTools(api: OpenClawPluginApi) {
       description: "Store a new memory into IPPOC's HiDB via the Brain.",
       parameters: MemoryWriteSchema,
       execute: async (_id, params: any) => {
-        const { config, agentId } = context;
-        const apiKey = config?.ippocApiKey || process.env.IPPOC_API_KEY || "";
-        const baseUrl = config?.ippocNodeUrl || process.env.IPPOC_BRAIN_URL || "http://localhost:8001";
+        const { agentId } = context;
+        const apiKey = pluginConfig.ippocApiKey || process.env.IPPOC_API_KEY || "";
+        const baseUrl = pluginConfig.ippocNodeUrl || process.env.IPPOC_BRAIN_URL || "http://localhost:8001";
 
         try {
             const envelope: ToolEnvelope = {
@@ -82,7 +87,12 @@ export function registerMemoryTools(api: OpenClawPluginApi) {
                 estimated_cost: 0.5 // Higher cost for write
             };
 
-            const result = await executeIppocTool(envelope, baseUrl, apiKey);
+            const result = await executeIppocTool(envelope, baseUrl, apiKey, {
+                workspaceDir: context.workspaceDir,
+                mode: pluginConfig.orchestratorMode,
+                orchestratorCli: pluginConfig.orchestratorCli,
+                pythonPath: pluginConfig.pythonPath
+            });
             
             return {
                 content: [{ type: "text", text: `Memory Stored. ID: ${result.output}` }],

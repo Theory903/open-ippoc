@@ -19,7 +19,8 @@ const OrganismCapabilitySchema = Type.Object({
 });
 
 export function registerGenericTool(api: OpenClawPluginApi) {
-  
+  const pluginConfig = (api.pluginConfig ?? {}) as Record<string, any>;
+
   api.registerTool((context) => {
     return {
       name: "use_organism_capability",
@@ -27,9 +28,8 @@ export function registerGenericTool(api: OpenClawPluginApi) {
       description: "Invoke advanced cognitive organs (Research, Evolution, Simulation). Use this for complex tasks like reading papers, running simulations, or self-patching.",
       parameters: OrganismCapabilitySchema,
       execute: async (_id, params: any) => {
-        const { config } = context;
-        const apiKey = config?.ippocApiKey || process.env.IPPOC_API_KEY || "";
-        const baseUrl = config?.ippocNodeUrl || process.env.IPPOC_BRAIN_URL || "http://localhost:8001";
+        const apiKey = pluginConfig.ippocApiKey || process.env.IPPOC_API_KEY || "";
+        const baseUrl = pluginConfig.ippocNodeUrl || process.env.IPPOC_BRAIN_URL || "http://localhost:8001";
 
         try {
             const envelope: ToolEnvelope = {
@@ -45,7 +45,12 @@ export function registerGenericTool(api: OpenClawPluginApi) {
             // Add justification to context
             envelope.context._justification = params.justification;
 
-            const result = await executeIppocTool(envelope, baseUrl, apiKey);
+            const result = await executeIppocTool(envelope, baseUrl, apiKey, {
+                workspaceDir: context.workspaceDir,
+                mode: pluginConfig.orchestratorMode,
+                orchestratorCli: pluginConfig.orchestratorCli,
+                pythonPath: pluginConfig.pythonPath
+            });
             
             return {
                 content: [{ type: "text", text: JSON.stringify(result.output, null, 2) }],

@@ -4,21 +4,37 @@
   "description": "Integrates IPPOC memory, learning, economy, and swarm intelligence.",
   "configSchema": {
     "type": "object",
-    "additionalProperties": true,
+    "additionalProperties": false,
     "properties": {
-      "enabled": { "type": "boolean" },
-      "nodeUrl": { "type": "string" }
+      "ippocNodeUrl": { "type": "string" },
+      "ippocApiKey": { "type": "string" },
+      "orchestratorMode": { "type": "string", "enum": ["local", "http", "auto"] },
+      "orchestratorCli": { "type": "string" },
+      "pythonPath": { "type": "string" }
     }
   },
   "uiHints": {
-    "enabled": {
-      "label": "Enable IPPOC integration",
-      "help": "Enable the IPPOC organism layer for this OpenClaw instance."
+    "ippocNodeUrl": {
+      "label": "IPPOC Brain URL",
+      "placeholder": "http://localhost:8001",
+      "help": "HTTP base URL for the IPPOC Brain (used in HTTP mode or as fallback)."
     },
-    "nodeUrl": {
-      "label": "IPPOC Node URL",
-      "placeholder": "http://localhost:9000",
-      "help": "HTTP base URL for the IPPOC node."
+    "ippocApiKey": {
+      "label": "IPPOC API Key",
+      "help": "Bearer token for IPPOC Brain authentication.",
+      "sensitive": true
+    },
+    "orchestratorMode": {
+      "label": "Orchestrator Mode",
+      "help": "Use local Python orchestration, HTTP, or auto fallback."
+    },
+    "orchestratorCli": {
+      "label": "Orchestrator CLI Path",
+      "help": "Optional override for the orchestrator_cli.py path."
+    },
+    "pythonPath": {
+      "label": "Python Path",
+      "help": "Optional override for the Python executable used in local mode."
     }
   }
 }

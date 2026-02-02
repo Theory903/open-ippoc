@@ -21,6 +21,19 @@
             "type": "string",
             "description": "Secret Key for IPPOC Brain Authentication",
             "secret": true
+        },
+        "orchestratorMode": {
+            "type": "string",
+            "description": "Orchestrator mode: local, http, or auto",
+            "default": "auto"
+        },
+        "orchestratorCli": {
+            "type": "string",
+            "description": "Optional path to orchestrator_cli.py"
+        },
+        "pythonPath": {
+            "type": "string",
+            "description": "Optional Python executable path for local orchestration"
         }
     }
 }
