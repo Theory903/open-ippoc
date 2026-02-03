@@ -1,16 +1,18 @@
 {
-  "time": 1770131026.0276868,
+  "time": 1770133148.205821,
   "decision": {
     "action": "act",
     "intent": {
-      "description": "Execute CLI: ls -la",
-      "priority": 0.79999472219944,
+      "description": "Execute contract: risky_heist",
+      "priority": 0.8999998478889466,
       "intent_type": "serve",
-      "intent_id": "833705b1-9897-4214-8e08-96ec98d979f5",
-      "created_at": 1770131026.00736,
-      "source": "user",
+      "intent_id": "ff8e0455-c579-4e0e-8ba6-62182d6ff9be",
+      "created_at": 1770133148.203739,
+      "source": "openclaw_contract",
       "context": {
-        "cmd": "ls -la"
+        "contract_id": "c6b36d9b-5e9a-4286-bc3e-ef696ad199db",
+        "work_params": {},
+        "expected_roi": 1.5
       },
       "decay_rate": 0.01
     },
@@ -33,8 +35,8 @@
   },
   "result": {
     "success": true,
-    "output": "executed",
-    "cost_spent": 0.0,
+    "output": "mock_work_done",
+    "cost_spent": 0.1,
     "memory_written": true,
     "rollback_token": null,
     "warnings": [],

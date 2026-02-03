@@ -230,13 +230,13 @@ class AutonomyController:
         """
         Translates High-Level Intent -> Tool Execution
         """
-        # 1. Maintain (Repair/Health Check)
+            # 1. Maintain (Repair/Health Check)
         if intent.intent_type == IntentType.MAINTAIN:
             envelope = ToolInvocationEnvelope(
                 tool_name="maintainer",
                 domain="cognition",
                 action="tick",
-                context=intent.context or {},
+                context={**(intent.context or {}), "priority": intent.priority},
                 risk_level="low",
                 estimated_cost=0.0,
                 caller="autonomy",
@@ -250,7 +250,7 @@ class AutonomyController:
                 tool_name="memory",
                 domain="memory",
                 action="retrieve",
-                context=intent.context,
+                context={**(intent.context or {}), "priority": intent.priority},
                 risk_level="low",
                 estimated_cost=0.1,
                 caller="autonomy",

@@ -252,10 +252,15 @@ class ToolOrchestrator:
     def _check_budget(self, envelope: ToolInvocationEnvelope, tool_name: str, estimated_cost: float) -> None:
         snapshot = self.economy.snapshot()
         emergency = bool(envelope.context.get("emergency")) if envelope.context else False
-        if self.economy.should_throttle(tool_name):
+        priority = float(envelope.context.get("priority", 0.0)) if envelope.context else 0.0
+        
+        # Check throttling (unless priority is Critical/Emergency)
+        if priority <= 0.8 and self.economy.should_throttle(tool_name):
             raise BudgetExceeded(estimated_cost, snapshot["budget"])
+            
         if estimated_cost > snapshot["budget"]:
-            if emergency or tool_name == "maintainer":
+            # Critical Priority bypasses hard budget stop?
+            if emergency or tool_name == "maintainer" or priority > 0.8:
                 return
             raise BudgetExceeded(estimated_cost, snapshot["budget"])
 

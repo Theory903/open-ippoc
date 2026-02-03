@@ -1,15 +1,15 @@
 {
-  "budget": 5.6999999999999975,
+  "budget": 0.4,
   "reserve": 100.0,
   "regen_rate": 0.0,
-  "last_tick": 1770132513.542929,
-  "total_spent": 6.5,
-  "total_value": 2.6000000000000005,
+  "last_tick": 1770133148.206224,
+  "total_spent": 6.799999999999999,
+  "total_value": 5.0,
   "tool_stats": {
     "memory": {
-      "calls": 1,
+      "calls": 4,
       "failures": 0,
-      "total_spent": 0.5,
+      "total_spent": 0.7999999999999999,
       "total_value": 2.0
     },
     "spam_bot": {
@@ -23,6 +23,12 @@
       "failures": 0,
       "total_spent": 50.0,
       "total_value": 1.0
+    },
+    "contractor": {
+      "calls": 0,
+      "failures": 0,
+      "total_spent": 0.0,
+      "total_value": 5.0
     }
   },
   "events": [
@@ -275,6 +281,36 @@
       "source": "unknown",
       "realized": 0.1,
       "ts": 1770132513.531586
+    },
+    {
+      "kind": "spend",
+      "tool": "memory",
+      "cost": 0.1,
+      "failed": false,
+      "ts": 1770133037.004472
+    },
+    {
+      "kind": "spend",
+      "tool": "memory",
+      "cost": 0.1,
+      "failed": false,
+      "ts": 1770133148.202084
+    },
+    {
+      "kind": "value",
+      "tool": "contractor",
+      "value": 5.0,
+      "confidence": 0.9,
+      "source": "contract:audit_logs",
+      "realized": 4.5,
+      "ts": 1770133148.2031171
+    },
+    {
+      "kind": "spend",
+      "tool": "memory",
+      "cost": 0.1,
+      "failed": false,
+      "ts": 1770133148.206547
     }
   ]
 }

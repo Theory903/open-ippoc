@@ -2,6 +2,13 @@
 
 All notable changes to the IPPOC project will be documented in this file.
 
+## [v0.7.0-earner] - 2026-02-03
+### Added
+- **Work Contracts**: `brain/core/contract.py` implements `WorkUnit` primitive.
+- **Foraging Adapter**: OpenClaw actions can now propose contracts (`propose_contract`).
+- **Desperation Logic**: Starving IPPOC accepts high-risk/low-cost contracts even if budget is critical.
+- **Verification**: `verify_real_foraging.py` certifies contract lifecycle.
+
 ## [v0.6.0-foraging] - 2026-02-03
 ### Added
 - **ROI Engine**: Economy now tracks tool Value, Confidence, and ROI.

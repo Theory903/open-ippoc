@@ -204,8 +204,8 @@ class EconomyManager:
         # Normal
         if priority > 0.4:
             threshold = self.state.reserve * 0.1
-            print(f"[Economy] Check Normal: Budget {self.state.budget} > Threshold {threshold}? {self.state.budget > threshold}")
-            return self.state.budget > threshold # Keep 10% reserve
+            print(f"[Economy] Check Normal: Budget {self.state.budget} > Threshold {threshold}? {self.state.budget >= threshold}")
+            return self.state.budget >= threshold # Keep 10% reserve (Inclusive)
             
         # Low Priority (Explore/Idle)
         return self.state.budget > (self.state.reserve * 0.3) # Keep 30% reserve

@@ -1,118 +1,336 @@
 {
   "intents": [
     {
-      "description": "Execute CLI: ls -la",
-      "priority": 0.79999472219944,
+      "description": "Execute contract: risky_heist",
+      "priority": 0.7348426911354067,
       "intent_type": "serve",
-      "intent_id": "833705b1-9897-4214-8e08-96ec98d979f5",
-      "created_at": 1770131026.00736,
-      "source": "user",
+      "intent_id": "c2a55c8c-c3fd-4a26-abd9-482e96cf9a0f",
+      "created_at": 1770132957.513854,
+      "source": "openclaw_contract",
       "context": {
-        "cmd": "ls -la"
+        "contract_id": "b37e3cb3-6a0d-4956-bcdd-74c4009d9626",
+        "work_params": {},
+        "expected_roi": 1.5
       },
       "decay_rate": 0.01
     },
     {
-      "description": "OpenClaw plugin: database",
-      "priority": 0.4999991552829742,
+      "description": "Execute contract: risky_heist",
+      "priority": 0.7348426911354067,
       "intent_type": "serve",
-      "intent_id": "30abefff-c9f5-4cbf-a7b7-b2d3b92226c2",
-      "created_at": 1770131026.023962,
-      "source": "user",
+      "intent_id": "c2a55c8c-c3fd-4a26-abd9-482e96cf9a0f",
+      "created_at": 1770132957.513854,
+      "source": "openclaw_contract",
       "context": {
-        "type": "plugin_execute",
-        "source": "user",
-        "context": {
-          "plugin": "database",
-          "query": "SELECT * FROM memories"
-        },
-        "priority": 0.5
+        "contract_id": "b37e3cb3-6a0d-4956-bcdd-74c4009d9626",
+        "work_params": {},
+        "expected_roi": 1.5
       },
       "decay_rate": 0.01
     },
     {
-      "description": "OpenClaw plugin: database",
-      "priority": 0.4999991552829742,
+      "description": "Execute contract: risky_heist",
+      "priority": 0.7348426911354067,
       "intent_type": "serve",
-      "intent_id": "30abefff-c9f5-4cbf-a7b7-b2d3b92226c2",
-      "created_at": 1770131026.023962,
-      "source": "user",
+      "intent_id": "c2a55c8c-c3fd-4a26-abd9-482e96cf9a0f",
+      "created_at": 1770132957.513854,
+      "source": "openclaw_contract",
       "context": {
-        "type": "plugin_execute",
-        "source": "user",
-        "context": {
-          "plugin": "database",
-          "query": "SELECT * FROM memories"
-        },
-        "priority": 0.5
+        "contract_id": "b37e3cb3-6a0d-4956-bcdd-74c4009d9626",
+        "work_params": {},
+        "expected_roi": 1.5
       },
       "decay_rate": 0.01
     },
     {
-      "description": "OpenClaw plugin: database",
-      "priority": 0.4999991552829742,
+      "description": "Execute contract: risky_heist",
+      "priority": 0.7348426911354067,
       "intent_type": "serve",
-      "intent_id": "30abefff-c9f5-4cbf-a7b7-b2d3b92226c2",
-      "created_at": 1770131026.023962,
-      "source": "user",
+      "intent_id": "c2a55c8c-c3fd-4a26-abd9-482e96cf9a0f",
+      "created_at": 1770132957.513854,
+      "source": "openclaw_contract",
       "context": {
-        "type": "plugin_execute",
-        "source": "user",
-        "context": {
-          "plugin": "database",
-          "query": "SELECT * FROM memories"
-        },
-        "priority": 0.5
+        "contract_id": "b37e3cb3-6a0d-4956-bcdd-74c4009d9626",
+        "work_params": {},
+        "expected_roi": 1.5
       },
       "decay_rate": 0.01
     },
     {
-      "description": "OpenClaw plugin: database",
-      "priority": 0.4999991552829742,
+      "description": "Execute contract: risky_heist",
+      "priority": 0.7348426911354067,
       "intent_type": "serve",
-      "intent_id": "30abefff-c9f5-4cbf-a7b7-b2d3b92226c2",
-      "created_at": 1770131026.023962,
-      "source": "user",
+      "intent_id": "c2a55c8c-c3fd-4a26-abd9-482e96cf9a0f",
+      "created_at": 1770132957.513854,
+      "source": "openclaw_contract",
       "context": {
-        "type": "plugin_execute",
-        "source": "user",
-        "context": {
-          "plugin": "database",
-          "query": "SELECT * FROM memories"
-        },
-        "priority": 0.5
+        "contract_id": "b37e3cb3-6a0d-4956-bcdd-74c4009d9626",
+        "work_params": {},
+        "expected_roi": 1.5
       },
       "decay_rate": 0.01
     },
     {
-      "description": "OpenClaw plugin: alien_tech",
-      "priority": 0.4999998729944229,
-      "intent_type": "explore",
-      "intent_id": "6065c541-b786-4e1c-80e4-2577dead1e9a",
-      "created_at": 1770131026.026206,
-      "source": "openclaw",
+      "description": "Execute contract: risky_heist",
+      "priority": 0.7348426911354067,
+      "intent_type": "serve",
+      "intent_id": "c2a55c8c-c3fd-4a26-abd9-482e96cf9a0f",
+      "created_at": 1770132957.513854,
+      "source": "openclaw_contract",
       "context": {
-        "type": "plugin_execute",
-        "context": {
-          "plugin": "alien_tech"
-        },
-        "priority": 0.5
+        "contract_id": "b37e3cb3-6a0d-4956-bcdd-74c4009d9626",
+        "work_params": {},
+        "expected_roi": 1.5
       },
       "decay_rate": 0.01
     },
     {
-      "description": "OpenClaw plugin: alien_tech",
-      "priority": 0.4999998729944229,
-      "intent_type": "explore",
-      "intent_id": "6065c541-b786-4e1c-80e4-2577dead1e9a",
-      "created_at": 1770131026.026206,
-      "source": "openclaw",
+      "description": "Execute contract: risky_heist",
+      "priority": 0.7348426911354067,
+      "intent_type": "serve",
+      "intent_id": "c2a55c8c-c3fd-4a26-abd9-482e96cf9a0f",
+      "created_at": 1770132957.513854,
+      "source": "openclaw_contract",
       "context": {
-        "type": "plugin_execute",
-        "context": {
-          "plugin": "alien_tech"
+        "contract_id": "b37e3cb3-6a0d-4956-bcdd-74c4009d9626",
+        "work_params": {},
+        "expected_roi": 1.5
+      },
+      "decay_rate": 0.01
+    },
+    {
+      "description": "Execute contract: risky_heist",
+      "priority": 0.7348426911354067,
+      "intent_type": "serve",
+      "intent_id": "c2a55c8c-c3fd-4a26-abd9-482e96cf9a0f",
+      "created_at": 1770132957.513854,
+      "source": "openclaw_contract",
+      "context": {
+        "contract_id": "b37e3cb3-6a0d-4956-bcdd-74c4009d9626",
+        "work_params": {},
+        "expected_roi": 1.5
+      },
+      "decay_rate": 0.01
+    },
+    {
+      "description": "Execute contract: risky_heist",
+      "priority": 0.7348426911354067,
+      "intent_type": "serve",
+      "intent_id": "c2a55c8c-c3fd-4a26-abd9-482e96cf9a0f",
+      "created_at": 1770132957.513854,
+      "source": "openclaw_contract",
+      "context": {
+        "contract_id": "b37e3cb3-6a0d-4956-bcdd-74c4009d9626",
+        "work_params": {},
+        "expected_roi": 1.5
+      },
+      "decay_rate": 0.01
+    },
+    {
+      "description": "Execute contract: risky_heist",
+      "priority": 0.7348426911354067,
+      "intent_type": "serve",
+      "intent_id": "c2a55c8c-c3fd-4a26-abd9-482e96cf9a0f",
+      "created_at": 1770132957.513854,
+      "source": "openclaw_contract",
+      "context": {
+        "contract_id": "b37e3cb3-6a0d-4956-bcdd-74c4009d9626",
+        "work_params": {},
+        "expected_roi": 1.5
+      },
+      "decay_rate": 0.01
+    },
+    {
+      "description": "Execute contract: risky_heist",
+      "priority": 0.7348426911354067,
+      "intent_type": "serve",
+      "intent_id": "c2a55c8c-c3fd-4a26-abd9-482e96cf9a0f",
+      "created_at": 1770132957.513854,
+      "source": "openclaw_contract",
+      "context": {
+        "contract_id": "b37e3cb3-6a0d-4956-bcdd-74c4009d9626",
+        "work_params": {},
+        "expected_roi": 1.5
+      },
+      "decay_rate": 0.01
+    },
+    {
+      "description": "Execute contract: risky_heist",
+      "priority": 0.7348426911354067,
+      "intent_type": "serve",
+      "intent_id": "c2a55c8c-c3fd-4a26-abd9-482e96cf9a0f",
+      "created_at": 1770132957.513854,
+      "source": "openclaw_contract",
+      "context": {
+        "contract_id": "b37e3cb3-6a0d-4956-bcdd-74c4009d9626",
+        "work_params": {},
+        "expected_roi": 1.5
+      },
+      "decay_rate": 0.01
+    },
+    {
+      "description": "Execute contract: risky_heist",
+      "priority": 0.7348426909446718,
+      "intent_type": "serve",
+      "intent_id": "c2a55c8c-c3fd-4a26-abd9-482e96cf9a0f",
+      "created_at": 1770132957.513854,
+      "source": "openclaw_contract",
+      "context": {
+        "contract_id": "b37e3cb3-6a0d-4956-bcdd-74c4009d9626",
+        "work_params": {},
+        "expected_roi": 1.5
+      },
+      "decay_rate": 0.01
+    },
+    {
+      "description": "Execute contract: risky_heist",
+      "priority": 0.7348426909446718,
+      "intent_type": "serve",
+      "intent_id": "c2a55c8c-c3fd-4a26-abd9-482e96cf9a0f",
+      "created_at": 1770132957.513854,
+      "source": "openclaw_contract",
+      "context": {
+        "contract_id": "b37e3cb3-6a0d-4956-bcdd-74c4009d9626",
+        "work_params": {},
+        "expected_roi": 1.5
+      },
+      "decay_rate": 0.01
+    },
+    {
+      "description": "Execute contract: risky_heist",
+      "priority": 0.7348426909446718,
+      "intent_type": "serve",
+      "intent_id": "c2a55c8c-c3fd-4a26-abd9-482e96cf9a0f",
+      "created_at": 1770132957.513854,
+      "source": "openclaw_contract",
+      "context": {
+        "contract_id": "b37e3cb3-6a0d-4956-bcdd-74c4009d9626",
+        "work_params": {},
+        "expected_roi": 1.5
+      },
+      "decay_rate": 0.01
+    },
+    {
+      "description": "Execute contract: risky_heist",
+      "priority": 0.7348426909446718,
+      "intent_type": "serve",
+      "intent_id": "c2a55c8c-c3fd-4a26-abd9-482e96cf9a0f",
+      "created_at": 1770132957.513854,
+      "source": "openclaw_contract",
+      "context": {
+        "contract_id": "b37e3cb3-6a0d-4956-bcdd-74c4009d9626",
+        "work_params": {},
+        "expected_roi": 1.5
+      },
+      "decay_rate": 0.01
+    },
+    {
+      "description": "Execute contract: audit_logs",
+      "priority": 0.8666343678951264,
+      "intent_type": "serve",
+      "intent_id": "50a37524-7960-4da7-8aba-04dd0d206a7f",
+      "created_at": 1770133036.989132,
+      "source": "openclaw_contract",
+      "context": {
+        "contract_id": "ef703bce-4fa3-4dc9-9bc0-59e24a43ca50",
+        "work_params": {
+          "target": "recent_errors"
         },
-        "priority": 0.5
+        "expected_roi": 1.5
+      },
+      "decay_rate": 0.01
+    },
+    {
+      "description": "Execute contract: audit_logs",
+      "priority": 0.8666343678951264,
+      "intent_type": "serve",
+      "intent_id": "50a37524-7960-4da7-8aba-04dd0d206a7f",
+      "created_at": 1770133036.989132,
+      "source": "openclaw_contract",
+      "context": {
+        "contract_id": "ef703bce-4fa3-4dc9-9bc0-59e24a43ca50",
+        "work_params": {
+          "target": "recent_errors"
+        },
+        "expected_roi": 1.5
+      },
+      "decay_rate": 0.01
+    },
+    {
+      "description": "Execute contract: audit_logs",
+      "priority": 0.8666343678951264,
+      "intent_type": "serve",
+      "intent_id": "50a37524-7960-4da7-8aba-04dd0d206a7f",
+      "created_at": 1770133036.989132,
+      "source": "openclaw_contract",
+      "context": {
+        "contract_id": "ef703bce-4fa3-4dc9-9bc0-59e24a43ca50",
+        "work_params": {
+          "target": "recent_errors"
+        },
+        "expected_roi": 1.5
+      },
+      "decay_rate": 0.01
+    },
+    {
+      "description": "Execute contract: audit_logs",
+      "priority": 0.8666343678951264,
+      "intent_type": "serve",
+      "intent_id": "50a37524-7960-4da7-8aba-04dd0d206a7f",
+      "created_at": 1770133036.989132,
+      "source": "openclaw_contract",
+      "context": {
+        "contract_id": "ef703bce-4fa3-4dc9-9bc0-59e24a43ca50",
+        "work_params": {
+          "target": "recent_errors"
+        },
+        "expected_roi": 1.5
+      },
+      "decay_rate": 0.01
+    },
+    {
+      "description": "Execute contract: audit_logs",
+      "priority": 0.8999964031219483,
+      "intent_type": "serve",
+      "intent_id": "f3208ea8-a455-46ae-adb4-c84e0742464a",
+      "created_at": 1770133148.184622,
+      "source": "openclaw_contract",
+      "context": {
+        "contract_id": "69e17f98-16bf-4277-beb3-559625b53cbe",
+        "work_params": {
+          "target": "recent_errors"
+        },
+        "expected_roi": 1.5
+      },
+      "decay_rate": 0.01
+    },
+    {
+      "description": "Execute contract: audit_logs",
+      "priority": 0.8999964031219483,
+      "intent_type": "serve",
+      "intent_id": "f3208ea8-a455-46ae-adb4-c84e0742464a",
+      "created_at": 1770133148.184622,
+      "source": "openclaw_contract",
+      "context": {
+        "contract_id": "69e17f98-16bf-4277-beb3-559625b53cbe",
+        "work_params": {
+          "target": "recent_errors"
+        },
+        "expected_roi": 1.5
+      },
+      "decay_rate": 0.01
+    },
+    {
+      "description": "Execute contract: risky_heist",
+      "priority": 0.8999998478889466,
+      "intent_type": "serve",
+      "intent_id": "ff8e0455-c579-4e0e-8ba6-62182d6ff9be",
+      "created_at": 1770133148.203739,
+      "source": "openclaw_contract",
+      "context": {
+        "contract_id": "c6b36d9b-5e9a-4286-bc3e-ef696ad199db",
+        "work_params": {},
+        "expected_roi": 1.5
       },
       "decay_rate": 0.01
     }
