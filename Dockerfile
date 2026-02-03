@@ -1,53 +1,29 @@
-# syntax=docker/dockerfile:1
-# IPPOC-OS Production Dockerfile
+# Dockerfile
+# @cognitive - IPPOC Reference Organism Runtime
 
-FROM rust:1.75-bookworm AS builder
+FROM python:3.11-slim-bookworm
 
-WORKDIR /app
-
-# Install dependencies
-RUN apt-get update && apt-get install -y \
-    pkg-config \
-    libssl-dev \
-    libpq-dev \
-    cmake \
-    protobuf-compiler \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy workspace
-COPY Cargo.toml Cargo.lock ./
-COPY apps/ ./apps/
-COPY libs/ ./libs/
-COPY schemas/ ./schemas/
-
-# Build release
-RUN cargo build --workspace --release
-
-# Runtime image
-FROM debian:bookworm-slim
-
-RUN apt-get update && apt-get install -y \
-    ca-certificates \
-    libssl3 \
-    libpq5 \
-    && rm -rf /var/lib/apt/lists/*
+# 1. Safety & Efficiency
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    IPPOC_ENV=production
 
 WORKDIR /app
 
-# Copy binaries
-COPY --from=builder /app/target/release/ippoc-node /usr/local/bin/
+# 2. Dependencies (Frozen Genome)
+COPY requirements.lock .
+RUN pip install --no-cache-dir -r requirements.lock
 
-# Create non-root user
-RUN useradd -r -u 1000 ippoc
+# 3. Application Code
+COPY . .
+
+# 4. Persistence Setup (Ensure directories exist for mounting)
+RUN mkdir -p brain/memory brain/preservation brain/logs
+
+# 5. Non-Root User (Dignity/Security)
+RUN useradd -m ippoc && chown -R ippoc:ippoc /app
 USER ippoc
 
-# Default port
-EXPOSE 9000/udp
-EXPOSE 9000/tcp
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:9000/health || exit 1
-
-ENTRYPOINT ["ippoc-node"]
-CMD ["--port", "9000"]
+# 6. Runtime Interaction
+# We invoke via main.py or a shell if needed
+CMD ["python", "main.py"]
