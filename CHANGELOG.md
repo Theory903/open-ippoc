@@ -2,6 +2,14 @@
 
 All notable changes to the IPPOC project will be documented in this file.
 
+## [v0.9.0-federated] - 2026-02-03
+### Added
+- **Federation Identity**: `brain/core/federation.py` implements Node Identity & Signals.
+- **Consultation Protocol**: `IntentType.CONSULT` allows advice exchange.
+- **Reputation Engine**: `brain/social/reputation.py` tracks peer reliability.
+- **Social Will**: Decider now weighs Advice ($Reputation \times Confidence$) in Will Score.
+- **Verification**: `verify_federation.py` certifies Social Agency.
+
 ## [v0.8.0-autonomous] - 2026-02-03
 ### Transformed
 - **Canon**: Converted from Policy Gate to **Value Function** (`evaluate_alignment` returns -1.0 to 1.0).

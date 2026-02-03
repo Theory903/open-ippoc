@@ -16,6 +16,7 @@ class IntentType(str, Enum):
     LEARN = "learn"         # Growth: Curiosity, experimentation
     EXPLORE = "explore"     # Growth: Low-risk discovery
     IDLE = "idle"           # Rest: Save budget / cooldown
+    CONSULT = "consult"     # Social: Ask for advice / Receive advice
 
 
 @dataclass

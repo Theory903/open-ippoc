@@ -161,15 +161,30 @@ class Decider:
         w_c = 1.0 # Cost weight
         
         # 3. The Will Function (Score Calculation)
-        # Score = (ROI * w_v) + (Alignment * w_s) - (Cost * w_c)
-        # Note: Alignment is -1.0 to 1.0. 
-        # If Alignment is < -0.7, score tanks massively.
+        # Score = (ROI * w_v) + (Alignment * w_s) - (Cost * w_c) + SocialSignal
+        
+        social_signal = 0.0
+        # If intent has advice attached (e.g. from CONSULT result)
+        if intent.context and "advice" in intent.context:
+            from brain.social.reputation import get_reputation_engine
+            advice = intent.context["advice"] # {node_id, action, confidence}
+            node_id = advice.get("node_id")
+            conf = float(advice.get("confidence", 0.0))
+            
+            # Weighted Influence
+            weight = get_reputation_engine().weigh_advice(node_id, conf)
+            
+            # Direction
+            if advice.get("action") == "recommend":
+                social_signal = 2.0 * weight # Strong boost
+            elif advice.get("action") == "warn":
+                social_signal = -2.0 * weight # Strong penalty
         
         # Special logic: If alignment is Existential Threat (-1.0), it overrides everything
         if alignment < -0.7:
              return {"action": "reject", "reason": f"undignified_act ({alignment})"}
 
-        score = (expected_roi * w_v) + (alignment * w_s) - (expected_cost * w_c)
+        score = (expected_roi * w_v) + (alignment * w_s) - (expected_cost * w_c) + social_signal
         
         # 4. The Choice
         # If score is positive, we act. If negative, we idle (unless survival override).
