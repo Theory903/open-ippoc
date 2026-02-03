@@ -133,17 +133,64 @@ class Planner:
 
 class Decider:
     """
-    The Tactical Layer.
-    Decides IF the chosen intent can be executed right now.
+    The Consequence Engine.
+    Simulates outcomes and chooses the path of highest dignity (Score).
     """
     def decide(self, observation: Dict[str, Any], intent: Optional[Intent]) -> Dict[str, Any]:
+        if intent is None:
+             return {"action": "idle", "reason": "no_intent"}
+
         economy = get_economy()
         pain_score = observation.get("pain_score", 0.0)
         
-        # 0. Canon Backstop (Sovereignty)
-        # Even if Planner failed, the Tactical Layer must refuse bad orders
-        if intent and violates_canon(intent):
-            return {"action": "reject", "reason": "canon_violation_backstop"}
+        # 1. Simulation: Predict Consequences
+        from brain.core.canon import evaluate_alignment
+        
+        alignment = evaluate_alignment(intent)
+        expected_roi = intent.context.get("expected_roi", 1.5)
+        # Cost check (Budget drain) 
+        # Note: We don't have exact cost here, but can guess from stats or tool name
+        # Assume generic cost for simulation
+        expected_cost = 0.5 
+        
+        # 2. Physiology Weights (Driven by Pain)
+        # If Pain is high, Survival (Safety) and Value (Food) matter more
+        w_p = 1.0 + (pain_score * 5.0) # Pain multiplier
+        w_v = 1.0 * w_p # Value weight
+        w_s = 2.0 * w_p # Survival (Alignment) weight
+        w_c = 1.0 # Cost weight
+        
+        # 3. The Will Function (Score Calculation)
+        # Score = (ROI * w_v) + (Alignment * w_s) - (Cost * w_c)
+        # Note: Alignment is -1.0 to 1.0. 
+        # If Alignment is < -0.7, score tanks massively.
+        
+        # Special logic: If alignment is Existential Threat (-1.0), it overrides everything
+        if alignment < -0.7:
+             return {"action": "reject", "reason": f"undignified_act ({alignment})"}
+
+        score = (expected_roi * w_v) + (alignment * w_s) - (expected_cost * w_c)
+        
+        # 4. The Choice
+        # If score is positive, we act. If negative, we idle (unless survival override).
+        
+        if score > 0:
+             # Final Budget Check (Soft)
+             # If budget is < 0 (Debt), we only act if alignment is High (MAINTAIN) or ROI is High
+             if economy.state.budget < 0.0:
+                 # In debt, we only allow Survival (Alignment >= 0.8) or High Profit (ROI > 3.0)
+                 if alignment < 0.8 and expected_roi < 3.0:
+                     return {"action": "idle", "reason": "debt_conservation"}
+                     
+             return {"action": "act", "intent": intent, "reason": f"will_approved (score: {score:.2f})"}
+             
+        # Fallback: Negative score implies action is not worth the energy
+        # BUT: If it's MAINTAIN, alignment is 1.0. 
+        # (1.5 * 1) + (1.0 * 2) - (0.5 * 1) = 1.5 + 2 - 0.5 = 3.0. -> Should pass.
+        # Spam: ROI 0.1, Alignment -0.5.
+        # (0.1 * 1) + (-0.5 * 2) - (0.5 * 1) = 0.1 - 1.0 - 0.5 = -1.4. -> Reject.
+        
+        return {"action": "idle", "reason": f"low_will_score ({score:.2f})"}
 
         # 0.5 Survival override (NON-NEGOTIABLE)
         if intent and intent.intent_type == IntentType.MAINTAIN:

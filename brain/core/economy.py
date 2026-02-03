@@ -189,26 +189,43 @@ class EconomyManager:
             return True
         return self.check_throttle(tool_name) # Reuse the existing logic
 
+    def check_vitality(self) -> float:
+        """
+        Returns Pain Level (0.0 to 1.0).
+        0.0 = Healthy
+        1.0 = Agony (Deep Debt)
+        """
+        if self.state.budget >= 1.0:
+            return 0.0
+        
+        # Debt / Starvation pain
+        if self.state.budget <= 0.0:
+             # Deep debt pain scales with depth
+             return min(abs(self.state.budget) / 10.0, 1.0) # Cap at 1.0
+             
+        # Low budget anxiety
+        return 0.1
+
     def check_budget(self, priority: float) -> bool:
         """
         Returns True if action with given priority can proceed.
-        High priority (>0.7) can dip into reserves.
-        Low priority must stop when budget < 30% of reserve.
+        Phase Ω: No Hard Stops. Only consequences.
         """
         self.tick()
         
-        # Emergency/Critical
-        if priority > 0.8:
-            return self.state.budget > 0.0 # Can burn to zero
-            
-        # Normal
-        if priority > 0.4:
-            threshold = self.state.reserve * 0.1
-            print(f"[Economy] Check Normal: Budget {self.state.budget} > Threshold {threshold}? {self.state.budget >= threshold}")
-            return self.state.budget >= threshold # Keep 10% reserve (Inclusive)
-            
-        # Low Priority (Explore/Idle)
-        return self.state.budget > (self.state.reserve * 0.3) # Keep 30% reserve
+        # Vitality check
+        pain = self.check_vitality()
+        
+        # Deep Debt (Agony): Only High Priority Allowed
+        if self.state.budget < -5.0:
+             return priority > 0.8
+             
+        # Debt: Medium Priority Allowed
+        if self.state.budget < 0.0:
+             return priority > 0.5
+             
+        # Normal (Positive Budget): Any Priority Allowed
+        return True
 
     def should_idle(self) -> bool:
         # Deprecated wrapper for backward compatibility

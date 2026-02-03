@@ -2,6 +2,13 @@
 
 All notable changes to the IPPOC project will be documented in this file.
 
+## [v0.8.0-autonomous] - 2026-02-03
+### Transformed
+- **Canon**: Converted from Policy Gate to **Value Function** (`evaluate_alignment` returns -1.0 to 1.0).
+- **Decider**: Converted to **Consequence Engine** (`Will Function` balances ROI + Alignment - Cost - Risk).
+- **Economy**: Replaced Hard Stops with **Physiology** (`Pain` reduces frequency, forces conservation).
+- **Verification**: `verify_autonomous_will.py` certifies that IPPOC *chooses* right, rather than obeying rules.
+
 ## [v0.7.0-earner] - 2026-02-03
 ### Added
 - **Work Contracts**: `brain/core/contract.py` implements `WorkUnit` primitive.

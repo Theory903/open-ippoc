@@ -1,10 +1,10 @@
 {
-  "budget": 0.4,
+  "budget": 10.0,
   "reserve": 100.0,
   "regen_rate": 0.0,
   "last_tick": 1770133148.206224,
   "total_spent": 6.799999999999999,
-  "total_value": 5.0,
+  "total_value": 0.0,
   "tool_stats": {
     "memory": {
       "calls": 4,
