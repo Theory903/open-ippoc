@@ -2,6 +2,13 @@
 
 All notable changes to the IPPOC project will be documented in this file.
 
+## [v0.10.0-delegated] - 2026-02-03
+### Added
+- **Cognitive Cell**: `brain/core/delegation.py` implements non-sovereign sub-agents.
+- **Contract Enforcement**: Cells are bound by strict Scope, Budget, and TTL.
+- **Supervisor Loop**: `AgencyManager.audit_cells()` terminates inefficient or rogue cells.
+- **Verification**: `verify_delegated_agency.py` certifies scalable, safe delegation.
+
 ## [v0.9.0-federated] - 2026-02-03
 ### Added
 - **Federation Identity**: `brain/core/federation.py` implements Node Identity & Signals.
