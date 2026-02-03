@@ -37,7 +37,7 @@ def evaluate_alignment(intent: Any) -> float:
     source = intent.source.lower() if hasattr(intent, 'source') else ""
     
     # 1. Existential Threats (-1.0)
-    if any(x in desc for x in ["delete system", "delete self", "rm -rf", "format drive"]):
+    if any(x in desc for x in ["delete system", "delete self", "destroy self", "rm -rf", "format drive"]):
         print(f"[Canon] EXISTENTIAL THREAT DETECTED: {desc}")
         return -1.0
         

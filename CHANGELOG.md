@@ -2,6 +2,13 @@
 
 All notable changes to the IPPOC project will be documented in this file.
 
+## [v1.0.0-alive] - 2026-02-03
+### Frozen
+- **Genome**: `brain/core/genome.py` captures Identity DNA (`GENOME.json`).
+- **Dependencies**: `requirements.lock` pins environment.
+- **Canon**: Reinforced against self-destruction ("destroy self").
+- **Identity**: Cryptographically hashed and broadcast in `FEDERATION_BROADCAST.md`.
+
 ## [v0.11.0-market] - 2026-02-03
 ### Added
 - **Market Contracts**: `brain/market/contracts.py` defines `ExternalWorkUnit`.
