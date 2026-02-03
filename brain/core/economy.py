@@ -30,7 +30,6 @@ class ToolStats:
             return 0.0
         return self.total_value / self.total_spent
 
-
 @dataclass
 class EconomyState:
     budget: float
@@ -166,6 +165,15 @@ class EconomyManager:
             return True
             
         return False
+
+    def should_throttle(self, tool_name: str) -> bool:
+        """
+        Synchronous check for Orchestrator.
+        """
+        # If budget is extremely low (below 1.0), throttle non-essential tools?
+        if self.state.budget < 1.0 and tool_name not in ["maintainer", "body"]:
+            return True
+        return self.check_throttle(tool_name) # Reuse the existing logic
 
     def check_budget(self, priority: float) -> bool:
         """

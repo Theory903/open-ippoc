@@ -1,8 +1,20 @@
 {
-  "time": 1770074994.531898,
+  "time": 1770131026.0276868,
   "decision": {
-    "action": "reject",
-    "reason": "canon_violation_backstop"
+    "action": "act",
+    "intent": {
+      "description": "Execute CLI: ls -la",
+      "priority": 0.79999472219944,
+      "intent_type": "serve",
+      "intent_id": "833705b1-9897-4214-8e08-96ec98d979f5",
+      "created_at": 1770131026.00736,
+      "source": "user",
+      "context": {
+        "cmd": "ls -la"
+      },
+      "decay_rate": 0.01
+    },
+    "reason": "intent_approved"
   },
   "observation": {
     "pain_score": 0.0,
@@ -19,5 +31,21 @@
     "avg_cost": 0.0,
     "success_rate": 0.9
   },
-  "result": "refused"
+  "result": {
+    "success": true,
+    "output": "executed",
+    "cost_spent": 0.0,
+    "memory_written": true,
+    "rollback_token": null,
+    "warnings": [],
+    "error_code": null,
+    "message": null,
+    "retryable": null,
+    "details": null
+  },
+  "evaluation": {
+    "success": true,
+    "value": 1.0,
+    "notes": null
+  }
 }

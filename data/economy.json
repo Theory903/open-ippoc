@@ -2,9 +2,59 @@
   "budget": 100.0,
   "reserve": 10.0,
   "regen_rate": 0.0,
-  "last_tick": 1770074994.531832,
+  "last_tick": 1770131026.027853,
   "total_spent": 0.0,
   "total_value": 0.0,
-  "tool_stats": {},
-  "events": []
+  "tool_stats": {
+    "memory": {
+      "calls": 6,
+      "failures": 0,
+      "total_spent": 0.0,
+      "total_value": 0.0
+    }
+  },
+  "events": [
+    {
+      "kind": "spend",
+      "tool": "memory",
+      "cost": 0.0,
+      "failed": false,
+      "ts": 1770130976.181184
+    },
+    {
+      "kind": "spend",
+      "tool": "memory",
+      "cost": 0.0,
+      "failed": false,
+      "ts": 1770130976.183639
+    },
+    {
+      "kind": "spend",
+      "tool": "memory",
+      "cost": 0.0,
+      "failed": false,
+      "ts": 1770130976.185617
+    },
+    {
+      "kind": "spend",
+      "tool": "memory",
+      "cost": 0.0,
+      "failed": false,
+      "ts": 1770131026.023447
+    },
+    {
+      "kind": "spend",
+      "tool": "memory",
+      "cost": 0.0,
+      "failed": false,
+      "ts": 1770131026.025876
+    },
+    {
+      "kind": "spend",
+      "tool": "memory",
+      "cost": 0.0,
+      "failed": false,
+      "ts": 1770131026.027936
+    }
+  ]
 }

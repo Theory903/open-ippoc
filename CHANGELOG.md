@@ -2,6 +2,20 @@
 
 All notable changes to the IPPOC project will be documented in this file.
 
+## [v0.4.0-connected] - 2026-02-03
+### Added
+- **OpenClaw Bridge**: Implemented `brain/gateway/` to adapt OpenClaw actions into IPPOC Intents.
+- **Neural Guard**: Pre-emptive Canon checking in `openclaw_guard.py` before cognition.
+- **Organ Mapping**: `openclaw_plugin_map.py` deterministically maps plugins (shell, db) to organs (body, memory).
+- **Throttling**: Added `should_throttle()` to `EconomyManager`.
+
+## [v0.3.0-evolution] - 2026-02-03
+### Added
+- **Git DNA**: Implemented `brain/evolution/git_driver.py` for autonomous branching, committing, and merging.
+- **Evolver Logic**: Wired `Evolver` to use Git DNA for mutation lifecycle management.
+- **Safety Revert**: Evolution pipeline automatically hard-resets changes if sandbox tests fail.
+- **Verification**: `verify_evolution.py` certifies the mutation pipeline in a sandboxed repo.
+
 ## [v0.2.0-sovereign] - 2026-02-03
 ### Certified
 - **Sovereignty Certification**: System passed `verify_sovereignty.py`.

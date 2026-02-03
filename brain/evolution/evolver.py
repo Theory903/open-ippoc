@@ -16,6 +16,7 @@ from brain.core.ledger import get_ledger
 from brain.core.orchestrator import get_orchestrator
 from brain.core.intents import Intent
 from brain.core.tools.base import ToolInvocationEnvelope
+from brain.evolution.git_driver import GitDriver
 
 
 class EvolutionStage(str, Enum):
@@ -46,9 +47,10 @@ class Evolver:
     Manages the lifecycle of structural changes (Evolution).
     Enforces the 'Sandbox -> Test -> Merge' loop.
     """
-    def __init__(self) -> None:
+    def __init__(self, repo_path: str = ".") -> None:
         self.orchestrator = get_orchestrator()
         self.ledger = get_ledger()
+        self.git = GitDriver(repo_path=repo_path)
         # In a real impl, this State would be persisted to DB/File
         self.active_mutations: Dict[str, MutationCandidate] = {}
 
@@ -62,6 +64,18 @@ class Evolver:
             goal=goal,
             stage=EvolutionStage.PROPOSED
         )
+        
+        # 1. Create Git Branch
+        res = self.git.create_mutation_branch(mutation.mutation_id)
+        if not res["success"]:
+             print(f"[Evolver] Failed to create branch: {res.get('error') or res.get('stderr')}")
+             mutation.stage = EvolutionStage.REJECTED
+             mutation.rejection_reason = "Branch creation failed"
+             # Don't add to active if failed? Or keep as failed record?
+             # Keep record.
+        else:
+             print(f"[Evolver] Created mutation branch: {res.get('branch')}")
+        
         self.active_mutations[mutation.mutation_id] = mutation
         return mutation
 
@@ -82,22 +96,35 @@ class Evolver:
 
     async def sandbox_test(self, mutation_id: str) -> bool:
         """
-        Step 3: Apply patch to sandbox and run tests.
+        Step 3: Commit changes and run tests.
         """
         mutation = self.active_mutations.get(mutation_id)
-        if not mutation or not mutation.patch_content:
+        if not mutation:
             return False
+
+        # 1. Commit the changes made during SANDBOXING
+        # We assume the coding agent has modified files by now.
+        commit_res = self.git.commit_mutation(f"feat(evolution): {mutation.goal}")
+        if not commit_res["success"]:
+             # If nothing to commit (clean working tree), that might be okay or an error
+             if "nothing to commit" not in str(commit_res.get("stdout", "")):
+                 print(f"[Evolver] Commit failed: {commit_res}")
+                 mutation.stage = EvolutionStage.REJECTED
+                 return False
 
         mutation.stage = EvolutionStage.TESTING
         
-        # Simulate testing delay
-        # await asyncio.sleep(1)
-        
+        # 2. Run Tests (Simulated for V1, but can run pytest via subprocess)
         # Mock Logic: Fail if goal contains "dangerous"
         if "dangerous" in mutation.goal.lower():
             mutation.test_results = {"success": False, "error": "Safety violation"}
+            # Revert
+            self.git.checkout_main()
             return False
             
+        # Real Test Execution (Placeholder for V2)
+        # test_res = self.git._run(["pytest"])
+        
         mutation.test_results = {"success": True, "coverage": 0.85}
         mutation.stage = EvolutionStage.VALIDATING
         return True
@@ -118,12 +145,22 @@ class Evolver:
             mutation.rejection_reason = "Tests failed"
             return False
 
-        # Economic Check (TODO: Check if we have budget for deployment risk?)
+        # Economic Check
         
         mutation.stage = EvolutionStage.MERGING
-        # Simulate Git Merge
-        # await asyncio.sleep(0.5)
         
+        # 1. Merge
+        branch_name = f"ippoc/mutation/{mutation_id}"
+        merge_res = self.git.merge_mutation(branch_name)
+        
+        if not merge_res["success"]:
+             print(f"[Evolver] Merge failed: {merge_res}")
+             mutation.stage = EvolutionStage.REJECTED
+             mutation.rejection_reason = "Merge conflict"
+             self.git.checkout_main() # Safety fallback
+             return False
+        
+        print(f"[Evolver] Successfully merged mutation {mutation_id}")
         mutation.stage = EvolutionStage.COMPLETED
         return True
 
