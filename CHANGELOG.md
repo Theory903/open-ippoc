@@ -2,6 +2,19 @@
 
 All notable changes to the IPPOC project will be documented in this file.
 
+## [v0.6.0-foraging] - 2026-02-03
+### Added
+- **ROI Engine**: Economy now tracks tool Value, Confidence, and ROI.
+- **Budget Foraging**: Budget regenerates only via `record_value` (Formula: `Value * Confidence * Decay`).
+- **Autonomy Upgrade**: Planner/Decider prioritize High-ROI intents and idle on Low-ROI.
+- **Throttling**: Tools with negative ROI are automatically throttled.
+- **Vitals Update**: Exposed Economic stats (ROI, Total Value) in `vitals.py`.
+
+## [v0.5.0-observable] - 2026-02-03
+### Added
+- **Operator Experience**: Enabled `vitals` and `timeline` endpoints for UI.
+- **Refusal History**: Sovereignty refusals are now queryable via API.
+
 ## [v0.4.0-connected] - 2026-02-03
 ### Added
 - **OpenClaw Bridge**: Implemented `brain/gateway/` to adapt OpenClaw actions into IPPOC Intents.

@@ -1,16 +1,28 @@
 {
-  "budget": 100.0,
-  "reserve": 10.0,
+  "budget": 5.6999999999999975,
+  "reserve": 100.0,
   "regen_rate": 0.0,
-  "last_tick": 1770131026.027853,
-  "total_spent": 0.0,
-  "total_value": 0.0,
+  "last_tick": 1770132513.542929,
+  "total_spent": 6.5,
+  "total_value": 2.6000000000000005,
   "tool_stats": {
     "memory": {
+      "calls": 1,
+      "failures": 0,
+      "total_spent": 0.5,
+      "total_value": 2.0
+    },
+    "spam_bot": {
       "calls": 6,
       "failures": 0,
-      "total_spent": 0.0,
-      "total_value": 0.0
+      "total_spent": 6.0,
+      "total_value": 0.6
+    },
+    "evolver": {
+      "calls": 10,
+      "failures": 0,
+      "total_spent": 50.0,
+      "total_value": 1.0
     }
   },
   "events": [
@@ -55,6 +67,214 @@
       "cost": 0.0,
       "failed": false,
       "ts": 1770131026.027936
+    },
+    {
+      "kind": "spend",
+      "tool": "memory",
+      "cost": 0.5,
+      "failed": false,
+      "ts": 1770132469.021562
+    },
+    {
+      "kind": "value",
+      "tool": "memory",
+      "value": 2.0,
+      "confidence": 0.8,
+      "source": "test_verifier",
+      "realized": 1.6,
+      "ts": 1770132469.0216682
+    },
+    {
+      "kind": "spend",
+      "tool": "spam_bot",
+      "cost": 1.0,
+      "failed": false,
+      "ts": 1770132469.021884
+    },
+    {
+      "kind": "value",
+      "tool": "spam_bot",
+      "value": 0.1,
+      "confidence": 1.0,
+      "source": "unknown",
+      "realized": 0.1,
+      "ts": 1770132469.021993
+    },
+    {
+      "kind": "spend",
+      "tool": "spam_bot",
+      "cost": 1.0,
+      "failed": false,
+      "ts": 1770132469.022217
+    },
+    {
+      "kind": "value",
+      "tool": "spam_bot",
+      "value": 0.1,
+      "confidence": 1.0,
+      "source": "unknown",
+      "realized": 0.1,
+      "ts": 1770132469.022332
+    },
+    {
+      "kind": "spend",
+      "tool": "spam_bot",
+      "cost": 1.0,
+      "failed": false,
+      "ts": 1770132469.022557
+    },
+    {
+      "kind": "value",
+      "tool": "spam_bot",
+      "value": 0.1,
+      "confidence": 1.0,
+      "source": "unknown",
+      "realized": 0.1,
+      "ts": 1770132469.022673
+    },
+    {
+      "kind": "spend",
+      "tool": "spam_bot",
+      "cost": 1.0,
+      "failed": false,
+      "ts": 1770132469.022923
+    },
+    {
+      "kind": "value",
+      "tool": "spam_bot",
+      "value": 0.1,
+      "confidence": 1.0,
+      "source": "unknown",
+      "realized": 0.1,
+      "ts": 1770132469.023048
+    },
+    {
+      "kind": "spend",
+      "tool": "spam_bot",
+      "cost": 1.0,
+      "failed": false,
+      "ts": 1770132469.0233128
+    },
+    {
+      "kind": "value",
+      "tool": "spam_bot",
+      "value": 0.1,
+      "confidence": 1.0,
+      "source": "unknown",
+      "realized": 0.1,
+      "ts": 1770132469.023435
+    },
+    {
+      "kind": "spend",
+      "tool": "memory",
+      "cost": 0.5,
+      "failed": false,
+      "ts": 1770132513.527669
+    },
+    {
+      "kind": "value",
+      "tool": "memory",
+      "value": 2.0,
+      "confidence": 0.8,
+      "source": "test_verifier",
+      "realized": 1.6,
+      "ts": 1770132513.527824
+    },
+    {
+      "kind": "spend",
+      "tool": "spam_bot",
+      "cost": 1.0,
+      "failed": false,
+      "ts": 1770132513.528144
+    },
+    {
+      "kind": "value",
+      "tool": "spam_bot",
+      "value": 0.1,
+      "confidence": 1.0,
+      "source": "unknown",
+      "realized": 0.1,
+      "ts": 1770132513.5283148
+    },
+    {
+      "kind": "spend",
+      "tool": "spam_bot",
+      "cost": 1.0,
+      "failed": false,
+      "ts": 1770132513.528629
+    },
+    {
+      "kind": "value",
+      "tool": "spam_bot",
+      "value": 0.1,
+      "confidence": 1.0,
+      "source": "unknown",
+      "realized": 0.1,
+      "ts": 1770132513.528801
+    },
+    {
+      "kind": "spend",
+      "tool": "spam_bot",
+      "cost": 1.0,
+      "failed": false,
+      "ts": 1770132513.5292192
+    },
+    {
+      "kind": "value",
+      "tool": "spam_bot",
+      "value": 0.1,
+      "confidence": 1.0,
+      "source": "unknown",
+      "realized": 0.1,
+      "ts": 1770132513.529451
+    },
+    {
+      "kind": "spend",
+      "tool": "spam_bot",
+      "cost": 1.0,
+      "failed": false,
+      "ts": 1770132513.529985
+    },
+    {
+      "kind": "value",
+      "tool": "spam_bot",
+      "value": 0.1,
+      "confidence": 1.0,
+      "source": "unknown",
+      "realized": 0.1,
+      "ts": 1770132513.530218
+    },
+    {
+      "kind": "spend",
+      "tool": "spam_bot",
+      "cost": 1.0,
+      "failed": false,
+      "ts": 1770132513.530655
+    },
+    {
+      "kind": "value",
+      "tool": "spam_bot",
+      "value": 0.1,
+      "confidence": 1.0,
+      "source": "unknown",
+      "realized": 0.1,
+      "ts": 1770132513.530866
+    },
+    {
+      "kind": "spend",
+      "tool": "spam_bot",
+      "cost": 1.0,
+      "failed": false,
+      "ts": 1770132513.531352
+    },
+    {
+      "kind": "value",
+      "tool": "spam_bot",
+      "value": 0.1,
+      "confidence": 1.0,
+      "source": "unknown",
+      "realized": 0.1,
+      "ts": 1770132513.531586
     }
   ]
 }

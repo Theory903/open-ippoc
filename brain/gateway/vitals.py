@@ -49,5 +49,10 @@ async def get_vital_signs() -> Dict[str, Any]:
         },
         "sovereignty": {
             "last_refusal": last_refusal
+        },
+        "economy": {
+            "total_value": economy.state.total_value,
+            "total_spent": economy.state.total_spent,
+            "roi": economy.state.total_value / economy.state.total_spent if economy.state.total_spent > 0 else 0.0
         }
     }

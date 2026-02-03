@@ -134,7 +134,11 @@ class EconomyManager:
         self._save()
         return True
 
-    def record_value(self, value: float, tool_name: str | None = None) -> None:
+    def record_value(self, value: float, confidence: float = 1.0, source: str = "unknown", tool_name: str | None = None) -> None:
+        """
+        Injects value into the economy.
+        Formula: Budget += Value * Confidence * Decay
+        """
         self.state.total_value += value
         
         if tool_name:
@@ -143,11 +147,21 @@ class EconomyManager:
             self.update_tool_stats(tool_name, stats)
             
         # Value adds to budget
-        ratio = float(os.getenv("ECONOMY_VALUE_RATIO", "1.0"))
-        if value > 0:
-            self.state.budget = min(self.state.budget + (value * ratio), self.state.budget + self.state.reserve)
+        decay = float(os.getenv("ECONOMY_DECAY_FACTOR", "1.0"))
+        realized_value = value * confidence * decay
+        
+        if realized_value > 0:
+            self.state.budget = min(self.state.budget + realized_value, self.state.budget + self.state.reserve)
             
-        self._append_event({"kind": "value", "tool": tool_name, "value": value, "ts": time.time()})
+        self._append_event({
+            "kind": "value", 
+            "tool": tool_name, 
+            "value": value, 
+            "confidence": confidence,
+            "source": source,
+            "realized": realized_value,
+            "ts": time.time()
+        })
         self._save()
 
     def check_throttle(self, tool_name: str) -> bool:

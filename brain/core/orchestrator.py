@@ -6,7 +6,7 @@ import logging
 import os
 import time
 from contextvars import ContextVar
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, Any
 from brain.core.exceptions import ToolExecutionError, SecurityViolation, BudgetExceeded
 from brain.core.economy import get_economy
 from brain.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult
@@ -268,6 +268,21 @@ class ToolOrchestrator:
 
     def get_budget(self) -> Dict[str, float]:
         return self.economy.snapshot()
+
+    def get_reputation(self, tool_name: str) -> Dict[str, Any]:
+        """
+        Returns the economic reputation of a tool.
+        """
+        stats = self.economy.get_tool_stats(tool_name)
+        throttled = self.economy.should_throttle(tool_name)
+        return {
+            "tool": tool_name,
+            "calls": stats.calls,
+            "avg_cost": stats.total_spent / stats.calls if stats.calls else 0.0,
+            "avg_value": stats.total_value / stats.calls if stats.calls else 0.0,
+            "roi": stats.roi,
+            "status": "throttled" if throttled else "active"
+        }
 
     def _is_retryable(self, error: Exception) -> bool:
         return isinstance(error, (TimeoutError, ToolExecutionError))

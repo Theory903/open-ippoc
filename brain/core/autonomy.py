@@ -64,6 +64,30 @@ class Planner:
             allowed_intents.append(i)
         intents.intents = allowed_intents
 
+        # 0.5 ROI Estimation (The Accountant)
+        # We annotate intents with expected ROI to help prioritization
+        economy = get_economy()
+        for i in intents.intents:
+            # Heuristic map
+            likely_tool = "unknown"
+            if i.intent_type == IntentType.MAINTAIN: likely_tool = "maintainer"
+            elif i.intent_type == IntentType.LEARN: likely_tool = "evolver"
+            elif i.intent_type == IntentType.SERVE: likely_tool = "body" # default
+            elif i.intent_type == IntentType.EXPLORE: likely_tool = "observer"
+            
+            # Context override
+            if i.context and "plugin" in i.context:
+                 # plugins map to tools via map, but for stats we use the tool name
+                 pass 
+
+            stats = economy.get_tool_stats(likely_tool) if likely_tool != "unknown" else None
+            # Default ROI anticipation
+            roi = stats.roi if stats and stats.total_spent > 1.0 else 1.5 # Assume good if new
+            
+            # Store in context for Decider
+            if i.context is None: i.context = {}
+            i.context["expected_roi"] = roi
+
         # 1. Survival Check (Observer Signals)
         pain_score = observation.get("pain_score", 0.0)
         
@@ -129,7 +153,14 @@ class Decider:
         # 1. No Intent -> Idle
         if intent is None:
             return {"action": "idle", "reason": "no_intent"}
-            
+
+        # 1.5 Value Audit (ROI Check)
+        # Rule: ROI < 1.0 is forbidden unless MAINTAIN (Survival)
+        # Moved before Growth Override to ensure we don't grow cancer
+        expected_roi = intent.context.get("expected_roi", 1.5)
+        if expected_roi < 1.0:
+             return {"action": "idle", "reason": f"low_roi ({expected_roi:.2f})"}
+
         # 2. Growth override (allowed when budget is not zero)
         if intent.intent_type == IntentType.LEARN:
             if economy.state.budget > 0:
