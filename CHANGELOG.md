@@ -2,6 +2,13 @@
 
 All notable changes to the IPPOC project will be documented in this file.
 
+## [v0.11.0-market] - 2026-02-03
+### Added
+- **Market Contracts**: `brain/market/contracts.py` defines `ExternalWorkUnit`.
+- **Evaluator**: `brain/market/evaluator.py` implements the Dignity Filter (Will Score).
+- **Dignity Floor**: IPPOC refuses `Alignment <= -0.5` work regardless of Reward or Starvation.
+- **Verification**: `verify_market_presence.py` certifies economic sovereignty.
+
 ## [v0.10.0-delegated] - 2026-02-03
 ### Added
 - **Cognitive Cell**: `brain/core/delegation.py` implements non-sovereign sub-agents.
