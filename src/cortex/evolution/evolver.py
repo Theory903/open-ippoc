@@ -12,11 +12,11 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from brain.core.ledger import get_ledger
-from brain.core.orchestrator import get_orchestrator
-from brain.core.intents import Intent
-from brain.core.tools.base import ToolInvocationEnvelope
-from brain.evolution.git_driver import GitDriver
+from cortex.core.ledger import get_ledger
+from cortex.core.orchestrator import get_orchestrator
+from cortex.core.intents import Intent
+from cortex.core.tools.base import ToolInvocationEnvelope
+from cortex.evolution.git_driver import GitDriver
 
 
 class EvolutionStage(str, Enum):

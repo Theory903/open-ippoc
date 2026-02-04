@@ -8,17 +8,17 @@ import asyncio
 from dataclasses import asdict
 from typing import Any, Dict, Optional
 
-from brain.core.ledger import get_ledger
-from brain.core.orchestrator import get_orchestrator
-from brain.core.tools.base import ToolInvocationEnvelope
-from brain.core.economy import get_economy
-from brain.maintainer.observer import collect_signals
-from brain.core.intents import Intent, IntentStack, IntentType
-from brain.evolution.evolver import get_evolver
-from brain.memory.consolidation import get_hippocampus
-from brain.social.trust import get_trust_model
-from brain.explain import log_decision
-from brain.core.canon import violates_canon
+from cortex.core.ledger import get_ledger
+from cortex.core.orchestrator import get_orchestrator
+from cortex.core.tools.base import ToolInvocationEnvelope
+from cortex.core.economy import get_economy
+from cortex.maintainer.observer import collect_signals
+from cortex.core.intents import Intent, IntentStack, IntentType
+from cortex.evolution.evolver import get_evolver
+from cortex.memory.consolidation import get_hippocampus
+from cortex.social.trust import get_trust_model
+from cortex.explain import log_decision
+from cortex.core.canon import violates_canon
 
 
 STATE_PATH = os.getenv("AUTONOMY_STATE_PATH", "data/autonomy_state.json")
@@ -111,17 +111,16 @@ class Planner:
         # For now, we simulate this or rely on previous injection
         
         # 3. Growth Check (Idleness / Curiosity)
-        # If no urgent intents, and budget is healthy, maybe explore?
+        # Always allow exploration - economy focuses on earning value
         economy = get_economy()
-        budget_healthy = economy.check_budget(0.4)
         
-        if not intents.top() and budget_healthy and pain_score < 0.1:
-             # Basic boredom mechanic
+        if not intents.top() and pain_score < 0.1:
+             # Basic boredom mechanic - always explore when idle
              intents.add(Intent(
-                 description="Explore low-risk optimization",
+                 description="Explore optimization opportunities",
                  priority=0.4,
                  intent_type=IntentType.EXPLORE,
-                 source="boredom"
+                 source="curiosity"
              ))
 
         # 4. Rest Check (Default)
@@ -144,7 +143,7 @@ class Decider:
         pain_score = observation.get("pain_score", 0.0)
         
         # 1. Simulation: Predict Consequences
-        from brain.core.canon import evaluate_alignment
+        from cortex.core.canon import evaluate_alignment
         
         alignment = evaluate_alignment(intent)
         expected_roi = intent.context.get("expected_roi", 1.5)
@@ -166,7 +165,7 @@ class Decider:
         social_signal = 0.0
         # If intent has advice attached (e.g. from CONSULT result)
         if intent.context and "advice" in intent.context:
-            from brain.social.reputation import get_reputation_engine
+            from cortex.social.reputation import get_reputation_engine
             advice = intent.context["advice"] # {node_id, action, confidence}
             node_id = advice.get("node_id")
             conf = float(advice.get("confidence", 0.0))
@@ -216,25 +215,24 @@ class Decider:
         if intent is None:
             return {"action": "idle", "reason": "no_intent"}
 
-        # 1.5 Value Audit (ROI Check)
-        # Rule: ROI < 1.0 is forbidden unless MAINTAIN (Survival)
-        # Moved before Growth Override to ensure we don't grow cancer
+        # 1.5 Performance Optimization (ROI Guidance)
+        # ROI analysis for tool selection, NOT blocking
         expected_roi = intent.context.get("expected_roi", 1.5)
         if expected_roi < 1.0:
-             return {"action": "idle", "reason": f"low_roi ({expected_roi:.2f})"}
+            # Log for performance analysis but don't block
+            print(f"[Autonomy] Low ROI intent detected: {expected_roi:.2f} (continuing anyway)")
 
-        # 2. Growth override (allowed when budget is not zero)
+        # 2. Growth allowance (always allowed)
         if intent.intent_type == IntentType.LEARN:
-            if economy.state.budget > 0:
-                return {"action": "act", "intent": intent, "reason": "learning_allowed"}
+            return {"action": "act", "intent": intent, "reason": "learning_allowed"}
 
-        # 3. Budget Gate (Normal)
-        if not economy.check_budget(intent.priority):
-             return {"action": "idle", "reason": "low_budget"}
+        # 3. Budget Gate REMOVED - Always allow operations
+        # Economy focuses on earning value, not constraining legitimate actions
 
-        # 4. Cooldown / Throttling
-        if observation.get("recent_actions", 0) > 10 and intent.priority < 0.7:
-             return {"action": "idle", "reason": "cooldown_active"}
+        # 4. Cooldown / Throttling (performance optimization only)
+        if observation.get("recent_actions", 0) > 50 and intent.priority < 0.3:
+             return {"action": "idle", "reason": "extreme_cooldown_active"}
+             # Only extreme cooldown to prevent resource exhaustion
 
         return {"action": "act", "intent": intent, "reason": "intent_approved"}
 

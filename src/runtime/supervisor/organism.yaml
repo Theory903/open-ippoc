@@ -6,8 +6,8 @@ services:
   # Memory System (Mnemosyne)
   mnemosyne:
     build:
-      context: ../../mnemosyne
-      dockerfile: ../../infra/docker/Dockerfile.mnemosyne
+      context: ../../../src/mnemosyne
+      dockerfile: ./infra/docker/Dockerfile.mnemosyne
     container_name: ippoc-mnemosyne
     ports:
       - "8001:8001"  # API
@@ -31,8 +31,8 @@ services:
   # Body System (Soma)
   soma:
     build:
-      context: ../../soma
-      dockerfile: ../../infra/docker/Dockerfile.soma
+      context: ../../../src/soma
+      dockerfile: ./infra/docker/Dockerfile.soma
     container_name: ippoc-soma
     ports:
       - "8002:8002"  # API
@@ -55,8 +55,8 @@ services:
   # Brain System (Cortex)
   cortex:
     build:
-      context: ../../cortex
-      dockerfile: ../../infra/docker/Dockerfile.cortex
+      context: ../../../src/cortex
+      dockerfile: ./infra/docker/Dockerfile.cortex
     container_name: ippoc-cortex
     ports:
       - "8003:8003"  # API
@@ -82,8 +82,8 @@ services:
   # Gateway (API Router)
   gateway:
     build:
-      context: ../../runtime/gateway
-      dockerfile: ../../infra/docker/Dockerfile.gateway
+      context: .
+      dockerfile: ./infra/docker/Dockerfile.gateway
     container_name: ippoc-gateway
     ports:
       - "8080:8080"  # Public API

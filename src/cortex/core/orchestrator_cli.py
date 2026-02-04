@@ -2,9 +2,9 @@ import json
 import sys
 from typing import Any, Dict
 
-from brain.core.bootstrap import bootstrap_tools
-from brain.core.orchestrator import get_orchestrator
-from brain.core.tools.base import ToolInvocationEnvelope
+from cortex.core.bootstrap import bootstrap_tools
+from cortex.core.orchestrator import get_orchestrator
+from cortex.core.tools.base import ToolInvocationEnvelope
 
 
 def _error(message: str, details: str | None = None, code: int = 1) -> None:

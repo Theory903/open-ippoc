@@ -6,8 +6,8 @@ import os
 import asyncio
 
 # Import the Graph Builder (Phase 1)
-from memory.logic.graph import build_memory_graph
-from memory.logic.state import MemoryState, MemoryEvent, ExtractedFact
+from mnemosyne.logic.graph import build_memory_graph
+from mnemosyne.logic.state import MemoryState, MemoryEvent, ExtractedFact
 
 # Import LangChain components for the builder
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings

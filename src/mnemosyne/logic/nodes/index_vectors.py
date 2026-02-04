@@ -1,4 +1,4 @@
-from memory.logic.state import MemoryState
+from mnemosyne.logic.state import MemoryState
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore
 

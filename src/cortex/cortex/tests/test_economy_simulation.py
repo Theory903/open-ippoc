@@ -1,7 +1,7 @@
 import pytest
 import asyncio
-from brain.cortex.schemas import DemandSignal
-from brain.cortex.economy_engine import EconomicBrain
+from cortex.cortex.schemas import DemandSignal
+from cortex.cortex.economy_engine import EconomicBrain
 
 @pytest.mark.asyncio
 async def test_economic_reasoning_flow():
@@ -21,7 +21,7 @@ async def test_economic_reasoning_flow():
     print(f"\n[Test] Injecting Signal: {signal}")
     
     # 2. Run Reasoning
-    decision = await brain.reason_about_demand(signal)
+    decision = await cortex.reason_about_demand(signal)
     
     # 3. Verify Outcome
     assert decision is not None
@@ -47,7 +47,7 @@ async def test_economic_rejection_low_value():
         source="noise"
     )
     
-    decision = await brain.reason_about_demand(signal)
+    decision = await cortex.reason_about_demand(signal)
     assert decision is None # Should be filtered by Tower A
 
 @pytest.mark.asyncio
@@ -69,7 +69,7 @@ async def test_economic_rejection_high_risk():
     # Required budget = 500.
     # Should be rejected.
     
-    decision = await brain.reason_about_demand(signal)
+    decision = await cortex.reason_about_demand(signal)
     
     assert decision is not None # Tower A might like it (high reward)
     print(f"[Test] Risky Decision: {decision}")

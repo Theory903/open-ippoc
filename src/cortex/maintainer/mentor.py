@@ -1,9 +1,9 @@
 # brain/maintainer/mentor.py
 
 from typing import Dict, Any
-from brain.maintainer.types import MentorAdvice, SignalSummary
-from brain.core.orchestrator import get_orchestrator
-from brain.core.tools.base import ToolInvocationEnvelope
+from cortex.maintainer.types import MentorAdvice, SignalSummary
+from cortex.core.orchestrator import get_orchestrator
+from cortex.core.tools.base import ToolInvocationEnvelope
 
 def ask_mentors(topic: str, signals: SignalSummary) -> MentorAdvice:
     """

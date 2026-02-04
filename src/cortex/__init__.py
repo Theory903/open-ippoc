@@ -22,6 +22,6 @@ PUBLIC API:
     - propose_mutation(code) -> Diff
 
 ENTRYPOINTS:
-    brain.cortex.reason
-    brain.worldmodel.simulate
+    cortex.cortex.reason
+    cortex.worldmodel.simulate
 """

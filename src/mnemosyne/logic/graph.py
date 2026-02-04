@@ -3,12 +3,12 @@ from langchain_core.runnables import Runnable
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore
 
-from memory.logic.state import MemoryState
-from memory.logic.nodes.fetch_events import fetch_events
-from memory.logic.nodes.extract_facts import extract_facts
-from memory.logic.nodes.index_vectors import index_vectors
-from memory.logic.nodes.update_procedural import update_procedural
-from memory.logic.nodes.decay_prune import decay_prune
+from mnemosyne.logic.state import MemoryState
+from mnemosyne.logic.nodes.fetch_events import fetch_events
+from mnemosyne.logic.nodes.extract_facts import extract_facts
+from mnemosyne.logic.nodes.index_vectors import index_vectors
+from mnemosyne.logic.nodes.update_procedural import update_procedural
+from mnemosyne.logic.nodes.decay_prune import decay_prune
 
 def build_memory_graph(llm: Runnable, vector_store: VectorStore, embeddings: Embeddings):
     """

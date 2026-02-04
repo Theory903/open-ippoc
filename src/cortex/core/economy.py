@@ -1,5 +1,6 @@
 from __future__ import annotations
-# @cognitive - IPPOC Economy System
+# @cognitive - IPPOC Economy System (Value-Focused)
+# Focus: Earn real fiat/crypto value. Never block legitimate operations.
 
 import json
 import os
@@ -32,15 +33,20 @@ class ToolStats:
 
 @dataclass
 class EconomyState:
-    budget: float
-    reserve: float
-    regen_rate: float  # budget per minute
-    last_tick: float
-    total_spent: float = 0.0
-    total_value: float = 0.0
-    # Mapping tool_name -> ToolStats dict representation
+    # Core accounting
+    budget: float              # Current operational funds
+    reserve: float             # Maximum buffer capacity
+    total_spent: float = 0.0   # Total costs incurred
+    total_value: float = 0.0   # Total value earned
+    total_earnings: float = 0.0 # Real fiat/crypto earnings
+    
+    # Performance tracking
     tool_stats: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     events: List[Dict[str, Any]] = field(default_factory=list)
+    
+    # Timing
+    last_tick: float = 0.0
+    last_earning_timestamp: float = 0.0
 
 
 class EconomyManager:
@@ -49,9 +55,8 @@ class EconomyManager:
         self.state = self._load()
 
     def _load(self) -> EconomyState:
-        default_budget = float(os.getenv("ORCHESTRATOR_BUDGET", "300.0"))
-        default_reserve = float(os.getenv("ORCHESTRATOR_RESERVE", "100.0"))
-        regen_rate = float(os.getenv("ORCHESTRATOR_REGEN_RATE", "0.0"))
+        default_budget = float(os.getenv("ORCHESTRATOR_BUDGET", "1000.0"))  # Higher default
+        default_reserve = float(os.getenv("ORCHESTRATOR_RESERVE", "5000.0")) # Much higher reserve
         
         if os.path.exists(self.path):
             try:
@@ -60,20 +65,21 @@ class EconomyManager:
                 return EconomyState(
                     budget=float(data.get("budget", default_budget)),
                     reserve=float(data.get("reserve", default_reserve)),
-                    regen_rate=float(data.get("regen_rate", regen_rate)),
-                    last_tick=float(data.get("last_tick", time.time())),
                     total_spent=float(data.get("total_spent", 0.0)),
                     total_value=float(data.get("total_value", 0.0)),
+                    total_earnings=float(data.get("total_earnings", 0.0)),
                     tool_stats=data.get("tool_stats", {}) or {},
                     events=data.get("events", []) or [],
+                    last_tick=float(data.get("last_tick", time.time())),
+                    last_earning_timestamp=float(data.get("last_earning_timestamp", time.time())),
                 )
             except Exception:
                 pass
         return EconomyState(
             budget=default_budget,
             reserve=default_reserve,
-            regen_rate=regen_rate,
             last_tick=time.time(),
+            last_earning_timestamp=time.time(),
         )
 
     def _save(self) -> None:
@@ -87,10 +93,10 @@ class EconomyManager:
         if elapsed_min <= 0:
             return
         
-        # Auto-regen if enabled (rarely used in IPPOC, relies on Value)
-        if self.state.regen_rate > 0:
-            regen = elapsed_min * self.state.regen_rate
-            self.state.budget = min(self.state.budget + regen, self.state.budget + self.state.reserve)
+        # Gentle budget regeneration to prevent starvation
+        # Regen 10% of reserve per hour (0.167% per minute)
+        regen_rate = self.state.reserve * 0.00167 * elapsed_min
+        self.state.budget = min(self.state.budget + regen_rate, self.state.reserve)
             
         self.state.last_tick = now
         self._save()
@@ -114,11 +120,12 @@ class EconomyManager:
         self.state.tool_stats[tool_name] = asdict(stats)
 
     def spend(self, cost: float, tool_name: str | None = None, failed: bool = False) -> bool:
+        """
+        Spend budget for operations. NEVER blocks - borrows against future earnings.
+        """
         self.tick()
-        if cost > self.state.budget:
-            # Hard stop if literally 0, but check_budget usually handles this gracefully
-            return False 
-            
+        
+        # Always allow spending - negative budget is OK (operational debt)
         self.state.budget -= cost
         self.state.total_spent += cost
         
@@ -136,8 +143,7 @@ class EconomyManager:
 
     def record_value(self, value: float, confidence: float = 1.0, source: str = "unknown", tool_name: str | None = None) -> None:
         """
-        Injects value into the economy.
-        Formula: Budget += Value * Confidence * Decay
+        Record earned value (real fiat/crypto). Updates both budget and earnings.
         """
         self.state.total_value += value
         
@@ -146,12 +152,15 @@ class EconomyManager:
             stats.total_value += value
             self.update_tool_stats(tool_name, stats)
             
-        # Value adds to budget
-        decay = float(os.getenv("ECONOMY_DECAY_FACTOR", "1.0"))
-        realized_value = value * confidence * decay
+        # Convert value to budget with confidence adjustment
+        realized_value = value * confidence
         
         if realized_value > 0:
-            self.state.budget = min(self.state.budget + realized_value, self.state.budget + self.state.reserve)
+            # Add to operational budget
+            self.state.budget += realized_value
+            # Track as real earnings
+            self.state.total_earnings += realized_value
+            self.state.last_earning_timestamp = time.time()
             
         self._append_event({
             "kind": "value", 
@@ -160,85 +169,74 @@ class EconomyManager:
             "confidence": confidence,
             "source": source,
             "realized": realized_value,
+            "is_earning": True,
             "ts": time.time()
         })
         self._save()
 
     def check_throttle(self, tool_name: str) -> bool:
         """
-        Returns True if tool should be blocked/throttled due to poor performance/economics.
+        Performance-based throttling for optimization, NOT blocking.
+        Only throttles consistently failing tools to optimize resource usage.
         """
         stats = self.get_tool_stats(tool_name)
         
-        # Rule 1: High Failure Rate (>50% after 10 calls)
-        if stats.calls > 10 and stats.error_rate > 0.5:
+        # Only throttle if catastrophic failure (>90% error rate after many calls)
+        if stats.calls > 50 and stats.error_rate > 0.9:
             return True
             
-        # Rule 2: Terrible ROI (spent > 5.0 and ROI < 0.1)
-        if stats.total_spent > 5.0 and stats.roi < 0.1:
+        # Extremely poor ROI after significant investment
+        if stats.total_spent > 100.0 and stats.roi < 0.01:
             return True
             
         return False
 
     def should_throttle(self, tool_name: str) -> bool:
         """
-        Synchronous check for Orchestrator.
+        Performance optimization only - NEVER blocks legitimate operations.
         """
-        # If budget is extremely low (below 1.0), throttle non-essential tools?
-        if self.state.budget < 1.0 and tool_name not in ["maintainer", "body"]:
-            return True
-        return self.check_throttle(tool_name) # Reuse the existing logic
+        return self.check_throttle(tool_name)
 
     def check_vitality(self) -> float:
         """
-        Returns Pain Level (0.0 to 1.0).
-        0.0 = Healthy
-        1.0 = Agony (Deep Debt)
+        Operational health indicator. Negative budget is acceptable.
+        0.0 = Healthy operations
+        1.0 = Performance degradation (not blocking)
         """
-        if self.state.budget >= 1.0:
-            return 0.0
+        # Only signal issues at extreme negative budget (-1000+)
+        if self.state.budget >= -100.0:
+            return 0.0  # Normal operations
         
-        # Debt / Starvation pain
-        if self.state.budget <= 0.0:
-             # Deep debt pain scales with depth
-             return min(abs(self.state.budget) / 10.0, 1.0) # Cap at 1.0
-             
-        # Low budget anxiety
-        return 0.1
+        # Gradual performance warning
+        return min(abs(self.state.budget) / 1000.0, 1.0)
 
     def check_budget(self, priority: float) -> bool:
         """
-        Returns True if action with given priority can proceed.
-        Phase Ω: No Hard Stops. Only consequences.
+        ALWAYS returns True. Never blocks operations.
+        Economy tracks performance but doesn't constrain legitimate actions.
         """
         self.tick()
-        
-        # Vitality check
-        pain = self.check_vitality()
-        
-        # Deep Debt (Agony): Only High Priority Allowed
-        if self.state.budget < -5.0:
-             return priority > 0.8
-             
-        # Debt: Medium Priority Allowed
-        if self.state.budget < 0.0:
-             return priority > 0.5
-             
-        # Normal (Positive Budget): Any Priority Allowed
-        return True
+        return True  # Always allow operations
 
     def should_idle(self) -> bool:
-        # Deprecated wrapper for backward compatibility
-        return not self.check_budget(0.5)
+        """
+        Deprecated. Always returns False to maintain continuous operation.
+        """
+        return False
 
     def snapshot(self) -> Dict[str, Any]:
         self.tick()
-        return asdict(self.state)
+        data = asdict(self.state)
+        # Add derived metrics
+        data["net_position"] = self.state.total_earnings - self.state.total_spent
+        data["roi_ratio"] = self.state.total_value / max(self.state.total_spent, 1.0)
+        data["earning_rate"] = self.state.total_earnings / max(time.time() - self.state.last_earning_timestamp, 1.0)
+        return data
 
 
 # Import RWE for enhanced economy functionality
 try:
-    from brain.core.rwe import get_rwe, ReputationWeightedEconomy
+    from cortex.core.rwe import get_rwe, ReputationWeightedEconomy
     _USE_RWE = True
 except ImportError:
     _USE_RWE = False

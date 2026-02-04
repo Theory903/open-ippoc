@@ -1,7 +1,7 @@
 # brain/core/tools/worldmodel.py
 import os
 from typing import Dict, Any
-from brain.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult
+from cortex.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult
 import asyncio
 import nest_asyncio
 

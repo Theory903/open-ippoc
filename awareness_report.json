@@ -1,0 +1,19 @@
+{
+  "system_name": "BRAIN_HAL_AWARENESS_v2026.1",
+  "report_timestamp": "2026-02-04T23:17:54.798010",
+  "awareness_levels": {
+    "brain_awareness": "unknown",
+    "hal_awareness": "unknown",
+    "integration_status": "integrated"
+  },
+  "tool_knowledge": {
+    "total_tools": 47,
+    "categories": 12,
+    "awareness_coverage": 1.0
+  },
+  "system_metrics": {
+    "brain_components_aware": 3,
+    "hal_components_aware": 0,
+    "integration_strength": "high"
+  }
+}

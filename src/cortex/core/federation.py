@@ -26,7 +26,7 @@ class FederationManager:
         """
         Broadcasts: "Here is who I am."
         """
-        from brain.core.canon import CANON_VIOLATIONS # Use as fingerprint
+        from cortex.core.canon import CANON_VIOLATIONS # Use as fingerprint
         fp = hashlib.sha256(json.dumps(CANON_VIOLATIONS).encode()).hexdigest()[:16]
         
         return {

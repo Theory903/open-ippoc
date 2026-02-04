@@ -1,0 +1,39 @@
+{
+  "budget": 125.01796603024023,
+  "reserve": 5000.0,
+  "total_spent": 1000.0,
+  "total_value": 150.0,
+  "total_earnings": 125.0,
+  "tool_stats": {},
+  "events": [
+    {
+      "kind": "value",
+      "tool": null,
+      "value": 100.0,
+      "confidence": 0.8,
+      "source": "test_freelance",
+      "realized": 80.0,
+      "is_earning": true,
+      "ts": 1770218390.671104
+    },
+    {
+      "kind": "value",
+      "tool": null,
+      "value": 50.0,
+      "confidence": 0.9,
+      "source": "test_content",
+      "realized": 45.0,
+      "is_earning": true,
+      "ts": 1770218390.671372
+    },
+    {
+      "kind": "spend",
+      "tool": null,
+      "cost": 1000.0,
+      "failed": false,
+      "ts": 1770218390.6718788
+    }
+  ],
+  "last_tick": 1770218390.8001971,
+  "last_earning_timestamp": 1770218390.671372
+}

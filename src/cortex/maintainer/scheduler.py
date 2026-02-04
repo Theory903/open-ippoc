@@ -1,8 +1,8 @@
 # brain/maintainer/scheduler.py
 
-from brain.maintainer.observer import collect_signals
-from brain.maintainer.pain import score_pain
-from brain.maintainer.evolution_loop import maybe_evolve
+from cortex.maintainer.observer import collect_signals
+from cortex.maintainer.pain import score_pain
+from cortex.maintainer.evolution_loop import maybe_evolve
 
 def maintainer_tick():
     """

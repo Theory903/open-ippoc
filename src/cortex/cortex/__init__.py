@@ -1,6 +1,6 @@
 # __init__.py
 """
-MODULE: brain.cortex
+MODULE: cortex.cortex
 
 ROLE:
     Deep reasoning engine (LLM Logic).
@@ -19,5 +19,5 @@ PUBLIC API:
     - solve(problem) -> Solution
 
 ENTRYPOINTS:
-    brain.cortex.think
+    cortex.cortex.think
 """

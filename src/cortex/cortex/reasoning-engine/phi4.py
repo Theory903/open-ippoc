@@ -3,7 +3,7 @@ phi4.py
 
 ROLE:
     Wrapper for Phi-4-reasoning model.
-    Provides the core inference logic for the Brain.
+    Provides the core inference logic for the cortex.
 
 OWNERSHIP:
     Brain subsystem.

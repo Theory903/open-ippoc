@@ -1,6 +1,6 @@
 # __init__.py
 """
-MODULE: brain.worldmodel
+MODULE: cortex.worldmodel
 
 ROLE:
     Simulation metaverse for safe testing.

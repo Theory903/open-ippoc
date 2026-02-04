@@ -11,8 +11,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy memory system
-COPY mnemosyne/ /app/
-COPY requirements.txt /app/
+COPY src/mnemosyne/ /app/
+COPY src/mnemosyne/requirements.txt /app/
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt

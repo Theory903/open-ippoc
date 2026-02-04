@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  # Brain Services
+  memory-service:
+    build:
+      context: .
+      dockerfile: ./src/infra/docker/Dockerfile.mnemosyne
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONPATH=/app
+      - PORT=8000
+    networks:
+      - ippoc-network
+    volumes:
+      - ./data/memory:/app/data
+      
+  cortex-service:
+    build:
+      context: .
+      dockerfile: ./src/infra/docker/Dockerfile.cortex
+    ports:
+      - "8001:8001"
+    environment:
+      - PYTHONPATH=/app
+      - PORT=8001
+      - MEMORY_SERVICE_URL=http://memory-service:8000
+    networks:
+      - ippoc-network
+    depends_on:
+      - memory-service
+    volumes:
+      - ./data/cortex:/app/data
+
+networks:
+  ippoc-network:
+    driver: bridge
+
+volumes:
+  memory-data:
+  cortex-data:

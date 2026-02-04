@@ -1,5 +1,5 @@
 from fastapi.testclient import TestClient
-from brain.cortex.server import app
+from cortex.cortex.server import app
 
 client = TestClient(app)
 

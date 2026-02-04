@@ -2,10 +2,10 @@
 # @cognitive - Market Evaluator (The Gatekeeper)
 
 from typing import Dict, Any
-from brain.market.contracts import ExternalWorkUnit, MarketDecision
-from brain.core.intents import Intent, IntentType
-from brain.core.canon import evaluate_alignment
-from brain.core.economy import get_economy
+from cortex.market.contracts import ExternalWorkUnit, MarketDecision
+from cortex.core.intents import Intent, IntentType
+from cortex.core.canon import evaluate_alignment
+from cortex.core.economy import get_economy
 
 class MarketEvaluator:
     def __init__(self):

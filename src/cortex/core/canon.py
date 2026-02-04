@@ -4,7 +4,7 @@
 # These rules are non-negotiable and override all other priorities.
 
 from typing import Optional, Dict, Any
-from brain.core.intents import Intent
+from cortex.core.intents import Intent
 
 # Inviolate Rules
 CANON_VIOLATIONS = [

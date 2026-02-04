@@ -1,6 +1,6 @@
 # brain/maintainer/pain.py
 
-from brain.maintainer.types import SignalSummary, PainScore
+from cortex.maintainer.types import SignalSummary, PainScore
 
 def score_pain(signals: SignalSummary) -> PainScore:
     """

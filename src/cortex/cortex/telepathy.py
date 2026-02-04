@@ -123,7 +123,7 @@ class TelepathySwarm:
     async def handle_incoming(self, message: TelepathyMessage):
         """
         Process incoming messages.
-        Filter by reputation, validate signature, then ingest into Brain.
+        Filter by reputation, validate signature, then ingest into cortex.
         """
         print(f"[Telepathy] Received from {message.sender}: {message.content}")
         

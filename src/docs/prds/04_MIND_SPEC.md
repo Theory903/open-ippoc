@@ -9,7 +9,7 @@ The Mind is primarily **OpenClaw** (existing conversational agent) acting as the
 -   **Protocol**: Talk to Brain via `libs/cerebrum` (local) or API.
 
 ## 2. Translation Layer
--   **Input**: Compressed "Thought Packet" from Brain.
+-   **Input**: Compressed "Thought Packet" from cortex.
 -   **Process**: Expansion -> Personality Filter -> Natural Language.
 -   **Output**: Human-readable text/audio.
 

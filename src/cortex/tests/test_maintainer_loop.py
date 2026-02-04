@@ -1,10 +1,10 @@
 # brain/tests/test_maintainer_loop.py
 
 import pytest
-from brain.maintainer.types import SignalSummary, PainScore, MentorAdvice
-from brain.maintainer.pain import score_pain
-from brain.maintainer.evolution_loop import maybe_evolve
-from brain.core.bootstrap import bootstrap_tools
+from cortex.maintainer.types import SignalSummary, PainScore, MentorAdvice
+from cortex.maintainer.pain import score_pain
+from cortex.maintainer.evolution_loop import maybe_evolve
+from cortex.core.bootstrap import bootstrap_tools
 
 # --- Stub Data ---
 def get_high_pain_signals():
@@ -39,7 +39,7 @@ def test_maintainer_decision_making():
     # but here calling it is safe as Singleton handles re-init checks (mostly).
     bootstrap_tools()
     
-    from brain.core.orchestrator import get_orchestrator
+    from cortex.core.orchestrator import get_orchestrator
     
     # 1. High Pain Scenario -> Should trigger Evolution Tool Call
     # We mock the orchestrator.invoke to spy on it
@@ -49,7 +49,7 @@ def test_maintainer_decision_making():
     calls = []
     def mock_invoke(envelope):
         calls.append(envelope)
-        from brain.core.tools.base import ToolResult
+        from cortex.core.tools.base import ToolResult
         return ToolResult(success=True, output="Mocked Proposal", cost_spent=1.0)
     
     orc.invoke = mock_invoke

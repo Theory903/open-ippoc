@@ -1,8 +1,8 @@
 # brain/gateway/openclaw_mapper.py
 # @cognitive - OpenClaw Action Mapper
 
-from brain.core.intents import Intent, IntentType
-from brain.gateway.openclaw_plugin_map import PLUGIN_ORGAN_MAP
+from cortex.core.intents import Intent, IntentType
+from cortex.gateway.openclaw_plugin_map import PLUGIN_ORGAN_MAP
 
 def map_plugin_to_intent(plugin_name: str, payload: dict) -> Intent:
     organ = PLUGIN_ORGAN_MAP.get(plugin_name)

@@ -1,8 +1,8 @@
 # brain/gateway/openclaw_guard.py
 # @cognitive - OpenClaw Safety Gate
 
-from brain.core.canon import violates_canon
-from brain.core.intents import Intent
+from cortex.core.canon import violates_canon
+from cortex.core.intents import Intent
 
 def guard_openclaw_request(payload: dict) -> None:
     """

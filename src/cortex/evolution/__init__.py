@@ -1,6 +1,6 @@
 # __init__.py
 """
-MODULE: brain.evolution
+MODULE: cortex.evolution
 
 ROLE:
     Self-improvement engine.
@@ -19,5 +19,5 @@ PUBLIC API:
     - review_mutation(id) -> Vote
 
 ENTRYPOINTS:
-    brain.evolution.propose
+    cortex.evolution.propose
 """

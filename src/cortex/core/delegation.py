@@ -5,7 +5,7 @@ import uuid
 import time
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
-from brain.core.economy import get_economy
+from cortex.core.economy import get_economy
 
 @dataclass
 class DelegationContract:

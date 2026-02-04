@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from brain.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult
-from brain.core.economy import get_economy
-from brain.core.exceptions import ToolExecutionError
-from brain.core.orchestrator import require_spine
+from cortex.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult
+from cortex.core.economy import get_economy
+from cortex.core.exceptions import ToolExecutionError
+from cortex.core.orchestrator import require_spine
 
 
 class EconomyAdapter(IPPOC_Tool):

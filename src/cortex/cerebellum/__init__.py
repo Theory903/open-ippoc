@@ -1,6 +1,6 @@
 # __init__.py
 """
-MODULE: brain.cerebellum
+MODULE: cortex.cerebellum
 
 ROLE:
     Paper-to-Code learning engine (Research Assistant).

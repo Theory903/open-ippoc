@@ -49,11 +49,11 @@ async fn main() -> anyhow::Result<()> {
                 query,
                 context_history: context,
             };
-            let resp = brain.think(req).await?;
+            let resp = cortex.think(req).await?;
             println!("{}", serde_json::to_string_pretty(&resp)?);
         }
         Commands::Recall { query } => {
-            let memories = brain.recall(&query).await?;
+            let memories = cortex.recall(&query).await?;
             println!("{}", serde_json::to_string_pretty(&memories)?);
         }
     }

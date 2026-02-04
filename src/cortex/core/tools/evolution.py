@@ -3,10 +3,10 @@
 import os
 import asyncio
 from typing import Optional
-from brain.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult
-from brain.core.exceptions import ToolExecutionError, SecurityViolation
-# Assuming brain.evolution has a propose_mutation function
-# from brain.evolution import propose_mutation
+from cortex.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult
+from cortex.core.exceptions import ToolExecutionError, SecurityViolation
+# Assuming cortex.evolution has a propose_mutation function
+# from cortex.evolution import propose_mutation
 
 class EvolutionAdapter(IPPOC_Tool):
     """
@@ -44,8 +44,8 @@ class EvolutionAdapter(IPPOC_Tool):
         if not diff_code:
              raise ToolExecutionError(envelope.tool_name, "Context missing 'diff'")
              
-        # Mocking the actual call to brain.evolution for now
-        # In full implementation: proposal_id = brain.evolution.propose(diff_code)
+        # Mocking the actual call to cortex.evolution for now
+        # In full implementation: proposal_id = cortex.evolution.propose(diff_code)
         proposal_id = f"prop_{os.urandom(4).hex()}"
         
         return ToolResult(

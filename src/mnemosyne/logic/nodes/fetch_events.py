@@ -1,4 +1,4 @@
-from memory.logic.state import MemoryState
+from mnemosyne.logic.state import MemoryState
 
 def fetch_events(state: MemoryState) -> dict:
     """

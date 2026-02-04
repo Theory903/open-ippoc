@@ -46,8 +46,8 @@ The system is composed of two distinct entities that must never merge.
 
 3.  **The Orchestrator Gate**:
     - ALL actions (external API calls, expensive computations, file writes) MUST pass through the `ToolOrchestrator`.
-    - No direct HTTP requests from the Brain.
-    - No direct shell execution from the Brain.
+    - No direct HTTP requests from the cortex.
+    - No direct shell execution from the cortex.
 
 ---
 

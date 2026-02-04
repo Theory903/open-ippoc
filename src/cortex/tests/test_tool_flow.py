@@ -1,10 +1,10 @@
 # brain/tests/test_tool_flow.py
 
 import pytest
-from brain.core.orchestrator import get_orchestrator
-from brain.core.tools.base import ToolInvocationEnvelope
-from brain.core.bootstrap import bootstrap_tools
-from brain.core.exceptions import ToolExecutionError, BudgetExceeded
+from cortex.core.orchestrator import get_orchestrator
+from cortex.core.tools.base import ToolInvocationEnvelope
+from cortex.core.bootstrap import bootstrap_tools
+from cortex.core.exceptions import ToolExecutionError, BudgetExceeded
 # We'll mock the actual Adapter execute methods to avoid network calls during unit test
 
 def test_tool_registration():
@@ -52,7 +52,7 @@ def test_invocation_flow():
     original_execute = memory_tool._async_execute
     
     async def mock_execute(envelope):
-        from brain.core.tools.base import ToolResult
+        from cortex.core.tools.base import ToolResult
         return ToolResult(success=True, output="Mocked Memory Success", cost_spent=0.5)
     
     memory_tool._async_execute = mock_execute

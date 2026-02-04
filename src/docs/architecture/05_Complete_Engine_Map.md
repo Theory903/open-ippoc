@@ -78,4 +78,4 @@
 23. Self-Evolution Engine.
 
 **Total:** 21 Mandatory Engines.
-**Paradigm:** Computational Brain. Not Microservices.
+**Paradigm:** Computational cortex. Not Microservices.

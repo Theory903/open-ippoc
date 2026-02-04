@@ -1,10 +1,10 @@
 from typing import TypedDict, List, Annotated, Optional
 import operator
-from brain.core.orchestrator import get_orchestrator
-from brain.core.tools.base import ToolInvocationEnvelope
-from brain.cortex.two_tower import TwoTowerEngine
-from brain.cortex.telepathy import TelepathySwarm
-from brain.cortex.schemas import CognitiveState, Signal
+from cortex.core.orchestrator import get_orchestrator
+from cortex.core.tools.base import ToolInvocationEnvelope
+from cortex.cortex.two_tower import TwoTowerEngine
+from cortex.cortex.telepathy import TelepathySwarm
+from cortex.cortex.schemas import CognitiveState, Signal
 try:
     from langgraph.graph import StateGraph, END
 except ImportError:

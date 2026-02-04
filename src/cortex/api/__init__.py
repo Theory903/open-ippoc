@@ -1,10 +1,10 @@
 # __init__.py
 """
-MODULE: brain.api
+MODULE: cortex.api
 
 ROLE:
     External Thought Interfaces.
-    OpenAI-compatible API for external tools/Mind to talk to Brain.
+    OpenAI-compatible API for external tools/Mind to talk to cortex.
 
 OWNERSHIP:
     Brain subsystem.
@@ -17,5 +17,5 @@ PUBLIC API:
     - POST /v1/embeddings
 
 ENTRYPOINTS:
-    brain.api.server
+    cortex.api.server
 """

@@ -1,8 +1,8 @@
 # brain/maintainer/memory.py
 
 from typing import Dict, Any
-from brain.core.orchestrator import get_orchestrator
-from brain.core.tools.base import ToolInvocationEnvelope
+from cortex.core.orchestrator import get_orchestrator
+from cortex.core.tools.base import ToolInvocationEnvelope
 
 def record_maintainer_event(event_type: str, details: Dict[str, Any]):
     """
@@ -17,7 +17,7 @@ def record_maintainer_event(event_type: str, details: Dict[str, Any]):
         action="store_episodic",
         context={
             "content": f"[MAINTAINER] {event_type}: {str(details)}",
-            "source": "ippoc.brain.maintainer",
+            "source": "ippoc.cortex.maintainer",
             "metadata": {"type": "system_health_log", "event": event_type}
         },
         risk_level="low",

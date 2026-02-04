@@ -1,6 +1,6 @@
 from typing import List, Dict, Optional
 import random
-from brain.cortex.schemas import (
+from cortex.cortex.schemas import (
     DemandSignal, 
     EconomicIdea, 
     EconomicDecision, 

@@ -1,10 +1,10 @@
 # brain/maintainer/evolution_loop.py
 
-from brain.maintainer.types import PainScore, SignalSummary
-from brain.maintainer.mentor import ask_mentors
-from brain.maintainer.memory import record_maintainer_event
-from brain.core.orchestrator import get_orchestrator
-from brain.core.tools.base import ToolInvocationEnvelope
+from cortex.maintainer.types import PainScore, SignalSummary
+from cortex.maintainer.mentor import ask_mentors
+from cortex.maintainer.memory import record_maintainer_event
+from cortex.core.orchestrator import get_orchestrator
+from cortex.core.tools.base import ToolInvocationEnvelope
 
 def maybe_evolve(pain: PainScore, signals: SignalSummary):
     """

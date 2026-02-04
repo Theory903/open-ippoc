@@ -58,7 +58,7 @@ vendor/
 **/vendor/
 *.log
 **/*.log
-/brain/brain.log
+/brain/cortex.log
 /body/body.log
 /mind/mind.log
 memory/db.sqlite*

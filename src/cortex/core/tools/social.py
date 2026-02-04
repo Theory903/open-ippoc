@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 import os
 from typing import Dict, Any
-from brain.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult
-from brain.core.exceptions import ToolExecutionError
+from cortex.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult
+from cortex.core.exceptions import ToolExecutionError
 
 
 class SocialAdapter(IPPOC_Tool):

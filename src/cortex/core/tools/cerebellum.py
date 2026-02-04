@@ -1,7 +1,7 @@
 # brain/core/tools/cerebellum.py
 
 from typing import Dict, Any, Optional
-from brain.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult
+from cortex.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult
 import asyncio
 import os
 import nest_asyncio # Imported here for consistency, though it's in execute method in snippet

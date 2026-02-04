@@ -11,8 +11,8 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional, Tuple
 from functools import lru_cache
 
-from brain.core.ledger import get_ledger
-from brain.core.orchestrator import get_orchestrator
+from cortex.core.ledger import get_ledger
+from cortex.core.orchestrator import get_orchestrator
 from .consolidation import MemoryEntry, Hippocampus
 
 

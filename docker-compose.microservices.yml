@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  # Brain Services
+  memory-service:
+    build:
+      context: .
+      dockerfile: ./src/infra/docker/Dockerfile.mnemosyne
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONPATH=/app
+      - PORT=8000
+    networks:
+      - ippoc-network
+    volumes:
+      - ./data/memory:/app/data
+      
+  cortex-service:
+    build:
+      context: .
+      dockerfile: ./src/infra/docker/Dockerfile.cortex
+    ports:
+      - "8001:8001"
+    environment:
+      - PYTHONPATH=/app
+      - PORT=8001
+      - MEMORY_SERVICE_URL=http://memory-service:8000
+    networks:
+      - ippoc-network
+    depends_on:
+      - memory-service
+    volumes:
+      - ./data/cortex:/app/data
+
+  # Body Services  
+  openclaw-service:
+    build:
+      context: ./src/kernel/openclaw
+      dockerfile: Dockerfile
+    command: ["sh", "-c", "pnpm ui:build && node openclaw.mjs --allow-unconfigured"]
+    ports:
+      - "18789:18789"
+    environment:
+      - NODE_ENV=production
+      - CORTEX_SERVICE_URL=http://cortex-service:8001
+      - MEMORY_SERVICE_URL=http://memory-service:8000
+      - GATEWAY_MODE=local
+    networks:
+      - ippoc-network
+    depends_on:
+      - cortex-service
+      - memory-service
+    volumes:
+      - ./data/openclaw:/app/data
+      - ~/.openclaw:/root/.openclaw
+
+  # Service Mesh
+  consul:
+    image: hashicorp/consul:latest
+    ports:
+      - "8500:8500"
+      - "8600:8600/tcp"
+      - "8600:8600/udp"
+    command: agent -server -bootstrap-expect=1 -ui -client=0.0.0.0
+    networks:
+      - ippoc-network
+
+  envoy:
+    image: envoyproxy/envoy:v1.28-latest
+    ports:
+      - "10000:10000"
+    volumes:
+      - ./config/envoy.yaml:/etc/envoy/envoy.yaml
+    networks:
+      - ippoc-network
+    depends_on:
+      - consul
+
+networks:
+  ippoc-network:
+    driver: bridge
+
+volumes:
+  memory-data:
+  cortex-data:
+  openclaw-data:

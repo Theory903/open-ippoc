@@ -2,8 +2,8 @@ from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional
 import asyncio
-from brain.core.orchestrator import get_orchestrator
-from brain.core.tools.base import ToolInvocationEnvelope
+from cortex.core.orchestrator import get_orchestrator
+from cortex.core.tools.base import ToolInvocationEnvelope
 
 # Initialize Orchestrator access (Singleton)
 orchestrator = get_orchestrator()

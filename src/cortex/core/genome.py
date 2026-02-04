@@ -5,8 +5,8 @@ import json
 import hashlib
 from typing import Dict, Any
 
-from brain.core.canon import CANON_VIOLATIONS, evaluate_alignment
-from brain.core.intents import Intent, IntentType
+from cortex.core.canon import CANON_VIOLATIONS, evaluate_alignment
+from cortex.core.intents import Intent, IntentType
 
 class GenomeSerializer:
     def __init__(self):

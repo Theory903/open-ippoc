@@ -2,8 +2,8 @@
 # @cognitive - Operator Vital Signs
 
 from typing import Dict, Any
-from brain.core.economy import get_economy
-from brain.core.autonomy import AutonomyController
+from cortex.core.economy import get_economy
+from cortex.core.autonomy import AutonomyController
 
 
 async def get_vital_signs() -> Dict[str, Any]:
@@ -20,12 +20,12 @@ async def get_vital_signs() -> Dict[str, Any]:
     # 2. Signals (Pain)
     # We use the internal observer or collect fresh signals
     # Since collect_signals is async, we can await it
-    from brain.maintainer.observer import collect_signals
+    from cortex.maintainer.observer import collect_signals
     signals = await collect_signals()
     
     # 3. Last Refusal (Sovereignty)
     # We check the explainability log for the last "reject" decision
-    from brain.gateway.timeline import get_decision_history
+    from cortex.gateway.timeline import get_decision_history
     history = get_decision_history(limit=50) # fetch recent history
     last_refusal = next((h for h in history if h.get("decision", {}).get("action") == "reject"), None)
 

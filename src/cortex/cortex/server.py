@@ -11,18 +11,18 @@ from typing import List, Optional, Dict, Any, Literal
 from contextlib import asynccontextmanager
 
 # Import new Cognitive Core
-from brain.cortex.schemas import Signal, ActionCandidate, TelepathyMessage, ChatRoom
-from brain.cortex.two_tower import TwoTowerEngine
-from brain.cortex.telepathy import TelepathySwarm, TransportLayer, HttpTransport, MeshTransport
-from brain.cortex.langgraph_engine import LangGraphEngine    
-from brain.core.bootstrap import bootstrap_tools
-from brain.core.orchestrator import get_orchestrator
-from brain.core.tools.base import ToolInvocationEnvelope, ToolResult
-from brain.core.exceptions import ToolExecutionError, BudgetExceeded, SecurityViolation
-from brain.core.ledger import get_ledger, ExecutionStatus
-from brain.core.queue import get_queue
-from brain.core.autonomy import run_autonomy_loop
-from brain.cortex.persistence import ChatPersistence
+from cortex.cortex.schemas import Signal, ActionCandidate, TelepathyMessage, ChatRoom
+from cortex.cortex.two_tower import TwoTowerEngine
+from cortex.cortex.telepathy import TelepathySwarm, TransportLayer, HttpTransport, MeshTransport
+from cortex.cortex.langgraph_engine import LangGraphEngine    
+from cortex.core.bootstrap import bootstrap_tools
+from cortex.core.orchestrator import get_orchestrator
+from cortex.core.tools.base import ToolInvocationEnvelope, ToolResult
+from cortex.core.exceptions import ToolExecutionError, BudgetExceeded, SecurityViolation
+from cortex.core.ledger import get_ledger, ExecutionStatus
+from cortex.core.queue import get_queue
+from cortex.core.autonomy import run_autonomy_loop
+from cortex.cortex.persistence import ChatPersistence
 import nest_asyncio
 nest_asyncio.apply()
 

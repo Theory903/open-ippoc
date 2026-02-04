@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from brain.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult
-from brain.core.exceptions import ToolExecutionError
-from brain.maintainer.scheduler import maintainer_tick
+from cortex.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult
+from cortex.core.exceptions import ToolExecutionError
+from cortex.maintainer.scheduler import maintainer_tick
 
 
 class MaintainerAdapter(IPPOC_Tool):

@@ -9,8 +9,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy brain system
-COPY cortex/ /app/
-COPY requirements.txt /app/
+COPY src/cortex/ /app/
+COPY src/cortex/requirements.txt /app/
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt

@@ -1,4 +1,4 @@
-from memory.logic.state import MemoryState, ProceduralHint
+from mnemosyne.logic.state import MemoryState, ProceduralHint
 from langchain_core.runnables import Runnable
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser

@@ -32,7 +32,7 @@ It continuously recommends what to think next, using memory, patterns, budget, a
     *   Code drafts
     *   Questions
 
-This is the voice of the brain.
+This is the voice of the cortex.
 > "What should I try next?"
 > "This pattern feels familiar."
 > "Maybe refactor this module."

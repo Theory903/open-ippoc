@@ -15,8 +15,8 @@ Features:
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
 import time
-from brain.core.economy import EconomyManager, get_economy
-from brain.social.reputation import get_reputation_engine
+from cortex.core.economy import EconomyManager, get_economy
+from cortex.social.reputation import get_reputation_engine
 
 @dataclass
 class TrustMetrics:

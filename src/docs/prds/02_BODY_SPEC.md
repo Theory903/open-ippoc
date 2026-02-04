@@ -4,7 +4,7 @@
 > **RESPONSIBILITY**: Runtime, Networking, Hardware, Economy.
 
 ## 1. Runtime Architecture (Rust)
-The Body is the main process (`ippoc-node`). It spawns and monitors the Brain.
+The Body is the main process (`ippoc-node`). It spawns and monitors the cortex.
 -   **Safety**: Enforces invariants (e.g., kills Brain if it over heats GPU).
 -   **Performance**: Async Tokio runtime for high-throughput I/O.
 

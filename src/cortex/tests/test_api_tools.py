@@ -1,8 +1,8 @@
 # brain/tests/test_api_tools.py
 
 from fastapi.testclient import TestClient
-from brain.cortex.server import app
-from brain.core.bootstrap import bootstrap_tools
+from cortex.cortex.server import app
+from cortex.core.bootstrap import bootstrap_tools
 
 # Auth Header
 HEADERS = {"Authorization": "Bearer ippoc-secret-key"}

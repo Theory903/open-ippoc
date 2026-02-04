@@ -2,8 +2,8 @@ import requests
 import logging
 import os
 import json
-from brain.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult
-from brain.core.exceptions import ToolExecutionError
+from cortex.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult
+from cortex.core.exceptions import ToolExecutionError
 
 # Configure Logging
 logger = logging.getLogger("IPPOC.Memory")

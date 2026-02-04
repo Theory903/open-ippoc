@@ -3,7 +3,7 @@
 import json
 import os
 from typing import Dict
-from brain.cortex.schemas import ChatRoom
+from cortex.cortex.schemas import ChatRoom
 from pydantic import TypeAdapter
 
 class ChatPersistence:

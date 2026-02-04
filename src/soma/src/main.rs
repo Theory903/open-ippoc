@@ -370,9 +370,9 @@ async fn main() -> Result<()> {
             }
         }))
         .route("/webhook/openclaw", post({
-            let brain = brain.clone();
+            let brain = cortex.clone();
             move |Json(payload): Json<serde_json::Value>| {
-                let brain = brain.clone();
+                let brain = cortex.clone();
                 async move {
                     info!("Received signal from OpenClaw: {:?}", payload);
                     let query = payload.get("payload")
@@ -385,7 +385,7 @@ async fn main() -> Result<()> {
                          return Json(serde_json::json!({ "status": "ignored", "reason": "no query" }));
                     }
 
-                    let thought = brain.think(ThoughtRequest {
+                    let thought = cortex.think(ThoughtRequest {
                         query: query.to_string(),
                         context_history: vec![],
                     }).await;

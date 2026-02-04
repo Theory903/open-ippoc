@@ -6,7 +6,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from typing import Dict, Any, Optional, Literal
-from brain.core.economy import get_economy
+from cortex.core.economy import get_economy
 
 @dataclass
 class WorkUnit:

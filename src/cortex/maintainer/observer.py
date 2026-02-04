@@ -9,8 +9,8 @@ import os
 import time
 from typing import Any, Dict, List, Optional
 
-from brain.core.ledger import get_ledger
-from brain.maintainer.types import SignalSummary, PressureSource, Trend
+from cortex.core.ledger import get_ledger
+from cortex.maintainer.types import SignalSummary, PressureSource, Trend
 
 
 async def collect_signals() -> SignalSummary:
