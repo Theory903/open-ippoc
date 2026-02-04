@@ -1,6 +1,0 @@
-packages:
-  - "brain/*"
-  - "body/*"
-  - "mind/*"
-  - "memory"
-  - "evolution"

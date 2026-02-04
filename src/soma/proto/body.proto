@@ -1,0 +1,131 @@
+syntax = "proto3";
+
+package body;
+
+// Body Service for HAL/OpenClaw integration
+service BodyService {
+  // Network operations
+  rpc SendPacket(PacketRequest) returns (PacketResponse);
+  rpc GetPeerInfo(PeerRequest) returns (PeerResponse);
+  
+  // Cognitive operations
+  rpc MakeDecision(DecisionRequest) returns (DecisionResponse);
+  rpc EvaluateTrust(TrustEvaluationRequest) returns (TrustEvaluationResponse);
+  
+  // Resource management
+  rpc AllocateResources(ResourceAllocationRequest) returns (ResourceAllocationResponse);
+  rpc GetSystemMetrics(MetricsRequest) returns (MetricsResponse);
+  
+  // Evolution operations
+  rpc ProposeImprovement(ImprovementProposal) returns (ImprovementResponse);
+  rpc ApplyChange(ChangeRequest) returns (ChangeResponse);
+}
+
+// Network Messages
+message PacketRequest {
+  string destination_node = 1;
+  bytes payload = 2;
+  string packet_type = 3;
+  map<string, string> metadata = 4;
+}
+
+message PacketResponse {
+  bool success = 1;
+  string error_message = 2;
+  bytes response_data = 3;
+}
+
+message PeerRequest {
+  string peer_id = 1;
+}
+
+message PeerResponse {
+  string peer_id = 1;
+  string trust_level = 2;
+  uint64 last_seen = 3;
+  uint64 packet_count = 4;
+  bytes public_key = 5;
+}
+
+// Cognitive Messages
+message DecisionRequest {
+  string context = 1;
+  repeated string options = 2;
+  map<string, double> constraints = 3;
+  string priority = 4;
+}
+
+message DecisionResponse {
+  string selected_option = 1;
+  double confidence = 2;
+  string rationale = 3;
+  map<string, double> option_scores = 4;
+}
+
+message TrustEvaluationRequest {
+  string peer_id = 1;
+  string action_type = 2;
+  bytes packet_data = 3;
+}
+
+message TrustEvaluationResponse {
+  bool should_allow = 1;
+  string trust_level = 2;
+  string recommendation = 3;
+  double risk_score = 4;
+}
+
+// Resource Management
+message ResourceAllocationRequest {
+  string component = 1;
+  string resource_type = 2;
+  double amount = 3;
+  string priority = 4;
+}
+
+message ResourceAllocationResponse {
+  bool approved = 1;
+  double allocated_amount = 2;
+  string allocation_id = 3;
+  map<string, double> system_load = 4;
+}
+
+message MetricsRequest {
+  repeated string metric_types = 1;
+}
+
+message MetricsResponse {
+  map<string, double> cpu_usage = 1;
+  map<string, double> memory_usage = 2;
+  map<string, double> network_stats = 3;
+  map<string, double> disk_usage = 4;
+  uint64 timestamp = 5;
+}
+
+// Evolution Messages
+message ImprovementProposal {
+  string component = 1;
+  string change_type = 2;
+  string description = 3;
+  map<string, string> parameters = 4;
+  double expected_benefit = 5;
+}
+
+message ImprovementResponse {
+  bool approved = 1;
+  string implementation_plan = 2;
+  double risk_assessment = 3;
+  string testing_strategy = 4;
+}
+
+message ChangeRequest {
+  string change_id = 1;
+  bytes change_data = 2;
+  string validation_hash = 3;
+}
+
+message ChangeResponse {
+  bool applied = 1;
+  string result = 2;
+  string rollback_plan = 3;
+}

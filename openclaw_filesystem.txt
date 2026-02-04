@@ -1,0 +1,2922 @@
+OpenClaw Filesystem Structure
+=============================
+Generated on: Wed Feb  4 20:05:23 IST 2026
+
+extensions/
+├── bluebubbles
+│   ├── index.ts
+│   ├── openclaw.plugin.json
+│   ├── package.json
+│   └── src
+│       ├── accounts.ts
+│       ├── actions.ts
+│       ├── attachments.ts
+│       ├── channel.ts
+│       ├── chat.ts
+│       ├── config-schema.ts
+│       ├── media-send.ts
+│       ├── monitor.ts
+│       ├── onboarding.ts
+│       ├── probe.ts
+│       ├── reactions.ts
+│       ├── runtime.ts
+│       ├── send.ts
+│       ├── targets.ts
+│       └── types.ts
+├── copilot-proxy
+│   ├── README.md
+│   ├── index.ts
+│   ├── openclaw.plugin.json
+│   └── package.json
+├── diagnostics-otel
+│   ├── index.ts
+│   ├── openclaw.plugin.json
+│   ├── package.json
+│   └── src
+│       └── service.ts
+├── discord
+│   ├── index.ts
+│   ├── openclaw.plugin.json
+│   ├── package.json
+│   └── src
+│       ├── channel.ts
+│       └── runtime.ts
+├── google-antigravity-auth
+│   ├── README.md
+│   ├── index.ts
+│   ├── openclaw.plugin.json
+│   └── package.json
+├── google-gemini-cli-auth
+│   ├── README.md
+│   ├── index.ts
+│   ├── oauth.ts
+│   ├── openclaw.plugin.json
+│   └── package.json
+├── googlechat
+│   ├── index.ts
+│   ├── openclaw.plugin.json
+│   ├── package.json
+│   └── src
+│       ├── accounts.ts
+│       ├── actions.ts
+│       ├── api.ts
+│       ├── auth.ts
+│       ├── channel.ts
+│       ├── monitor.ts
+│       ├── onboarding.ts
+│       ├── runtime.ts
+│       ├── targets.ts
+│       ├── types.config.ts
+│       └── types.ts
+├── imessage
+│   ├── index.ts
+│   ├── openclaw.plugin.json
+│   ├── package.json
+│   └── src
+│       ├── channel.ts
+│       └── runtime.ts
+├── ippoc-integration
+│   ├── extension.json
+│   ├── gateway.ts
+│   ├── generic.ts
+│   ├── index.ts
+│   ├── memory.ts
+│   ├── openclaw.plugin.json
+│   └── package.json
+├── line
+│   ├── index.ts
+│   ├── openclaw.plugin.json
+│   ├── package.json
+│   └── src
+│       ├── card-command.ts
+│       ├── channel.ts
+│       └── runtime.ts
+├── llm-task
+│   ├── README.md
+│   ├── index.ts
+│   ├── openclaw.plugin.json
+│   ├── package.json
+│   └── src
+│       └── llm-task-tool.ts
+├── lobster
+│   ├── README.md
+│   ├── SKILL.md
+│   ├── index.ts
+│   ├── openclaw.plugin.json
+│   ├── package.json
+│   └── src
+│       └── lobster-tool.ts
+├── matrix
+│   ├── CHANGELOG.md
+│   ├── index.ts
+│   ├── openclaw.plugin.json
+│   ├── package.json
+│   └── src
+│       ├── actions.ts
+│       ├── channel.ts
+│       ├── config-schema.ts
+│       ├── directory-live.ts
+│       ├── group-mentions.ts
+│       ├── matrix
+│       │   ├── accounts.ts
+│       │   ├── actions
+│       │   │   ├── client.ts
+│       │   │   ├── messages.ts
+│       │   │   ├── pins.ts
+│       │   │   ├── reactions.ts
+│       │   │   ├── room.ts
+│       │   │   ├── summary.ts
+│       │   │   └── types.ts
+│       │   ├── actions.ts
+│       │   ├── active-client.ts
+│       │   ├── client
+│       │   │   ├── config.ts
+│       │   │   ├── create-client.ts
+│       │   │   ├── logging.ts
+│       │   │   ├── runtime.ts
+│       │   │   ├── shared.ts
+│       │   │   ├── storage.ts
+│       │   │   └── types.ts
+│       │   ├── client.ts
+│       │   ├── credentials.ts
+│       │   ├── deps.ts
+│       │   ├── format.ts
+│       │   ├── index.ts
+│       │   ├── monitor
+│       │   │   ├── allowlist.ts
+│       │   │   ├── auto-join.ts
+│       │   │   ├── direct.ts
+│       │   │   ├── events.ts
+│       │   │   ├── handler.ts
+│       │   │   ├── index.ts
+│       │   │   ├── location.ts
+│       │   │   ├── media.ts
+│       │   │   ├── mentions.ts
+│       │   │   ├── replies.ts
+│       │   │   ├── room-info.ts
+│       │   │   ├── rooms.ts
+│       │   │   ├── threads.ts
+│       │   │   └── types.ts
+│       │   ├── poll-types.ts
+│       │   ├── probe.ts
+│       │   ├── send
+│       │   │   ├── client.ts
+│       │   │   ├── formatting.ts
+│       │   │   ├── media.ts
+│       │   │   ├── targets.ts
+│       │   │   └── types.ts
+│       │   └── send.ts
+│       ├── onboarding.ts
+│       ├── outbound.ts
+│       ├── resolve-targets.ts
+│       ├── runtime.ts
+│       ├── tool-actions.ts
+│       └── types.ts
+├── mattermost
+│   ├── index.ts
+│   ├── openclaw.plugin.json
+│   ├── package.json
+│   └── src
+│       ├── channel.ts
+│       ├── config-schema.ts
+│       ├── group-mentions.ts
+│       ├── mattermost
+│       │   ├── accounts.ts
+│       │   ├── client.ts
+│       │   ├── index.ts
+│       │   ├── monitor-helpers.ts
+│       │   ├── monitor.ts
+│       │   ├── probe.ts
+│       │   └── send.ts
+│       ├── normalize.ts
+│       ├── onboarding-helpers.ts
+│       ├── onboarding.ts
+│       ├── runtime.ts
+│       └── types.ts
+├── memory-lancedb
+│   ├── config.ts
+│   ├── index.ts
+│   ├── openclaw.plugin.json
+│   └── package.json
+├── minimax-portal-auth
+│   ├── README.md
+│   ├── index.ts
+│   ├── oauth.ts
+│   ├── openclaw.plugin.json
+│   └── package.json
+├── msteams
+│   ├── CHANGELOG.md
+│   ├── index.ts
+│   ├── openclaw.plugin.json
+│   ├── package.json
+│   └── src
+│       ├── attachments
+│       │   ├── download.ts
+│       │   ├── graph.ts
+│       │   ├── html.ts
+│       │   ├── payload.ts
+│       │   ├── shared.ts
+│       │   └── types.ts
+│       ├── attachments.ts
+│       ├── channel.ts
+│       ├── conversation-store-fs.ts
+│       ├── conversation-store-memory.ts
+│       ├── conversation-store.ts
+│       ├── directory-live.ts
+│       ├── errors.ts
+│       ├── file-consent-helpers.ts
+│       ├── file-consent.ts
+│       ├── graph-chat.ts
+│       ├── graph-upload.ts
+│       ├── inbound.ts
+│       ├── index.ts
+│       ├── media-helpers.ts
+│       ├── messenger.ts
+│       ├── monitor-handler
+│       │   ├── inbound-media.ts
+│       │   └── message-handler.ts
+│       ├── monitor-handler.ts
+│       ├── monitor-types.ts
+│       ├── monitor.ts
+│       ├── onboarding.ts
+│       ├── outbound.ts
+│       ├── pending-uploads.ts
+│       ├── policy.ts
+│       ├── polls-store-memory.ts
+│       ├── polls.ts
+│       ├── probe.ts
+│       ├── reply-dispatcher.ts
+│       ├── resolve-allowlist.ts
+│       ├── runtime.ts
+│       ├── sdk-types.ts
+│       ├── sdk.ts
+│       ├── send-context.ts
+│       ├── send.ts
+│       ├── sent-message-cache.ts
+│       ├── storage.ts
+│       ├── store-fs.ts
+│       └── token.ts
+├── nextcloud-talk
+│   ├── index.ts
+│   ├── openclaw.plugin.json
+│   ├── package.json
+│   └── src
+│       ├── accounts.ts
+│       ├── channel.ts
+│       ├── config-schema.ts
+│       ├── format.ts
+│       ├── inbound.ts
+│       ├── monitor.ts
+│       ├── normalize.ts
+│       ├── onboarding.ts
+│       ├── policy.ts
+│       ├── room-info.ts
+│       ├── runtime.ts
+│       ├── send.ts
+│       ├── signature.ts
+│       └── types.ts
+├── nostr
+│   ├── CHANGELOG.md
+│   ├── README.md
+│   ├── index.ts
+│   ├── openclaw.plugin.json
+│   ├── package.json
+│   ├── src
+│   │   ├── channel.ts
+│   │   ├── config-schema.ts
+│   │   ├── metrics.ts
+│   │   ├── nostr-bus.ts
+│   │   ├── nostr-profile-http.ts
+│   │   ├── nostr-profile-import.ts
+│   │   ├── nostr-profile.ts
+│   │   ├── nostr-state-store.ts
+│   │   ├── runtime.ts
+│   │   ├── seen-tracker.ts
+│   │   └── types.ts
+│   └── test
+│       └── setup.ts
+├── open-prose
+│   ├── README.md
+│   ├── index.ts
+│   ├── openclaw.plugin.json
+│   ├── package.json
+│   └── skills
+│       └── prose
+│           ├── LICENSE
+│           ├── SKILL.md
+│           ├── alt-borges.md
+│           ├── alts
+│           │   ├── arabian-nights.md
+│           │   ├── borges.md
+│           │   ├── folk.md
+│           │   ├── homer.md
+│           │   └── kafka.md
+│           ├── compiler.md
+│           ├── examples
+│           │   ├── 01-hello-world.prose
+│           │   ├── 02-research-and-summarize.prose
+│           │   ├── 03-code-review.prose
+│           │   ├── 04-write-and-refine.prose
+│           │   ├── 05-debug-issue.prose
+│           │   ├── 06-explain-codebase.prose
+│           │   ├── 07-refactor.prose
+│           │   ├── 08-blog-post.prose
+│           │   ├── 09-research-with-agents.prose
+│           │   ├── 10-code-review-agents.prose
+│           │   ├── 11-skills-and-imports.prose
+│           │   ├── 12-secure-agent-permissions.prose
+│           │   ├── 13-variables-and-context.prose
+│           │   ├── 14-composition-blocks.prose
+│           │   ├── 15-inline-sequences.prose
+│           │   ├── 16-parallel-reviews.prose
+│           │   ├── 17-parallel-research.prose
+│           │   ├── 18-mixed-parallel-sequential.prose
+│           │   ├── 19-advanced-parallel.prose
+│           │   ├── 20-fixed-loops.prose
+│           │   ├── 21-pipeline-operations.prose
+│           │   ├── 22-error-handling.prose
+│           │   ├── 23-retry-with-backoff.prose
+│           │   ├── 24-choice-blocks.prose
+│           │   ├── 25-conditionals.prose
+│           │   ├── 26-parameterized-blocks.prose
+│           │   ├── 27-string-interpolation.prose
+│           │   ├── 28-automated-pr-review.prose
+│           │   ├── 28-gas-town.prose
+│           │   ├── 29-captains-chair.prose
+│           │   ├── 30-captains-chair-simple.prose
+│           │   ├── 31-captains-chair-with-memory.prose
+│           │   ├── 33-pr-review-autofix.prose
+│           │   ├── 34-content-pipeline.prose
+│           │   ├── 35-feature-factory.prose
+│           │   ├── 36-bug-hunter.prose
+│           │   ├── 37-the-forge.prose
+│           │   ├── 38-skill-scan.prose
+│           │   ├── 39-architect-by-simulation.prose
+│           │   ├── 40-rlm-self-refine.prose
+│           │   ├── 41-rlm-divide-conquer.prose
+│           │   ├── 42-rlm-filter-recurse.prose
+│           │   ├── 43-rlm-pairwise.prose
+│           │   ├── 44-run-endpoint-ux-test.prose
+│           │   ├── 45-plugin-release.prose
+│           │   ├── 45-run-endpoint-ux-test-with-remediation.prose
+│           │   ├── 46-run-endpoint-ux-test-fast.prose
+│           │   ├── 46-workflow-crystallizer.prose
+│           │   ├── 47-language-self-improvement.prose
+│           │   ├── 48-habit-miner.prose
+│           │   ├── 49-prose-run-retrospective.prose
+│           │   ├── README.md
+│           │   └── roadmap
+│           │       ├── README.md
+│           │       ├── iterative-refinement.prose
+│           │       ├── parallel-review.prose
+│           │       ├── simple-pipeline.prose
+│           │       └── syntax
+│           │           └── open-prose-syntax.prose
+│           ├── guidance
+│           │   ├── antipatterns.md
+│           │   ├── patterns.md
+│           │   └── system-prompt.md
+│           ├── help.md
+│           ├── lib
+│           │   ├── README.md
+│           │   ├── calibrator.prose
+│           │   ├── cost-analyzer.prose
+│           │   ├── error-forensics.prose
+│           │   ├── inspector.prose
+│           │   ├── profiler.prose
+│           │   ├── program-improver.prose
+│           │   ├── project-memory.prose
+│           │   ├── user-memory.prose
+│           │   └── vm-improver.prose
+│           ├── primitives
+│           │   └── session.md
+│           ├── prose.md
+│           └── state
+│               ├── filesystem.md
+│               ├── in-context.md
+│               ├── postgres.md
+│               └── sqlite.md
+├── qwen-portal-auth
+│   ├── README.md
+│   ├── index.ts
+│   ├── oauth.ts
+│   └── openclaw.plugin.json
+├── signal
+│   ├── index.ts
+│   ├── openclaw.plugin.json
+│   ├── package.json
+│   └── src
+│       ├── channel.ts
+│       └── runtime.ts
+├── slack
+│   ├── index.ts
+│   ├── openclaw.plugin.json
+│   ├── package.json
+│   └── src
+│       ├── channel.ts
+│       └── runtime.ts
+├── telegram
+│   ├── index.ts
+│   ├── openclaw.plugin.json
+│   ├── package.json
+│   └── src
+│       ├── channel.ts
+│       └── runtime.ts
+├── tlon
+│   ├── README.md
+│   ├── index.ts
+│   ├── openclaw.plugin.json
+│   ├── package.json
+│   └── src
+│       ├── channel.ts
+│       ├── config-schema.ts
+│       ├── monitor
+│       │   ├── discovery.ts
+│       │   ├── history.ts
+│       │   ├── index.ts
+│       │   ├── processed-messages.ts
+│       │   └── utils.ts
+│       ├── onboarding.ts
+│       ├── runtime.ts
+│       ├── targets.ts
+│       ├── types.ts
+│       └── urbit
+│           ├── auth.ts
+│           ├── http-api.ts
+│           ├── send.ts
+│           └── sse-client.ts
+├── twitch
+│   ├── CHANGELOG.md
+│   ├── README.md
+│   ├── index.ts
+│   ├── openclaw.plugin.json
+│   ├── package.json
+│   ├── src
+│   │   ├── access-control.ts
+│   │   ├── actions.ts
+│   │   ├── client-manager-registry.ts
+│   │   ├── config-schema.ts
+│   │   ├── config.ts
+│   │   ├── monitor.ts
+│   │   ├── onboarding.ts
+│   │   ├── outbound.ts
+│   │   ├── plugin.ts
+│   │   ├── probe.ts
+│   │   ├── resolver.ts
+│   │   ├── runtime.ts
+│   │   ├── send.ts
+│   │   ├── status.ts
+│   │   ├── token.ts
+│   │   ├── twitch-client.ts
+│   │   ├── types.ts
+│   │   └── utils
+│   │       ├── markdown.ts
+│   │       └── twitch.ts
+│   └── test
+│       └── setup.ts
+├── voice-call
+│   ├── CHANGELOG.md
+│   ├── README.md
+│   ├── index.ts
+│   ├── openclaw.plugin.json
+│   ├── package.json
+│   └── src
+│       ├── cli.ts
+│       ├── config.ts
+│       ├── core-bridge.ts
+│       ├── manager
+│       │   ├── context.ts
+│       │   ├── events.ts
+│       │   ├── lookup.ts
+│       │   ├── outbound.ts
+│       │   ├── state.ts
+│       │   ├── store.ts
+│       │   ├── timers.ts
+│       │   └── twiml.ts
+│       ├── manager.ts
+│       ├── media-stream.ts
+│       ├── providers
+│       │   ├── base.ts
+│       │   ├── index.ts
+│       │   ├── mock.ts
+│       │   ├── plivo.ts
+│       │   ├── stt-openai-realtime.ts
+│       │   ├── telnyx.ts
+│       │   ├── tts-openai.ts
+│       │   ├── twilio
+│       │   │   ├── api.ts
+│       │   │   └── webhook.ts
+│       │   └── twilio.ts
+│       ├── response-generator.ts
+│       ├── runtime.ts
+│       ├── telephony-audio.ts
+│       ├── telephony-tts.ts
+│       ├── tunnel.ts
+│       ├── types.ts
+│       ├── utils.ts
+│       ├── voice-mapping.ts
+│       ├── webhook-security.ts
+│       └── webhook.ts
+├── whatsapp
+│   ├── index.ts
+│   ├── openclaw.plugin.json
+│   ├── package.json
+│   └── src
+│       ├── channel.ts
+│       └── runtime.ts
+├── zalo
+│   ├── CHANGELOG.md
+│   ├── README.md
+│   ├── index.ts
+│   ├── openclaw.plugin.json
+│   ├── package.json
+│   └── src
+│       ├── accounts.ts
+│       ├── actions.ts
+│       ├── api.ts
+│       ├── channel.ts
+│       ├── config-schema.ts
+│       ├── monitor.ts
+│       ├── onboarding.ts
+│       ├── probe.ts
+│       ├── proxy.ts
+│       ├── runtime.ts
+│       ├── send.ts
+│       ├── status-issues.ts
+│       ├── token.ts
+│       └── types.ts
+└── zalouser
+    ├── CHANGELOG.md
+    ├── README.md
+    ├── index.ts
+    ├── openclaw.plugin.json
+    ├── package.json
+    └── src
+        ├── accounts.ts
+        ├── channel.ts
+        ├── config-schema.ts
+        ├── monitor.ts
+        ├── onboarding.ts
+        ├── probe.ts
+        ├── runtime.ts
+        ├── send.ts
+        ├── status-issues.ts
+        ├── tool.ts
+        ├── types.ts
+        └── zca.ts
+
+docs/
+├── CNAME
+├── HAL_ADVANCED_CAPABILITIES.md
+├── _config.yml
+├── _layouts
+│   └── default.html
+├── assets
+│   ├── markdown.css
+│   ├── openclaw-logo-text-dark.png
+│   ├── openclaw-logo-text.png
+│   ├── pixel-lobster.svg
+│   ├── showcase
+│   │   ├── agents-ui.jpg
+│   │   ├── bambu-cli.png
+│   │   ├── codexmonitor.png
+│   │   ├── gohome-grafana.png
+│   │   ├── ios-testflight.jpg
+│   │   ├── oura-health.png
+│   │   ├── padel-cli.svg
+│   │   ├── padel-screenshot.jpg
+│   │   ├── papla-tts.jpg
+│   │   ├── pr-review-telegram.jpg
+│   │   ├── roborock-screenshot.jpg
+│   │   ├── roborock-status.svg
+│   │   ├── roof-camera-sky.jpg
+│   │   ├── snag.png
+│   │   ├── tesco-shop.jpg
+│   │   ├── wienerlinien.png
+│   │   ├── wine-cellar-skill.jpg
+│   │   ├── winix-air-purifier.jpg
+│   │   └── xuezh-pronunciation.jpeg
+│   ├── terminal.css
+│   └── theme.js
+├── automation
+│   ├── auth-monitoring.md
+│   ├── cron-jobs.md
+│   ├── cron-vs-heartbeat.md
+│   ├── gmail-pubsub.md
+│   ├── poll.md
+│   └── webhook.md
+├── bedrock.md
+├── brave-search.md
+├── broadcast-groups.md
+├── channels
+│   ├── bluebubbles.md
+│   ├── discord.md
+│   ├── googlechat.md
+│   ├── grammy.md
+│   ├── imessage.md
+│   ├── index.md
+│   ├── line.md
+│   ├── location.md
+│   ├── matrix.md
+│   ├── mattermost.md
+│   ├── msteams.md
+│   ├── nextcloud-talk.md
+│   ├── nostr.md
+│   ├── signal.md
+│   ├── slack.md
+│   ├── telegram.md
+│   ├── tlon.md
+│   ├── troubleshooting.md
+│   ├── twitch.md
+│   ├── whatsapp.md
+│   ├── zalo.md
+│   └── zalouser.md
+├── cli
+│   ├── acp.md
+│   ├── agent.md
+│   ├── agents.md
+│   ├── approvals.md
+│   ├── browser.md
+│   ├── channels.md
+│   ├── config.md
+│   ├── configure.md
+│   ├── cron.md
+│   ├── dashboard.md
+│   ├── devices.md
+│   ├── directory.md
+│   ├── dns.md
+│   ├── docs.md
+│   ├── doctor.md
+│   ├── gateway.md
+│   ├── health.md
+│   ├── hooks.md
+│   ├── index.md
+│   ├── logs.md
+│   ├── memory.md
+│   ├── message.md
+│   ├── models.md
+│   ├── node.md
+│   ├── nodes.md
+│   ├── onboard.md
+│   ├── pairing.md
+│   ├── plugins.md
+│   ├── reset.md
+│   ├── sandbox.md
+│   ├── security.md
+│   ├── sessions.md
+│   ├── setup.md
+│   ├── skills.md
+│   ├── status.md
+│   ├── system.md
+│   ├── tui.md
+│   ├── uninstall.md
+│   ├── update.md
+│   ├── voicecall.md
+│   └── webhooks.md
+├── concepts
+│   ├── agent-loop.md
+│   ├── agent-workspace.md
+│   ├── agent.md
+│   ├── architecture.md
+│   ├── channel-routing.md
+│   ├── compaction.md
+│   ├── context.md
+│   ├── group-messages.md
+│   ├── groups.md
+│   ├── markdown-formatting.md
+│   ├── memory.md
+│   ├── messages.md
+│   ├── model-failover.md
+│   ├── model-providers.md
+│   ├── models.md
+│   ├── multi-agent.md
+│   ├── oauth.md
+│   ├── presence.md
+│   ├── queue.md
+│   ├── retry.md
+│   ├── session-pruning.md
+│   ├── session-tool.md
+│   ├── session.md
+│   ├── sessions.md
+│   ├── streaming.md
+│   ├── system-prompt.md
+│   ├── timezone.md
+│   ├── typebox.md
+│   ├── typing-indicators.md
+│   └── usage-tracking.md
+├── date-time.md
+├── debug
+│   └── node-issue.md
+├── debugging.md
+├── diagnostics
+│   └── flags.md
+├── docs.json
+├── environment.md
+├── experiments
+│   ├── onboarding-config-protocol.md
+│   ├── plans
+│   │   ├── cron-add-hardening.md
+│   │   ├── group-policy-hardening.md
+│   │   └── openresponses-gateway.md
+│   ├── proposals
+│   │   └── model-config.md
+│   └── research
+│       └── memory.md
+├── gateway
+│   ├── authentication.md
+│   ├── background-process.md
+│   ├── bonjour.md
+│   ├── bridge-protocol.md
+│   ├── cli-backends.md
+│   ├── configuration-examples.md
+│   ├── configuration.md
+│   ├── discovery.md
+│   ├── doctor.md
+│   ├── gateway-lock.md
+│   ├── health.md
+│   ├── heartbeat.md
+│   ├── index.md
+│   ├── local-models.md
+│   ├── logging.md
+│   ├── multiple-gateways.md
+│   ├── openai-http-api.md
+│   ├── openresponses-http-api.md
+│   ├── pairing.md
+│   ├── protocol.md
+│   ├── remote-gateway-readme.md
+│   ├── remote.md
+│   ├── sandbox-vs-tool-policy-vs-elevated.md
+│   ├── sandboxing.md
+│   ├── security
+│   │   ├── formal-verification.md
+│   │   └── index.md
+│   ├── tailscale.md
+│   ├── tools-invoke-http-api.md
+│   └── troubleshooting.md
+├── help
+│   ├── faq.md
+│   ├── index.md
+│   └── troubleshooting.md
+├── hooks
+│   └── soul-evil.md
+├── hooks.md
+├── images
+│   ├── groups-flow.svg
+│   └── mobile-ui-screenshot.png
+├── index.md
+├── install
+│   ├── ansible.md
+│   ├── bun.md
+│   ├── development-channels.md
+│   ├── docker.md
+│   ├── index.md
+│   ├── installer.md
+│   ├── migrating.md
+│   ├── nix.md
+│   ├── node.md
+│   ├── uninstall.md
+│   └── updating.md
+├── logging.md
+├── multi-agent-sandbox-tools.md
+├── network.md
+├── nodes
+│   ├── audio.md
+│   ├── camera.md
+│   ├── images.md
+│   ├── index.md
+│   ├── location-command.md
+│   ├── media-understanding.md
+│   ├── talk.md
+│   └── voicewake.md
+├── northflank.mdx
+├── perplexity.md
+├── pi-dev.md
+├── pi.md
+├── platforms
+│   ├── android.md
+│   ├── digitalocean.md
+│   ├── exe-dev.md
+│   ├── fly.md
+│   ├── gcp.md
+│   ├── hetzner.md
+│   ├── index.md
+│   ├── ios.md
+│   ├── linux.md
+│   ├── mac
+│   │   ├── bundled-gateway.md
+│   │   ├── canvas.md
+│   │   ├── child-process.md
+│   │   ├── dev-setup.md
+│   │   ├── health.md
+│   │   ├── icon.md
+│   │   ├── logging.md
+│   │   ├── menu-bar.md
+│   │   ├── peekaboo.md
+│   │   ├── permissions.md
+│   │   ├── release.md
+│   │   ├── remote.md
+│   │   ├── signing.md
+│   │   ├── skills.md
+│   │   ├── voice-overlay.md
+│   │   ├── voicewake.md
+│   │   ├── webchat.md
+│   │   └── xpc.md
+│   ├── macos-vm.md
+│   ├── macos.md
+│   ├── oracle.md
+│   ├── raspberry-pi.md
+│   └── windows.md
+├── plugin.md
+├── plugins
+│   ├── agent-tools.md
+│   ├── manifest.md
+│   ├── voice-call.md
+│   └── zalouser.md
+├── prose.md
+├── providers
+│   ├── anthropic.md
+│   ├── claude-max-api-proxy.md
+│   ├── deepgram.md
+│   ├── github-copilot.md
+│   ├── glm.md
+│   ├── index.md
+│   ├── minimax.md
+│   ├── models.md
+│   ├── moonshot.md
+│   ├── ollama.md
+│   ├── openai.md
+│   ├── opencode.md
+│   ├── openrouter.md
+│   ├── qwen.md
+│   ├── synthetic.md
+│   ├── venice.md
+│   ├── vercel-ai-gateway.md
+│   ├── xiaomi.md
+│   └── zai.md
+├── railway.mdx
+├── refactor
+│   ├── clawnet.md
+│   ├── exec-host.md
+│   ├── outbound-session-mirroring.md
+│   ├── plugin-sdk.md
+│   └── strict-config.md
+├── reference
+│   ├── AGENTS.default.md
+│   ├── RELEASING.md
+│   ├── api-usage-costs.md
+│   ├── device-models.md
+│   ├── rpc.md
+│   ├── session-management-compaction.md
+│   ├── templates
+│   │   ├── AGENTS.dev.md
+│   │   ├── AGENTS.md
+│   │   ├── BOOT.md
+│   │   ├── BOOTSTRAP.md
+│   │   ├── HEARTBEAT.md
+│   │   ├── IDENTITY.dev.md
+│   │   ├── IDENTITY.md
+│   │   ├── SOUL.dev.md
+│   │   ├── SOUL.md
+│   │   ├── TOOLS.dev.md
+│   │   ├── TOOLS.md
+│   │   ├── USER.dev.md
+│   │   └── USER.md
+│   ├── test.md
+│   └── transcript-hygiene.md
+├── render.mdx
+├── scripts.md
+├── security
+│   └── formal-verification.md
+├── start
+│   ├── getting-started.md
+│   ├── hubs.md
+│   ├── lore.md
+│   ├── onboarding.md
+│   ├── openclaw.md
+│   ├── pairing.md
+│   ├── setup.md
+│   ├── showcase.md
+│   └── wizard.md
+├── testing.md
+├── token-use.md
+├── tools
+│   ├── agent-send.md
+│   ├── apply-patch.md
+│   ├── browser-linux-troubleshooting.md
+│   ├── browser-login.md
+│   ├── browser.md
+│   ├── chrome-extension.md
+│   ├── clawhub.md
+│   ├── creating-skills.md
+│   ├── elevated.md
+│   ├── exec-approvals.md
+│   ├── exec.md
+│   ├── firecrawl.md
+│   ├── index.md
+│   ├── llm-task.md
+│   ├── lobster.md
+│   ├── reactions.md
+│   ├── skills-config.md
+│   ├── skills.md
+│   ├── slash-commands.md
+│   ├── subagents.md
+│   ├── thinking.md
+│   └── web.md
+├── tts.md
+├── tui.md
+├── vps.md
+├── web
+│   ├── control-ui.md
+│   ├── dashboard.md
+│   ├── index.md
+│   └── webchat.md
+└── whatsapp-openclaw.jpg
+
+git-hooks/
+└── pre-commit
+
+skills/
+├── 1password
+│   ├── SKILL.md
+│   └── references
+│       ├── cli-examples.md
+│       └── get-started.md
+├── apple-notes
+│   └── SKILL.md
+├── apple-reminders
+│   └── SKILL.md
+├── bear-notes
+│   └── SKILL.md
+├── bird
+│   └── SKILL.md
+├── blogwatcher
+│   └── SKILL.md
+├── blucli
+│   └── SKILL.md
+├── bluebubbles
+│   └── SKILL.md
+├── camsnap
+│   └── SKILL.md
+├── canvas
+│   └── SKILL.md
+├── clawhub
+│   └── SKILL.md
+├── coding-agent
+│   └── SKILL.md
+├── discord
+│   └── SKILL.md
+├── eightctl
+│   └── SKILL.md
+├── food-order
+│   └── SKILL.md
+├── gemini
+│   └── SKILL.md
+├── gifgrep
+│   └── SKILL.md
+├── github
+│   └── SKILL.md
+├── gog
+│   └── SKILL.md
+├── goplaces
+│   └── SKILL.md
+├── himalaya
+│   ├── SKILL.md
+│   └── references
+│       ├── configuration.md
+│       └── message-composition.md
+├── imsg
+│   └── SKILL.md
+├── local-places
+│   ├── SERVER_README.md
+│   ├── SKILL.md
+│   ├── pyproject.toml
+│   └── src
+│       └── local_places
+│           ├── __init__.py
+│           ├── google_places.py
+│           ├── main.py
+│           └── schemas.py
+├── mcporter
+│   └── SKILL.md
+├── model-usage
+│   ├── SKILL.md
+│   ├── references
+│   │   └── codexbar-cli.md
+│   └── scripts
+│       └── model_usage.py
+├── moltbook-interact
+│   ├── .clawdhub
+│   ├── references
+│   └── scripts
+├── moltbook-registry
+│   └── .clawdhub
+├── nano-banana-pro
+│   ├── SKILL.md
+│   └── scripts
+│       └── generate_image.py
+├── nano-pdf
+│   └── SKILL.md
+├── notion
+│   └── SKILL.md
+├── obsidian
+│   └── SKILL.md
+├── openai-image-gen
+│   ├── SKILL.md
+│   └── scripts
+│       └── gen.py
+├── openai-whisper
+│   └── SKILL.md
+├── openai-whisper-api
+│   ├── SKILL.md
+│   └── scripts
+│       └── transcribe.sh
+├── openhue
+│   └── SKILL.md
+├── oracle
+│   └── SKILL.md
+├── ordercli
+│   └── SKILL.md
+├── peekaboo
+│   └── SKILL.md
+├── sag
+│   └── SKILL.md
+├── session-logs
+│   └── SKILL.md
+├── sherpa-onnx-tts
+│   └── SKILL.md
+├── skill-creator
+│   ├── SKILL.md
+│   ├── license.txt
+│   └── scripts
+│       ├── init_skill.py
+│       ├── package_skill.py
+│       └── quick_validate.py
+├── slack
+│   └── SKILL.md
+├── songsee
+│   └── SKILL.md
+├── sonoscli
+│   └── SKILL.md
+├── spotify-player
+│   └── SKILL.md
+├── summarize
+│   └── SKILL.md
+├── things-mac
+│   └── SKILL.md
+├── tmux
+│   ├── SKILL.md
+│   └── scripts
+│       ├── find-sessions.sh
+│       └── wait-for-text.sh
+├── trello
+│   └── SKILL.md
+├── video-frames
+│   ├── SKILL.md
+│   └── scripts
+│       └── frame.sh
+├── voice-call
+│   └── SKILL.md
+├── wacli
+│   └── SKILL.md
+└── weather
+    └── SKILL.md
+
+src/
+├── acp
+│   ├── client.ts
+│   ├── commands.ts
+│   ├── event-mapper.ts
+│   ├── index.ts
+│   ├── meta.ts
+│   ├── server.ts
+│   ├── session-mapper.ts
+│   ├── session.ts
+│   ├── translator.ts
+│   └── types.ts
+├── agents
+│   ├── agent-paths.ts
+│   ├── agent-scope.ts
+│   ├── anthropic-payload-log.ts
+│   ├── apply-patch-update.ts
+│   ├── apply-patch.ts
+│   ├── auth-health.ts
+│   ├── auth-profiles
+│   │   ├── constants.ts
+│   │   ├── display.ts
+│   │   ├── doctor.ts
+│   │   ├── external-cli-sync.ts
+│   │   ├── oauth.ts
+│   │   ├── order.ts
+│   │   ├── paths.ts
+│   │   ├── profiles.ts
+│   │   ├── repair.ts
+│   │   ├── session-override.ts
+│   │   ├── store.ts
+│   │   ├── types.ts
+│   │   └── usage.ts
+│   ├── auth-profiles.ts
+│   ├── bash-process-registry.ts
+│   ├── bash-tools.exec.ts
+│   ├── bash-tools.process.ts
+│   ├── bash-tools.shared.ts
+│   ├── bash-tools.ts
+│   ├── bedrock-discovery.ts
+│   ├── bootstrap-files.ts
+│   ├── bootstrap-hooks.ts
+│   ├── cache-trace.ts
+│   ├── channel-tools.ts
+│   ├── chutes-oauth.ts
+│   ├── claude-cli-runner.ts
+│   ├── cli-backends.ts
+│   ├── cli-credentials.ts
+│   ├── cli-runner
+│   │   └── helpers.ts
+│   ├── cli-runner.ts
+│   ├── cli-session.ts
+│   ├── compaction.ts
+│   ├── context-window-guard.ts
+│   ├── context.ts
+│   ├── date-time.ts
+│   ├── defaults.ts
+│   ├── docs-path.ts
+│   ├── failover-error.ts
+│   ├── identity-avatar.ts
+│   ├── identity-file.ts
+│   ├── identity.ts
+│   ├── lanes.ts
+│   ├── live-auth-keys.ts
+│   ├── live-model-filter.ts
+│   ├── memory-search.ts
+│   ├── minimax-vlm.ts
+│   ├── model-auth.ts
+│   ├── model-catalog.ts
+│   ├── model-compat.ts
+│   ├── model-fallback.ts
+│   ├── model-scan.ts
+│   ├── model-selection.ts
+│   ├── models-config.providers.ts
+│   ├── models-config.ts
+│   ├── openclaw-tools.ts
+│   ├── opencode-zen-models.ts
+│   ├── pi-embedded-block-chunker.ts
+│   ├── pi-embedded-helpers
+│   │   ├── bootstrap.ts
+│   │   ├── errors.ts
+│   │   ├── google.ts
+│   │   ├── images.ts
+│   │   ├── messaging-dedupe.ts
+│   │   ├── openai.ts
+│   │   ├── thinking.ts
+│   │   ├── turns.ts
+│   │   └── types.ts
+│   ├── pi-embedded-helpers.ts
+│   ├── pi-embedded-messaging.ts
+│   ├── pi-embedded-runner
+│   │   ├── abort.ts
+│   │   ├── cache-ttl.ts
+│   │   ├── compact.ts
+│   │   ├── extensions.ts
+│   │   ├── extra-params.ts
+│   │   ├── google.ts
+│   │   ├── history.ts
+│   │   ├── lanes.ts
+│   │   ├── logger.ts
+│   │   ├── model.ts
+│   │   ├── run
+│   │   │   ├── attempt.ts
+│   │   │   ├── images.ts
+│   │   │   ├── params.ts
+│   │   │   ├── payloads.ts
+│   │   │   └── types.ts
+│   │   ├── run.ts
+│   │   ├── runs.ts
+│   │   ├── sandbox-info.ts
+│   │   ├── session-manager-cache.ts
+│   │   ├── session-manager-init.ts
+│   │   ├── system-prompt.ts
+│   │   ├── tool-split.ts
+│   │   ├── types.ts
+│   │   └── utils.ts
+│   ├── pi-embedded-runner.ts
+│   ├── pi-embedded-subscribe.handlers.lifecycle.ts
+│   ├── pi-embedded-subscribe.handlers.messages.ts
+│   ├── pi-embedded-subscribe.handlers.tools.ts
+│   ├── pi-embedded-subscribe.handlers.ts
+│   ├── pi-embedded-subscribe.handlers.types.ts
+│   ├── pi-embedded-subscribe.raw-stream.ts
+│   ├── pi-embedded-subscribe.tools.ts
+│   ├── pi-embedded-subscribe.ts
+│   ├── pi-embedded-subscribe.types.ts
+│   ├── pi-embedded-utils.ts
+│   ├── pi-embedded.ts
+│   ├── pi-extensions
+│   │   ├── compaction-safeguard-runtime.ts
+│   │   ├── compaction-safeguard.ts
+│   │   ├── context-pruning
+│   │   │   ├── extension.ts
+│   │   │   ├── pruner.ts
+│   │   │   ├── runtime.ts
+│   │   │   ├── settings.ts
+│   │   │   └── tools.ts
+│   │   └── context-pruning.ts
+│   ├── pi-model-discovery.ts
+│   ├── pi-settings.ts
+│   ├── pi-tool-definition-adapter.ts
+│   ├── pi-tools.abort.ts
+│   ├── pi-tools.policy.ts
+│   ├── pi-tools.read.ts
+│   ├── pi-tools.schema.ts
+│   ├── pi-tools.ts
+│   ├── pi-tools.types.ts
+│   ├── pty-dsr.ts
+│   ├── pty-keys.ts
+│   ├── sandbox
+│   │   ├── browser-bridges.ts
+│   │   ├── browser.ts
+│   │   ├── config-hash.ts
+│   │   ├── config.ts
+│   │   ├── constants.ts
+│   │   ├── context.ts
+│   │   ├── docker.ts
+│   │   ├── manage.ts
+│   │   ├── prune.ts
+│   │   ├── registry.ts
+│   │   ├── runtime-status.ts
+│   │   ├── shared.ts
+│   │   ├── tool-policy.ts
+│   │   ├── types.docker.ts
+│   │   ├── types.ts
+│   │   └── workspace.ts
+│   ├── sandbox-paths.ts
+│   ├── sandbox.ts
+│   ├── schema
+│   │   ├── clean-for-gemini.ts
+│   │   └── typebox.ts
+│   ├── session-slug.ts
+│   ├── session-tool-result-guard-wrapper.ts
+│   ├── session-tool-result-guard.ts
+│   ├── session-transcript-repair.ts
+│   ├── session-write-lock.ts
+│   ├── shell-utils.ts
+│   ├── skills
+│   │   ├── bundled-dir.ts
+│   │   ├── config.ts
+│   │   ├── env-overrides.ts
+│   │   ├── frontmatter.ts
+│   │   ├── plugin-skills.ts
+│   │   ├── refresh.ts
+│   │   ├── serialize.ts
+│   │   ├── types.ts
+│   │   └── workspace.ts
+│   ├── skills-install.ts
+│   ├── skills-status.ts
+│   ├── skills.ts
+│   ├── subagent-announce-queue.ts
+│   ├── subagent-announce.ts
+│   ├── subagent-registry.store.ts
+│   ├── subagent-registry.ts
+│   ├── synthetic-models.ts
+│   ├── system-prompt-params.ts
+│   ├── system-prompt-report.ts
+│   ├── system-prompt.ts
+│   ├── test-helpers
+│   │   ├── fast-coding-tools.ts
+│   │   └── fast-core-tools.ts
+│   ├── timeout.ts
+│   ├── tool-call-id.ts
+│   ├── tool-display.json
+│   ├── tool-display.ts
+│   ├── tool-images.ts
+│   ├── tool-policy.ts
+│   ├── tool-summaries.ts
+│   ├── tools
+│   │   ├── agent-step.ts
+│   │   ├── agents-list-tool.ts
+│   │   ├── browser-tool.schema.ts
+│   │   ├── browser-tool.ts
+│   │   ├── canvas-tool.ts
+│   │   ├── common.ts
+│   │   ├── cron-tool.ts
+│   │   ├── discord-actions-guild.ts
+│   │   ├── discord-actions-messaging.ts
+│   │   ├── discord-actions-moderation.ts
+│   │   ├── discord-actions.ts
+│   │   ├── gateway-tool.ts
+│   │   ├── gateway.ts
+│   │   ├── image-tool.helpers.ts
+│   │   ├── image-tool.ts
+│   │   ├── memory-tool.ts
+│   │   ├── message-tool.ts
+│   │   ├── nodes-tool.ts
+│   │   ├── nodes-utils.ts
+│   │   ├── session-status-tool.ts
+│   │   ├── sessions-announce-target.ts
+│   │   ├── sessions-helpers.ts
+│   │   ├── sessions-history-tool.ts
+│   │   ├── sessions-list-tool.ts
+│   │   ├── sessions-send-helpers.ts
+│   │   ├── sessions-send-tool.a2a.ts
+│   │   ├── sessions-send-tool.ts
+│   │   ├── sessions-spawn-tool.ts
+│   │   ├── slack-actions.ts
+│   │   ├── telegram-actions.ts
+│   │   ├── tts-tool.ts
+│   │   ├── web-fetch-utils.ts
+│   │   ├── web-fetch.ts
+│   │   ├── web-search.ts
+│   │   ├── web-shared.ts
+│   │   ├── web-tools.ts
+│   │   └── whatsapp-actions.ts
+│   ├── transcript-policy.ts
+│   ├── usage.ts
+│   ├── venice-models.ts
+│   ├── workspace-templates.ts
+│   └── workspace.ts
+├── api
+├── auto-reply
+│   ├── chunk.ts
+│   ├── command-auth.ts
+│   ├── command-detection.ts
+│   ├── commands-args.ts
+│   ├── commands-registry.data.ts
+│   ├── commands-registry.ts
+│   ├── commands-registry.types.ts
+│   ├── dispatch.ts
+│   ├── envelope.ts
+│   ├── group-activation.ts
+│   ├── heartbeat.ts
+│   ├── inbound-debounce.ts
+│   ├── media-note.ts
+│   ├── model.ts
+│   ├── reply
+│   │   ├── abort.ts
+│   │   ├── agent-runner-execution.ts
+│   │   ├── agent-runner-helpers.ts
+│   │   ├── agent-runner-memory.ts
+│   │   ├── agent-runner-payloads.ts
+│   │   ├── agent-runner-utils.ts
+│   │   ├── agent-runner.ts
+│   │   ├── audio-tags.ts
+│   │   ├── bash-command.ts
+│   │   ├── block-reply-coalescer.ts
+│   │   ├── block-reply-pipeline.ts
+│   │   ├── block-streaming.ts
+│   │   ├── body.ts
+│   │   ├── commands-allowlist.ts
+│   │   ├── commands-approve.ts
+│   │   ├── commands-bash.ts
+│   │   ├── commands-compact.ts
+│   │   ├── commands-config.ts
+│   │   ├── commands-context-report.ts
+│   │   ├── commands-context.ts
+│   │   ├── commands-core.ts
+│   │   ├── commands-info.ts
+│   │   ├── commands-models.ts
+│   │   ├── commands-plugin.ts
+│   │   ├── commands-session.ts
+│   │   ├── commands-status.ts
+│   │   ├── commands-subagents.ts
+│   │   ├── commands-tts.ts
+│   │   ├── commands-types.ts
+│   │   ├── commands.ts
+│   │   ├── config-commands.ts
+│   │   ├── config-value.ts
+│   │   ├── debug-commands.ts
+│   │   ├── directive-handling.auth.ts
+│   │   ├── directive-handling.fast-lane.ts
+│   │   ├── directive-handling.impl.ts
+│   │   ├── directive-handling.model-picker.ts
+│   │   ├── directive-handling.model.ts
+│   │   ├── directive-handling.parse.ts
+│   │   ├── directive-handling.persist.ts
+│   │   ├── directive-handling.queue-validation.ts
+│   │   ├── directive-handling.shared.ts
+│   │   ├── directive-handling.ts
+│   │   ├── directives.ts
+│   │   ├── dispatch-from-config.ts
+│   │   ├── exec
+│   │   │   └── directive.ts
+│   │   ├── exec.ts
+│   │   ├── followup-runner.ts
+│   │   ├── get-reply-directives-apply.ts
+│   │   ├── get-reply-directives-utils.ts
+│   │   ├── get-reply-directives.ts
+│   │   ├── get-reply-inline-actions.ts
+│   │   ├── get-reply-run.ts
+│   │   ├── get-reply.ts
+│   │   ├── groups.ts
+│   │   ├── history.ts
+│   │   ├── inbound-context.ts
+│   │   ├── inbound-dedupe.ts
+│   │   ├── inbound-sender-meta.ts
+│   │   ├── inbound-text.ts
+│   │   ├── line-directives.ts
+│   │   ├── memory-flush.ts
+│   │   ├── mentions.ts
+│   │   ├── model-selection.ts
+│   │   ├── normalize-reply.ts
+│   │   ├── provider-dispatcher.ts
+│   │   ├── queue
+│   │   │   ├── cleanup.ts
+│   │   │   ├── directive.ts
+│   │   │   ├── drain.ts
+│   │   │   ├── enqueue.ts
+│   │   │   ├── normalize.ts
+│   │   │   ├── settings.ts
+│   │   │   ├── state.ts
+│   │   │   └── types.ts
+│   │   ├── queue.ts
+│   │   ├── reply-directives.ts
+│   │   ├── reply-dispatcher.ts
+│   │   ├── reply-elevated.ts
+│   │   ├── reply-inline.ts
+│   │   ├── reply-payloads.ts
+│   │   ├── reply-reference.ts
+│   │   ├── reply-tags.ts
+│   │   ├── reply-threading.ts
+│   │   ├── response-prefix-template.ts
+│   │   ├── route-reply.ts
+│   │   ├── session-reset-model.ts
+│   │   ├── session-updates.ts
+│   │   ├── session-usage.ts
+│   │   ├── session.ts
+│   │   ├── stage-sandbox-media.ts
+│   │   ├── streaming-directives.ts
+│   │   ├── subagents-utils.ts
+│   │   ├── test-ctx.ts
+│   │   ├── test-helpers.ts
+│   │   ├── typing-mode.ts
+│   │   └── typing.ts
+│   ├── reply.ts
+│   ├── send-policy.ts
+│   ├── skill-commands.ts
+│   ├── status.ts
+│   ├── templating.ts
+│   ├── thinking.ts
+│   ├── tokens.ts
+│   ├── tool-meta.ts
+│   └── types.ts
+├── bridge
+├── browser
+│   ├── bridge-server.ts
+│   ├── cdp.helpers.ts
+│   ├── cdp.ts
+│   ├── chrome.executables.ts
+│   ├── chrome.profile-decoration.ts
+│   ├── chrome.ts
+│   ├── client-actions-core.ts
+│   ├── client-actions-observe.ts
+│   ├── client-actions-state.ts
+│   ├── client-actions-types.ts
+│   ├── client-actions.ts
+│   ├── client-fetch.ts
+│   ├── client.ts
+│   ├── config.ts
+│   ├── constants.ts
+│   ├── control-service.ts
+│   ├── extension-relay.ts
+│   ├── profiles-service.ts
+│   ├── profiles.ts
+│   ├── pw-ai-module.ts
+│   ├── pw-ai.ts
+│   ├── pw-role-snapshot.ts
+│   ├── pw-session.ts
+│   ├── pw-tools-core.activity.ts
+│   ├── pw-tools-core.downloads.ts
+│   ├── pw-tools-core.interactions.ts
+│   ├── pw-tools-core.responses.ts
+│   ├── pw-tools-core.shared.ts
+│   ├── pw-tools-core.snapshot.ts
+│   ├── pw-tools-core.state.ts
+│   ├── pw-tools-core.storage.ts
+│   ├── pw-tools-core.trace.ts
+│   ├── pw-tools-core.ts
+│   ├── routes
+│   │   ├── agent.act.shared.ts
+│   │   ├── agent.act.ts
+│   │   ├── agent.debug.ts
+│   │   ├── agent.shared.ts
+│   │   ├── agent.snapshot.ts
+│   │   ├── agent.storage.ts
+│   │   ├── agent.ts
+│   │   ├── basic.ts
+│   │   ├── dispatcher.ts
+│   │   ├── index.ts
+│   │   ├── tabs.ts
+│   │   ├── types.ts
+│   │   └── utils.ts
+│   ├── screenshot.ts
+│   ├── server-context.ts
+│   ├── server-context.types.ts
+│   ├── server.ts
+│   ├── target-id.ts
+│   └── trash.ts
+├── canvas-host
+│   ├── a2ui
+│   │   ├── .bundle.hash
+│   │   ├── a2ui.bundle.js
+│   │   └── index.html
+│   ├── a2ui.ts
+│   └── server.ts
+├── channel-web.ts
+├── channels
+│   ├── ack-reactions.ts
+│   ├── allowlist-match.ts
+│   ├── allowlists
+│   │   └── resolve-utils.ts
+│   ├── channel-config.ts
+│   ├── chat-type.ts
+│   ├── command-gating.ts
+│   ├── conversation-label.ts
+│   ├── dock.ts
+│   ├── location.ts
+│   ├── logging.ts
+│   ├── mention-gating.ts
+│   ├── plugins
+│   │   ├── actions
+│   │   │   ├── discord
+│   │   │   │   ├── handle-action.guild-admin.ts
+│   │   │   │   └── handle-action.ts
+│   │   │   ├── discord.ts
+│   │   │   ├── signal.ts
+│   │   │   └── telegram.ts
+│   │   ├── agent-tools
+│   │   │   └── whatsapp-login.ts
+│   │   ├── allowlist-match.ts
+│   │   ├── bluebubbles-actions.ts
+│   │   ├── catalog.ts
+│   │   ├── channel-config.ts
+│   │   ├── config-helpers.ts
+│   │   ├── config-schema.ts
+│   │   ├── config-writes.ts
+│   │   ├── directory-config.ts
+│   │   ├── group-mentions.ts
+│   │   ├── helpers.ts
+│   │   ├── index.ts
+│   │   ├── load.ts
+│   │   ├── media-limits.ts
+│   │   ├── message-action-names.ts
+│   │   ├── message-actions.ts
+│   │   ├── normalize
+│   │   │   ├── discord.ts
+│   │   │   ├── imessage.ts
+│   │   │   ├── signal.ts
+│   │   │   ├── slack.ts
+│   │   │   ├── telegram.ts
+│   │   │   └── whatsapp.ts
+│   │   ├── onboarding
+│   │   │   ├── channel-access.ts
+│   │   │   ├── discord.ts
+│   │   │   ├── helpers.ts
+│   │   │   ├── imessage.ts
+│   │   │   ├── signal.ts
+│   │   │   ├── slack.ts
+│   │   │   ├── telegram.ts
+│   │   │   └── whatsapp.ts
+│   │   ├── onboarding-types.ts
+│   │   ├── outbound
+│   │   │   ├── discord.ts
+│   │   │   ├── imessage.ts
+│   │   │   ├── load.ts
+│   │   │   ├── signal.ts
+│   │   │   ├── slack.ts
+│   │   │   ├── telegram.ts
+│   │   │   └── whatsapp.ts
+│   │   ├── pairing-message.ts
+│   │   ├── pairing.ts
+│   │   ├── setup-helpers.ts
+│   │   ├── slack.actions.ts
+│   │   ├── status-issues
+│   │   │   ├── bluebubbles.ts
+│   │   │   ├── discord.ts
+│   │   │   ├── shared.ts
+│   │   │   ├── telegram.ts
+│   │   │   └── whatsapp.ts
+│   │   ├── status.ts
+│   │   ├── types.adapters.ts
+│   │   ├── types.core.ts
+│   │   ├── types.plugin.ts
+│   │   ├── types.ts
+│   │   └── whatsapp-heartbeat.ts
+│   ├── registry.ts
+│   ├── reply-prefix.ts
+│   ├── sender-identity.ts
+│   ├── sender-label.ts
+│   ├── session.ts
+│   ├── targets.ts
+│   ├── typing.ts
+│   └── web
+│       └── index.ts
+├── cli
+│   ├── acp-cli.ts
+│   ├── argv.ts
+│   ├── banner.ts
+│   ├── browser-cli-actions-input
+│   │   ├── register.element.ts
+│   │   ├── register.files-downloads.ts
+│   │   ├── register.form-wait-eval.ts
+│   │   ├── register.navigation.ts
+│   │   ├── register.ts
+│   │   └── shared.ts
+│   ├── browser-cli-actions-input.ts
+│   ├── browser-cli-actions-observe.ts
+│   ├── browser-cli-debug.ts
+│   ├── browser-cli-examples.ts
+│   ├── browser-cli-extension.ts
+│   ├── browser-cli-inspect.ts
+│   ├── browser-cli-manage.ts
+│   ├── browser-cli-shared.ts
+│   ├── browser-cli-state.cookies-storage.ts
+│   ├── browser-cli-state.ts
+│   ├── browser-cli.ts
+│   ├── channel-auth.ts
+│   ├── channel-options.ts
+│   ├── channels-cli.ts
+│   ├── cli-name.ts
+│   ├── cli-utils.ts
+│   ├── command-format.ts
+│   ├── command-options.ts
+│   ├── completion-cli.ts
+│   ├── config-cli.ts
+│   ├── cron-cli
+│   │   ├── register.cron-add.ts
+│   │   ├── register.cron-edit.ts
+│   │   ├── register.cron-simple.ts
+│   │   ├── register.ts
+│   │   └── shared.ts
+│   ├── cron-cli.ts
+│   ├── daemon-cli
+│   │   ├── install.ts
+│   │   ├── lifecycle.ts
+│   │   ├── probe.ts
+│   │   ├── register.ts
+│   │   ├── response.ts
+│   │   ├── runners.ts
+│   │   ├── shared.ts
+│   │   ├── status.gather.ts
+│   │   ├── status.print.ts
+│   │   ├── status.ts
+│   │   └── types.ts
+│   ├── daemon-cli.ts
+│   ├── deps.ts
+│   ├── devices-cli.ts
+│   ├── directory-cli.ts
+│   ├── dns-cli.ts
+│   ├── docs-cli.ts
+│   ├── exec-approvals-cli.ts
+│   ├── gateway-cli
+│   │   ├── call.ts
+│   │   ├── dev.ts
+│   │   ├── discover.ts
+│   │   ├── register.ts
+│   │   ├── run-loop.ts
+│   │   ├── run.ts
+│   │   └── shared.ts
+│   ├── gateway-cli.ts
+│   ├── gateway-rpc.ts
+│   ├── help-format.ts
+│   ├── hooks-cli.ts
+│   ├── logs-cli.ts
+│   ├── memory-cli.ts
+│   ├── models-cli.ts
+│   ├── node-cli
+│   │   ├── daemon.ts
+│   │   └── register.ts
+│   ├── node-cli.ts
+│   ├── nodes-camera.ts
+│   ├── nodes-canvas.ts
+│   ├── nodes-cli
+│   │   ├── a2ui-jsonl.ts
+│   │   ├── cli-utils.ts
+│   │   ├── format.ts
+│   │   ├── register.camera.ts
+│   │   ├── register.canvas.ts
+│   │   ├── register.invoke.ts
+│   │   ├── register.location.ts
+│   │   ├── register.notify.ts
+│   │   ├── register.pairing.ts
+│   │   ├── register.screen.ts
+│   │   ├── register.status.ts
+│   │   ├── register.ts
+│   │   ├── rpc.ts
+│   │   └── types.ts
+│   ├── nodes-cli.ts
+│   ├── nodes-run.ts
+│   ├── nodes-screen.ts
+│   ├── outbound-send-deps.ts
+│   ├── pairing-cli.ts
+│   ├── parse-duration.ts
+│   ├── parse-timeout.ts
+│   ├── plugin-registry.ts
+│   ├── plugins-cli.ts
+│   ├── ports.ts
+│   ├── profile-utils.ts
+│   ├── profile.ts
+│   ├── program
+│   │   ├── build-program.ts
+│   │   ├── command-registry.ts
+│   │   ├── config-guard.ts
+│   │   ├── context.ts
+│   │   ├── help.ts
+│   │   ├── helpers.ts
+│   │   ├── message
+│   │   │   ├── helpers.ts
+│   │   │   ├── register.broadcast.ts
+│   │   │   ├── register.discord-admin.ts
+│   │   │   ├── register.emoji-sticker.ts
+│   │   │   ├── register.permissions-search.ts
+│   │   │   ├── register.pins.ts
+│   │   │   ├── register.poll.ts
+│   │   │   ├── register.reactions.ts
+│   │   │   ├── register.read-edit-delete.ts
+│   │   │   ├── register.send.ts
+│   │   │   └── register.thread.ts
+│   │   ├── preaction.ts
+│   │   ├── register.agent.ts
+│   │   ├── register.configure.ts
+│   │   ├── register.maintenance.ts
+│   │   ├── register.message.ts
+│   │   ├── register.onboard.ts
+│   │   ├── register.setup.ts
+│   │   ├── register.status-health-sessions.ts
+│   │   └── register.subclis.ts
+│   ├── program.ts
+│   ├── progress.ts
+│   ├── prompt.ts
+│   ├── route.ts
+│   ├── run-main.ts
+│   ├── sandbox-cli.ts
+│   ├── security-cli.ts
+│   ├── skills-cli.ts
+│   ├── system-cli.ts
+│   ├── tagline.ts
+│   ├── tui-cli.ts
+│   ├── update-cli.ts
+│   ├── wait.ts
+│   └── webhooks-cli.ts
+├── commands
+│   ├── agent
+│   │   ├── delivery.ts
+│   │   ├── run-context.ts
+│   │   ├── session-store.ts
+│   │   ├── session.ts
+│   │   └── types.ts
+│   ├── agent-via-gateway.ts
+│   ├── agent.ts
+│   ├── agents.bindings.ts
+│   ├── agents.command-shared.ts
+│   ├── agents.commands.add.ts
+│   ├── agents.commands.delete.ts
+│   ├── agents.commands.identity.ts
+│   ├── agents.commands.list.ts
+│   ├── agents.config.ts
+│   ├── agents.providers.ts
+│   ├── agents.ts
+│   ├── auth-choice-options.ts
+│   ├── auth-choice-prompt.ts
+│   ├── auth-choice.api-key.ts
+│   ├── auth-choice.apply.anthropic.ts
+│   ├── auth-choice.apply.api-providers.ts
+│   ├── auth-choice.apply.copilot-proxy.ts
+│   ├── auth-choice.apply.github-copilot.ts
+│   ├── auth-choice.apply.google-antigravity.ts
+│   ├── auth-choice.apply.google-gemini-cli.ts
+│   ├── auth-choice.apply.minimax.ts
+│   ├── auth-choice.apply.oauth.ts
+│   ├── auth-choice.apply.openai.ts
+│   ├── auth-choice.apply.plugin-provider.ts
+│   ├── auth-choice.apply.qwen-portal.ts
+│   ├── auth-choice.apply.ts
+│   ├── auth-choice.default-model.ts
+│   ├── auth-choice.model-check.ts
+│   ├── auth-choice.preferred-provider.ts
+│   ├── auth-choice.ts
+│   ├── auth-token.ts
+│   ├── channels
+│   │   ├── add-mutators.ts
+│   │   ├── add.ts
+│   │   ├── capabilities.ts
+│   │   ├── list.ts
+│   │   ├── logs.ts
+│   │   ├── remove.ts
+│   │   ├── resolve.ts
+│   │   ├── shared.ts
+│   │   └── status.ts
+│   ├── channels.ts
+│   ├── chutes-oauth.ts
+│   ├── cleanup-utils.ts
+│   ├── configure.channels.ts
+│   ├── configure.commands.ts
+│   ├── configure.daemon.ts
+│   ├── configure.gateway-auth.ts
+│   ├── configure.gateway.ts
+│   ├── configure.shared.ts
+│   ├── configure.ts
+│   ├── configure.wizard.ts
+│   ├── daemon-install-helpers.ts
+│   ├── daemon-runtime.ts
+│   ├── dashboard.ts
+│   ├── docs.ts
+│   ├── doctor-auth.ts
+│   ├── doctor-config-flow.ts
+│   ├── doctor-format.ts
+│   ├── doctor-gateway-daemon-flow.ts
+│   ├── doctor-gateway-health.ts
+│   ├── doctor-gateway-services.ts
+│   ├── doctor-install.ts
+│   ├── doctor-legacy-config.ts
+│   ├── doctor-platform-notes.ts
+│   ├── doctor-prompter.ts
+│   ├── doctor-sandbox.ts
+│   ├── doctor-security.ts
+│   ├── doctor-state-integrity.ts
+│   ├── doctor-state-migrations.ts
+│   ├── doctor-ui.ts
+│   ├── doctor-update.ts
+│   ├── doctor-workspace-status.ts
+│   ├── doctor-workspace.ts
+│   ├── doctor.ts
+│   ├── gateway-status
+│   │   └── helpers.ts
+│   ├── gateway-status.ts
+│   ├── google-gemini-model-default.ts
+│   ├── health-format.ts
+│   ├── health.ts
+│   ├── message-format.ts
+│   ├── message.ts
+│   ├── model-picker.ts
+│   ├── models
+│   │   ├── aliases.ts
+│   │   ├── auth-order.ts
+│   │   ├── auth.ts
+│   │   ├── fallbacks.ts
+│   │   ├── image-fallbacks.ts
+│   │   ├── list.auth-overview.ts
+│   │   ├── list.configured.ts
+│   │   ├── list.format.ts
+│   │   ├── list.list-command.ts
+│   │   ├── list.probe.ts
+│   │   ├── list.registry.ts
+│   │   ├── list.status-command.ts
+│   │   ├── list.table.ts
+│   │   ├── list.ts
+│   │   ├── list.types.ts
+│   │   ├── scan.ts
+│   │   ├── set-image.ts
+│   │   ├── set.ts
+│   │   └── shared.ts
+│   ├── models.ts
+│   ├── node-daemon-install-helpers.ts
+│   ├── node-daemon-runtime.ts
+│   ├── oauth-env.ts
+│   ├── oauth-flow.ts
+│   ├── onboard-auth.config-core.ts
+│   ├── onboard-auth.config-minimax.ts
+│   ├── onboard-auth.config-opencode.ts
+│   ├── onboard-auth.credentials.ts
+│   ├── onboard-auth.models.ts
+│   ├── onboard-auth.ts
+│   ├── onboard-channels.ts
+│   ├── onboard-helpers.ts
+│   ├── onboard-hooks.ts
+│   ├── onboard-interactive.ts
+│   ├── onboard-non-interactive
+│   │   ├── api-keys.ts
+│   │   ├── local
+│   │   │   ├── auth-choice.ts
+│   │   │   ├── daemon-install.ts
+│   │   │   ├── gateway-config.ts
+│   │   │   ├── output.ts
+│   │   │   ├── skills-config.ts
+│   │   │   └── workspace.ts
+│   │   ├── local.ts
+│   │   └── remote.ts
+│   ├── onboard-non-interactive.ts
+│   ├── onboard-remote.ts
+│   ├── onboard-skills.ts
+│   ├── onboard-types.ts
+│   ├── onboard.ts
+│   ├── onboarding
+│   │   ├── __tests__
+│   │   │   └── test-utils.ts
+│   │   ├── plugin-install.ts
+│   │   ├── registry.ts
+│   │   └── types.ts
+│   ├── openai-codex-model-default.ts
+│   ├── opencode-zen-model-default.ts
+│   ├── reset.ts
+│   ├── sandbox-display.ts
+│   ├── sandbox-explain.ts
+│   ├── sandbox-formatters.ts
+│   ├── sandbox.ts
+│   ├── sessions.ts
+│   ├── setup.ts
+│   ├── signal-install.ts
+│   ├── status-all
+│   │   ├── agents.ts
+│   │   ├── channels.ts
+│   │   ├── diagnosis.ts
+│   │   ├── format.ts
+│   │   ├── gateway.ts
+│   │   └── report-lines.ts
+│   ├── status-all.ts
+│   ├── status.agent-local.ts
+│   ├── status.command.ts
+│   ├── status.daemon.ts
+│   ├── status.format.ts
+│   ├── status.gateway-probe.ts
+│   ├── status.link-channel.ts
+│   ├── status.scan.ts
+│   ├── status.summary.ts
+│   ├── status.ts
+│   ├── status.types.ts
+│   ├── status.update.ts
+│   ├── systemd-linger.ts
+│   └── uninstall.ts
+├── compat
+│   └── legacy-names.ts
+├── config
+│   ├── agent-dirs.ts
+│   ├── agent-limits.ts
+│   ├── cache-utils.ts
+│   ├── channel-capabilities.ts
+│   ├── commands.ts
+│   ├── config-paths.ts
+│   ├── config.ts
+│   ├── defaults.ts
+│   ├── env-substitution.ts
+│   ├── env-vars.ts
+│   ├── group-policy.ts
+│   ├── includes.ts
+│   ├── io.ts
+│   ├── legacy-migrate.ts
+│   ├── legacy.migrations.part-1.ts
+│   ├── legacy.migrations.part-2.ts
+│   ├── legacy.migrations.part-3.ts
+│   ├── legacy.migrations.ts
+│   ├── legacy.rules.ts
+│   ├── legacy.shared.ts
+│   ├── legacy.ts
+│   ├── logging.ts
+│   ├── markdown-tables.ts
+│   ├── merge-config.ts
+│   ├── merge-patch.ts
+│   ├── normalize-paths.ts
+│   ├── paths.ts
+│   ├── plugin-auto-enable.ts
+│   ├── port-defaults.ts
+│   ├── runtime-overrides.ts
+│   ├── schema.ts
+│   ├── sessions
+│   │   ├── group.ts
+│   │   ├── main-session.ts
+│   │   ├── metadata.ts
+│   │   ├── paths.ts
+│   │   ├── reset.ts
+│   │   ├── session-key.ts
+│   │   ├── store.ts
+│   │   ├── transcript.ts
+│   │   └── types.ts
+│   ├── sessions.ts
+│   ├── talk.ts
+│   ├── telegram-custom-commands.ts
+│   ├── test-helpers.ts
+│   ├── types.agent-defaults.ts
+│   ├── types.agents.ts
+│   ├── types.approvals.ts
+│   ├── types.auth.ts
+│   ├── types.base.ts
+│   ├── types.browser.ts
+│   ├── types.channels.ts
+│   ├── types.cron.ts
+│   ├── types.discord.ts
+│   ├── types.gateway.ts
+│   ├── types.googlechat.ts
+│   ├── types.hooks.ts
+│   ├── types.imessage.ts
+│   ├── types.messages.ts
+│   ├── types.models.ts
+│   ├── types.msteams.ts
+│   ├── types.node-host.ts
+│   ├── types.openclaw.ts
+│   ├── types.plugins.ts
+│   ├── types.queue.ts
+│   ├── types.sandbox.ts
+│   ├── types.signal.ts
+│   ├── types.skills.ts
+│   ├── types.slack.ts
+│   ├── types.telegram.ts
+│   ├── types.tools.ts
+│   ├── types.ts
+│   ├── types.tts.ts
+│   ├── types.whatsapp.ts
+│   ├── validation.ts
+│   ├── version.ts
+│   ├── zod-schema.agent-defaults.ts
+│   ├── zod-schema.agent-runtime.ts
+│   ├── zod-schema.agents.ts
+│   ├── zod-schema.approvals.ts
+│   ├── zod-schema.channels.ts
+│   ├── zod-schema.core.ts
+│   ├── zod-schema.hooks.ts
+│   ├── zod-schema.providers-core.ts
+│   ├── zod-schema.providers-whatsapp.ts
+│   ├── zod-schema.providers.ts
+│   ├── zod-schema.session.ts
+│   └── zod-schema.ts
+├── cron
+│   ├── isolated-agent
+│   │   ├── delivery-target.ts
+│   │   ├── helpers.ts
+│   │   ├── run.ts
+│   │   └── session.ts
+│   ├── isolated-agent.ts
+│   ├── normalize.ts
+│   ├── parse.ts
+│   ├── payload-migration.ts
+│   ├── run-log.ts
+│   ├── schedule.ts
+│   ├── service
+│   │   ├── jobs.ts
+│   │   ├── locked.ts
+│   │   ├── normalize.ts
+│   │   ├── ops.ts
+│   │   ├── state.ts
+│   │   ├── store.ts
+│   │   └── timer.ts
+│   ├── service.ts
+│   ├── store.ts
+│   └── types.ts
+├── daemon
+│   ├── constants.ts
+│   ├── diagnostics.ts
+│   ├── inspect.ts
+│   ├── launchd-plist.ts
+│   ├── launchd.ts
+│   ├── node-service.ts
+│   ├── paths.ts
+│   ├── program-args.ts
+│   ├── runtime-parse.ts
+│   ├── runtime-paths.ts
+│   ├── schtasks.ts
+│   ├── service-audit.ts
+│   ├── service-env.ts
+│   ├── service-runtime.ts
+│   ├── service.ts
+│   ├── systemd-hints.ts
+│   ├── systemd-linger.ts
+│   ├── systemd-unit.ts
+│   └── systemd.ts
+├── discord
+│   ├── accounts.ts
+│   ├── api.ts
+│   ├── audit.ts
+│   ├── chunk.ts
+│   ├── directory-live.ts
+│   ├── gateway-logging.ts
+│   ├── index.ts
+│   ├── monitor
+│   │   ├── allow-list.ts
+│   │   ├── exec-approvals.ts
+│   │   ├── format.ts
+│   │   ├── listeners.ts
+│   │   ├── message-handler.preflight.ts
+│   │   ├── message-handler.preflight.types.ts
+│   │   ├── message-handler.process.ts
+│   │   ├── message-handler.ts
+│   │   ├── message-utils.ts
+│   │   ├── native-command.ts
+│   │   ├── presence-cache.ts
+│   │   ├── provider.ts
+│   │   ├── reply-context.ts
+│   │   ├── reply-delivery.ts
+│   │   ├── sender-identity.ts
+│   │   ├── system-events.ts
+│   │   ├── threading.ts
+│   │   └── typing.ts
+│   ├── monitor.gateway.ts
+│   ├── monitor.ts
+│   ├── pluralkit.ts
+│   ├── probe.ts
+│   ├── resolve-channels.ts
+│   ├── resolve-users.ts
+│   ├── send.channels.ts
+│   ├── send.emojis-stickers.ts
+│   ├── send.guild.ts
+│   ├── send.messages.ts
+│   ├── send.outbound.ts
+│   ├── send.permissions.ts
+│   ├── send.reactions.ts
+│   ├── send.shared.ts
+│   ├── send.ts
+│   ├── send.types.ts
+│   ├── targets.ts
+│   └── token.ts
+├── docs
+├── entry.ts
+├── gateway
+│   ├── assistant-identity.ts
+│   ├── auth.ts
+│   ├── boot.ts
+│   ├── call.ts
+│   ├── chat-abort.ts
+│   ├── chat-attachments.ts
+│   ├── chat-sanitize.ts
+│   ├── client.ts
+│   ├── config-reload.ts
+│   ├── control-ui-shared.ts
+│   ├── control-ui.ts
+│   ├── device-auth.ts
+│   ├── exec-approval-manager.ts
+│   ├── hooks-mapping.ts
+│   ├── hooks.ts
+│   ├── http-common.ts
+│   ├── http-utils.ts
+│   ├── live-image-probe.ts
+│   ├── net.ts
+│   ├── node-command-policy.ts
+│   ├── node-registry.ts
+│   ├── open-responses.schema.ts
+│   ├── openai-http.ts
+│   ├── openresponses-http.ts
+│   ├── probe.ts
+│   ├── protocol
+│   │   ├── client-info.ts
+│   │   ├── index.ts
+│   │   ├── schema
+│   │   │   ├── agent.ts
+│   │   │   ├── agents-models-skills.ts
+│   │   │   ├── channels.ts
+│   │   │   ├── config.ts
+│   │   │   ├── cron.ts
+│   │   │   ├── devices.ts
+│   │   │   ├── error-codes.ts
+│   │   │   ├── exec-approvals.ts
+│   │   │   ├── frames.ts
+│   │   │   ├── logs-chat.ts
+│   │   │   ├── nodes.ts
+│   │   │   ├── primitives.ts
+│   │   │   ├── protocol-schemas.ts
+│   │   │   ├── sessions.ts
+│   │   │   ├── snapshot.ts
+│   │   │   ├── types.ts
+│   │   │   └── wizard.ts
+│   │   └── schema.ts
+│   ├── server
+│   │   ├── __tests__
+│   │   │   └── test-utils.ts
+│   │   ├── close-reason.ts
+│   │   ├── health-state.ts
+│   │   ├── hooks.ts
+│   │   ├── http-listen.ts
+│   │   ├── plugins-http.ts
+│   │   ├── tls.ts
+│   │   ├── ws-connection
+│   │   │   └── message-handler.ts
+│   │   ├── ws-connection.ts
+│   │   └── ws-types.ts
+│   ├── server-broadcast.ts
+│   ├── server-browser.ts
+│   ├── server-channels.ts
+│   ├── server-chat.ts
+│   ├── server-close.ts
+│   ├── server-constants.ts
+│   ├── server-cron.ts
+│   ├── server-discovery-runtime.ts
+│   ├── server-discovery.ts
+│   ├── server-http.ts
+│   ├── server-lanes.ts
+│   ├── server-maintenance.ts
+│   ├── server-methods
+│   │   ├── agent-job.ts
+│   │   ├── agent-timestamp.ts
+│   │   ├── agent.ts
+│   │   ├── agents.ts
+│   │   ├── browser.ts
+│   │   ├── channels.ts
+│   │   ├── chat.ts
+│   │   ├── config.ts
+│   │   ├── connect.ts
+│   │   ├── cron.ts
+│   │   ├── devices.ts
+│   │   ├── exec-approval.ts
+│   │   ├── exec-approvals.ts
+│   │   ├── health.ts
+│   │   ├── logs.ts
+│   │   ├── models.ts
+│   │   ├── nodes.helpers.ts
+│   │   ├── nodes.ts
+│   │   ├── send.ts
+│   │   ├── sessions.ts
+│   │   ├── skills.ts
+│   │   ├── system.ts
+│   │   ├── talk.ts
+│   │   ├── tts.ts
+│   │   ├── types.ts
+│   │   ├── update.ts
+│   │   ├── usage.ts
+│   │   ├── voicewake.ts
+│   │   ├── web.ts
+│   │   └── wizard.ts
+│   ├── server-methods-list.ts
+│   ├── server-methods.ts
+│   ├── server-mobile-nodes.ts
+│   ├── server-model-catalog.ts
+│   ├── server-node-events-types.ts
+│   ├── server-node-events.ts
+│   ├── server-node-subscriptions.ts
+│   ├── server-plugins.ts
+│   ├── server-reload-handlers.ts
+│   ├── server-restart-sentinel.ts
+│   ├── server-runtime-config.ts
+│   ├── server-runtime-state.ts
+│   ├── server-session-key.ts
+│   ├── server-shared.ts
+│   ├── server-startup-log.ts
+│   ├── server-startup.ts
+│   ├── server-tailscale.ts
+│   ├── server-utils.ts
+│   ├── server-wizard-sessions.ts
+│   ├── server-ws-runtime.ts
+│   ├── server.impl.ts
+│   ├── server.ts
+│   ├── session-utils.fs.ts
+│   ├── session-utils.ts
+│   ├── session-utils.types.ts
+│   ├── sessions-patch.ts
+│   ├── sessions-resolve.ts
+│   ├── test-helpers.e2e.ts
+│   ├── test-helpers.mocks.ts
+│   ├── test-helpers.openai-mock.ts
+│   ├── test-helpers.server.ts
+│   ├── test-helpers.ts
+│   ├── tools-invoke-http.ts
+│   ├── ws-log.ts
+│   └── ws-logging.ts
+├── globals.ts
+├── hooks
+│   ├── bundled
+│   │   ├── README.md
+│   │   ├── boot-md
+│   │   │   ├── HOOK.md
+│   │   │   └── handler.ts
+│   │   ├── command-logger
+│   │   │   ├── HOOK.md
+│   │   │   └── handler.ts
+│   │   ├── session-memory
+│   │   │   ├── HOOK.md
+│   │   │   └── handler.ts
+│   │   └── soul-evil
+│   │       ├── HOOK.md
+│   │       ├── README.md
+│   │       └── handler.ts
+│   ├── bundled-dir.ts
+│   ├── config.ts
+│   ├── frontmatter.ts
+│   ├── gmail-ops.ts
+│   ├── gmail-setup-utils.ts
+│   ├── gmail-watcher.ts
+│   ├── gmail.ts
+│   ├── hooks-status.ts
+│   ├── hooks.ts
+│   ├── install.ts
+│   ├── installs.ts
+│   ├── internal-hooks.ts
+│   ├── llm-slug-generator.ts
+│   ├── loader.ts
+│   ├── plugin-hooks.ts
+│   ├── soul-evil.ts
+│   ├── types.ts
+│   └── workspace.ts
+├── imessage
+│   ├── accounts.ts
+│   ├── client.ts
+│   ├── index.ts
+│   ├── monitor
+│   │   ├── deliver.ts
+│   │   ├── monitor-provider.ts
+│   │   ├── runtime.ts
+│   │   └── types.ts
+│   ├── monitor.ts
+│   ├── probe.ts
+│   ├── send.ts
+│   └── targets.ts
+├── index.ts
+├── infra
+│   ├── agent-events.ts
+│   ├── agents
+│   │   └── brain-agent-orchestrator.ts
+│   ├── archive.ts
+│   ├── backoff.ts
+│   ├── binaries.ts
+│   ├── bonjour-ciao.ts
+│   ├── bonjour-discovery.ts
+│   ├── bonjour-errors.ts
+│   ├── bonjour.ts
+│   ├── brain-config.ts
+│   ├── brain-orchestrator.ts
+│   ├── brew.ts
+│   ├── canvas-host-url.ts
+│   ├── channel-activity.ts
+│   ├── channel-summary.ts
+│   ├── channels-status-issues.ts
+│   ├── clipboard.ts
+│   ├── control-ui-assets.ts
+│   ├── dedupe.ts
+│   ├── device-auth-store.ts
+│   ├── device-identity.ts
+│   ├── device-pairing.ts
+│   ├── diagnostic-events.ts
+│   ├── diagnostic-flags.ts
+│   ├── dotenv.ts
+│   ├── env-file.ts
+│   ├── env.ts
+│   ├── errors.ts
+│   ├── exec-approval-forwarder.ts
+│   ├── exec-approvals.ts
+│   ├── exec-host.ts
+│   ├── exec-safety.ts
+│   ├── fetch.ts
+│   ├── format-duration.ts
+│   ├── fs-safe.ts
+│   ├── gateway-lock.ts
+│   ├── git-commit.ts
+│   ├── hal
+│   │   ├── README.md
+│   │   ├── brain-coordinator.ts
+│   │   ├── cognition
+│   │   │   ├── advanced-capabilities.ts
+│   │   │   ├── adversarial-analyzer.ts
+│   │   │   ├── ambient-intelligence.ts
+│   │   │   ├── causal-inference.ts
+│   │   │   ├── founder-loop.ts
+│   │   │   ├── game-theory.ts
+│   │   │   ├── market-sensing.ts
+│   │   │   ├── natural-intent.ts
+│   │   │   ├── opportunity-detector.ts
+│   │   │   ├── strategic-refactor.ts
+│   │   │   ├── two-tower.ts
+│   │   │   └── vision-memory.ts
+│   │   ├── collective
+│   │   │   ├── federated-learning.ts
+│   │   │   └── swarm-coordinator.ts
+│   │   ├── creative
+│   │   │   ├── creative-problem-solving.ts
+│   │   │   └── creative-solver.ts
+│   │   ├── deploy-hal-phase1.sh
+│   │   ├── economy
+│   │   │   └── budgeting.ts
+│   │   ├── emotional
+│   │   │   ├── emotion-recognition.ts
+│   │   │   └── social-dynamics.ts
+│   │   ├── evolution
+│   │   │   ├── architecture-search.ts
+│   │   │   ├── canon-scan.ts
+│   │   │   ├── conflict-mediator.ts
+│   │   │   ├── dry-run.ts
+│   │   │   ├── governance-validator.ts
+│   │   │   ├── online-learner.ts
+│   │   │   └── self-hiring.ts
+│   │   ├── execution
+│   │   │   ├── capability-tokens.ts
+│   │   │   ├── fs-rooting.ts
+│   │   │   ├── resource-limits.ts
+│   │   │   └── wasm-gate.ts
+│   │   ├── identity
+│   │   │   ├── index.ts
+│   │   │   ├── mesh-coordinator.ts
+│   │   │   ├── replay-cache.ts
+│   │   │   ├── sovereign-handshake.ts
+│   │   │   └── trust-state-machine.ts
+│   │   ├── index.ts
+│   │   ├── lifecycle
+│   │   │   ├── health-coordinator.ts
+│   │   │   ├── permission-gates.ts
+│   │   │   └── state-machine.ts
+│   │   ├── physiology
+│   │   │   ├── multi-modal-fusion.ts
+│   │   │   ├── organ-health.ts
+│   │   │   ├── pain-aggregator.ts
+│   │   │   ├── sensor-network.ts
+│   │   │   ├── sidecar-orchestrator.ts
+│   │   │   ├── stream-fusion.ts
+│   │   │   └── thermal-monitor.ts
+│   │   ├── telepathy
+│   │   │   └── chat-client.ts
+│   │   └── verification
+│   │       └── brain-verification.ts
+│   ├── heartbeat-events.ts
+│   ├── heartbeat-runner.ts
+│   ├── heartbeat-visibility.ts
+│   ├── heartbeat-wake.ts
+│   ├── is-main.ts
+│   ├── json-file.ts
+│   ├── machine-name.ts
+│   ├── net
+│   │   ├── brain-ssrf.ts
+│   │   └── ssrf.ts
+│   ├── node-pairing.ts
+│   ├── node-shell.ts
+│   ├── openclaw-root.ts
+│   ├── os-summary.ts
+│   ├── outbound
+│   │   ├── agent-delivery.ts
+│   │   ├── brain-deliver.ts
+│   │   ├── channel-adapters.ts
+│   │   ├── channel-selection.ts
+│   │   ├── channel-target.ts
+│   │   ├── deliver.ts
+│   │   ├── directory-cache.ts
+│   │   ├── envelope.ts
+│   │   ├── format.ts
+│   │   ├── message-action-runner.ts
+│   │   ├── message-action-spec.ts
+│   │   ├── message.ts
+│   │   ├── outbound-policy.ts
+│   │   ├── outbound-send-service.ts
+│   │   ├── outbound-session.ts
+│   │   ├── payloads.ts
+│   │   ├── target-errors.ts
+│   │   ├── target-normalization.ts
+│   │   ├── target-resolver.ts
+│   │   └── targets.ts
+│   ├── path-env.ts
+│   ├── ports-format.ts
+│   ├── ports-inspect.ts
+│   ├── ports-lsof.ts
+│   ├── ports-types.ts
+│   ├── ports.ts
+│   ├── provider-usage.auth.ts
+│   ├── provider-usage.fetch.antigravity.ts
+│   ├── provider-usage.fetch.claude.ts
+│   ├── provider-usage.fetch.codex.ts
+│   ├── provider-usage.fetch.copilot.ts
+│   ├── provider-usage.fetch.gemini.ts
+│   ├── provider-usage.fetch.minimax.ts
+│   ├── provider-usage.fetch.shared.ts
+│   ├── provider-usage.fetch.ts
+│   ├── provider-usage.fetch.zai.ts
+│   ├── provider-usage.format.ts
+│   ├── provider-usage.load.ts
+│   ├── provider-usage.shared.ts
+│   ├── provider-usage.ts
+│   ├── provider-usage.types.ts
+│   ├── restart-sentinel.ts
+│   ├── restart.ts
+│   ├── retry-policy.ts
+│   ├── retry.ts
+│   ├── runtime-guard.ts
+│   ├── session-cost-usage.ts
+│   ├── shell-env.ts
+│   ├── skills-remote.ts
+│   ├── ssh-config.ts
+│   ├── ssh-tunnel.ts
+│   ├── state-migrations.fs.ts
+│   ├── state-migrations.ts
+│   ├── system-events.ts
+│   ├── system-presence.ts
+│   ├── tailnet.ts
+│   ├── tailscale.ts
+│   ├── tls
+│   │   ├── brain-fingerprint.ts
+│   │   ├── fingerprint.ts
+│   │   └── gateway.ts
+│   ├── transport-ready.ts
+│   ├── unhandled-rejections.ts
+│   ├── update-channels.ts
+│   ├── update-check.ts
+│   ├── update-global.ts
+│   ├── update-runner.ts
+│   ├── update-startup.ts
+│   ├── voicewake.ts
+│   ├── warnings.ts
+│   ├── widearea-dns.ts
+│   ├── ws.ts
+│   └── wsl.ts
+├── line
+│   ├── accounts.ts
+│   ├── auto-reply-delivery.ts
+│   ├── bot-access.ts
+│   ├── bot-handlers.ts
+│   ├── bot-message-context.ts
+│   ├── bot.ts
+│   ├── config-schema.ts
+│   ├── download.ts
+│   ├── flex-templates.ts
+│   ├── http-registry.ts
+│   ├── index.ts
+│   ├── markdown-to-line.ts
+│   ├── monitor.ts
+│   ├── probe.ts
+│   ├── reply-chunks.ts
+│   ├── rich-menu.ts
+│   ├── send.ts
+│   ├── signature.ts
+│   ├── template-messages.ts
+│   ├── types.ts
+│   └── webhook.ts
+├── link-understanding
+│   ├── apply.ts
+│   ├── defaults.ts
+│   ├── detect.ts
+│   ├── format.ts
+│   ├── index.ts
+│   └── runner.ts
+├── logger.ts
+├── logging
+│   ├── config.ts
+│   ├── console.ts
+│   ├── diagnostic.ts
+│   ├── levels.ts
+│   ├── logger.ts
+│   ├── parse-log-line.ts
+│   ├── redact.ts
+│   ├── state.ts
+│   └── subsystem.ts
+├── logging.ts
+├── macos
+│   ├── gateway-daemon.ts
+│   ├── relay-smoke.ts
+│   └── relay.ts
+├── markdown
+│   ├── code-spans.ts
+│   ├── fences.ts
+│   ├── frontmatter.ts
+│   ├── ir.ts
+│   ├── render.ts
+│   └── tables.ts
+├── media
+│   ├── audio-tags.ts
+│   ├── audio.ts
+│   ├── constants.ts
+│   ├── fetch.ts
+│   ├── host.ts
+│   ├── image-ops.ts
+│   ├── input-files.ts
+│   ├── mime.ts
+│   ├── parse.ts
+│   ├── server.ts
+│   └── store.ts
+├── media-understanding
+│   ├── apply.ts
+│   ├── attachments.ts
+│   ├── concurrency.ts
+│   ├── defaults.ts
+│   ├── errors.ts
+│   ├── format.ts
+│   ├── index.ts
+│   ├── providers
+│   │   ├── anthropic
+│   │   │   └── index.ts
+│   │   ├── deepgram
+│   │   │   ├── audio.ts
+│   │   │   └── index.ts
+│   │   ├── google
+│   │   │   ├── audio.ts
+│   │   │   ├── index.ts
+│   │   │   └── video.ts
+│   │   ├── groq
+│   │   │   └── index.ts
+│   │   ├── image.ts
+│   │   ├── index.ts
+│   │   ├── minimax
+│   │   │   └── index.ts
+│   │   ├── openai
+│   │   │   ├── audio.ts
+│   │   │   └── index.ts
+│   │   └── shared.ts
+│   ├── resolve.ts
+│   ├── runner.ts
+│   ├── scope.ts
+│   ├── types.ts
+│   └── video.ts
+├── memory
+│   ├── batch-gemini.ts
+│   ├── batch-openai.ts
+│   ├── embeddings-gemini.ts
+│   ├── embeddings-openai.ts
+│   ├── embeddings.ts
+│   ├── headers-fingerprint.ts
+│   ├── hybrid.ts
+│   ├── index.ts
+│   ├── internal.ts
+│   ├── manager-cache-key.ts
+│   ├── manager-search.ts
+│   ├── manager.ts
+│   ├── memory-schema.ts
+│   ├── node-llama.ts
+│   ├── openai-batch.ts
+│   ├── provider-key.ts
+│   ├── search-manager.ts
+│   ├── session-files.ts
+│   ├── sqlite-vec.ts
+│   ├── sqlite.ts
+│   ├── status-format.ts
+│   ├── sync-memory-files.ts
+│   └── sync-session-files.ts
+├── node-host
+│   ├── config.ts
+│   └── runner.ts
+├── pairing
+│   ├── pairing-labels.ts
+│   ├── pairing-messages.ts
+│   └── pairing-store.ts
+├── plugin-sdk
+│   └── index.ts
+├── plugins
+│   ├── bundled-dir.ts
+│   ├── cli.ts
+│   ├── commands.ts
+│   ├── config-schema.ts
+│   ├── config-state.ts
+│   ├── discovery.ts
+│   ├── enable.ts
+│   ├── hook-runner-global.ts
+│   ├── hooks.ts
+│   ├── http-path.ts
+│   ├── http-registry.ts
+│   ├── install.ts
+│   ├── installs.ts
+│   ├── loader.ts
+│   ├── manifest-registry.ts
+│   ├── manifest.ts
+│   ├── providers.ts
+│   ├── registry.ts
+│   ├── runtime
+│   │   ├── index.ts
+│   │   ├── native-deps.ts
+│   │   └── types.ts
+│   ├── runtime.ts
+│   ├── schema-validator.ts
+│   ├── services.ts
+│   ├── slots.ts
+│   ├── status.ts
+│   ├── tools.ts
+│   ├── types.ts
+│   └── update.ts
+├── polls.ts
+├── process
+│   ├── child-process-bridge.ts
+│   ├── command-queue.ts
+│   ├── exec.ts
+│   ├── lanes.ts
+│   └── spawn-utils.ts
+├── providers
+│   ├── github-copilot-auth.ts
+│   ├── github-copilot-models.ts
+│   ├── github-copilot-token.ts
+│   └── qwen-portal-oauth.ts
+├── routing
+│   ├── bindings.ts
+│   ├── resolve-route.ts
+│   └── session-key.ts
+├── runtime.ts
+├── scripts
+├── security
+│   ├── audit-extra.ts
+│   ├── audit-fs.ts
+│   ├── audit.ts
+│   ├── external-content.ts
+│   ├── fix.ts
+│   └── windows-acl.ts
+├── sessions
+│   ├── level-overrides.ts
+│   ├── model-overrides.ts
+│   ├── send-policy.ts
+│   ├── session-key-utils.ts
+│   ├── session-label.ts
+│   └── transcript-events.ts
+├── shared
+│   └── text
+│       └── reasoning-tags.ts
+├── signal
+│   ├── accounts.ts
+│   ├── client.ts
+│   ├── daemon.ts
+│   ├── format.ts
+│   ├── identity.ts
+│   ├── index.ts
+│   ├── monitor
+│   │   ├── event-handler.ts
+│   │   └── event-handler.types.ts
+│   ├── monitor.ts
+│   ├── probe.ts
+│   ├── reaction-level.ts
+│   ├── send-reactions.ts
+│   ├── send.ts
+│   └── sse-reconnect.ts
+├── slack
+│   ├── accounts.ts
+│   ├── actions.ts
+│   ├── channel-migration.ts
+│   ├── client.ts
+│   ├── directory-live.ts
+│   ├── format.ts
+│   ├── http
+│   │   ├── index.ts
+│   │   └── registry.ts
+│   ├── index.ts
+│   ├── monitor
+│   │   ├── allow-list.ts
+│   │   ├── auth.ts
+│   │   ├── channel-config.ts
+│   │   ├── commands.ts
+│   │   ├── context.ts
+│   │   ├── events
+│   │   │   ├── channels.ts
+│   │   │   ├── members.ts
+│   │   │   ├── messages.ts
+│   │   │   ├── pins.ts
+│   │   │   └── reactions.ts
+│   │   ├── events.ts
+│   │   ├── media.ts
+│   │   ├── message-handler
+│   │   │   ├── dispatch.ts
+│   │   │   ├── prepare.ts
+│   │   │   └── types.ts
+│   │   ├── message-handler.ts
+│   │   ├── policy.ts
+│   │   ├── provider.ts
+│   │   ├── replies.ts
+│   │   ├── slash.ts
+│   │   ├── thread-resolution.ts
+│   │   └── types.ts
+│   ├── monitor.test-helpers.ts
+│   ├── monitor.ts
+│   ├── probe.ts
+│   ├── resolve-channels.ts
+│   ├── resolve-users.ts
+│   ├── scopes.ts
+│   ├── send.ts
+│   ├── targets.ts
+│   ├── threading-tool-context.ts
+│   ├── threading.ts
+│   ├── token.ts
+│   └── types.ts
+├── telegram
+│   ├── accounts.ts
+│   ├── allowed-updates.ts
+│   ├── api-logging.ts
+│   ├── audit.ts
+│   ├── bot
+│   │   ├── delivery.ts
+│   │   ├── helpers.ts
+│   │   └── types.ts
+│   ├── bot-access.ts
+│   ├── bot-handlers.ts
+│   ├── bot-message-context.ts
+│   ├── bot-message-dispatch.ts
+│   ├── bot-message.ts
+│   ├── bot-native-commands.ts
+│   ├── bot-updates.ts
+│   ├── bot.ts
+│   ├── caption.ts
+│   ├── download.ts
+│   ├── draft-chunking.ts
+│   ├── draft-stream.ts
+│   ├── fetch.ts
+│   ├── format.ts
+│   ├── group-migration.ts
+│   ├── index.ts
+│   ├── inline-buttons.ts
+│   ├── monitor.ts
+│   ├── network-config.ts
+│   ├── network-errors.ts
+│   ├── pairing-store.ts
+│   ├── probe.ts
+│   ├── proxy.ts
+│   ├── reaction-level.ts
+│   ├── send.ts
+│   ├── sent-message-cache.ts
+│   ├── sticker-cache.ts
+│   ├── targets.ts
+│   ├── token.ts
+│   ├── update-offset-store.ts
+│   ├── voice.ts
+│   ├── webhook-set.ts
+│   └── webhook.ts
+├── terminal
+│   ├── ansi.ts
+│   ├── links.ts
+│   ├── note.ts
+│   ├── palette.ts
+│   ├── progress-line.ts
+│   ├── prompt-style.ts
+│   ├── stream-writer.ts
+│   ├── table.ts
+│   └── theme.ts
+├── test-helpers
+│   └── workspace.ts
+├── test-utils
+│   ├── channel-plugins.ts
+│   └── ports.ts
+├── tts
+│   └── tts.ts
+├── tui
+│   ├── commands.ts
+│   ├── components
+│   │   ├── assistant-message.ts
+│   │   ├── chat-log.ts
+│   │   ├── custom-editor.ts
+│   │   ├── filterable-select-list.ts
+│   │   ├── fuzzy-filter.ts
+│   │   ├── searchable-select-list.ts
+│   │   ├── selectors.ts
+│   │   ├── tool-execution.ts
+│   │   └── user-message.ts
+│   ├── gateway-chat.ts
+│   ├── theme
+│   │   ├── syntax-theme.ts
+│   │   └── theme.ts
+│   ├── tui-command-handlers.ts
+│   ├── tui-event-handlers.ts
+│   ├── tui-formatters.ts
+│   ├── tui-local-shell.ts
+│   ├── tui-overlays.ts
+│   ├── tui-session-actions.ts
+│   ├── tui-status-summary.ts
+│   ├── tui-stream-assembler.ts
+│   ├── tui-types.ts
+│   ├── tui-waiting.ts
+│   └── tui.ts
+├── types
+│   ├── cli-highlight.d.ts
+│   ├── lydell-node-pty.d.ts
+│   ├── napi-rs-canvas.d.ts
+│   ├── node-edge-tts.d.ts
+│   ├── node-llama-cpp.d.ts
+│   ├── osc-progress.d.ts
+│   ├── pdfjs-dist-legacy.d.ts
+│   ├── pi-coding-agent.d.ts
+│   ├── proper-lockfile.d.ts
+│   └── qrcode-terminal.d.ts
+├── utils
+│   ├── account-id.ts
+│   ├── boolean.ts
+│   ├── delivery-context.ts
+│   ├── directive-tags.ts
+│   ├── message-channel.ts
+│   ├── provider-utils.ts
+│   ├── queue-helpers.ts
+│   ├── time-format.ts
+│   └── usage-format.ts
+├── utils.ts
+├── version.ts
+├── web
+│   ├── accounts.ts
+│   ├── active-listener.ts
+│   ├── auth-store.ts
+│   ├── auto-reply
+│   │   ├── constants.ts
+│   │   ├── deliver-reply.ts
+│   │   ├── heartbeat-runner.ts
+│   │   ├── loggers.ts
+│   │   ├── mentions.ts
+│   │   ├── monitor
+│   │   │   ├── ack-reaction.ts
+│   │   │   ├── broadcast.ts
+│   │   │   ├── commands.ts
+│   │   │   ├── echo.ts
+│   │   │   ├── group-activation.ts
+│   │   │   ├── group-gating.ts
+│   │   │   ├── group-members.ts
+│   │   │   ├── last-route.ts
+│   │   │   ├── message-line.ts
+│   │   │   ├── on-message.ts
+│   │   │   ├── peer.ts
+│   │   │   └── process-message.ts
+│   │   ├── monitor.ts
+│   │   ├── session-snapshot.ts
+│   │   ├── types.ts
+│   │   └── util.ts
+│   ├── auto-reply.impl.ts
+│   ├── auto-reply.ts
+│   ├── inbound
+│   │   ├── access-control.ts
+│   │   ├── dedupe.ts
+│   │   ├── extract.ts
+│   │   ├── media.ts
+│   │   ├── monitor.ts
+│   │   ├── send-api.ts
+│   │   └── types.ts
+│   ├── inbound.ts
+│   ├── login-qr.ts
+│   ├── login.ts
+│   ├── media.ts
+│   ├── outbound.ts
+│   ├── qr-image.ts
+│   ├── reconnect.ts
+│   ├── session.ts
+│   ├── test-helpers.ts
+│   └── vcard.ts
+├── whatsapp
+│   └── normalize.ts
+└── wizard
+    ├── clack-prompter.ts
+    ├── onboarding.finalize.ts
+    ├── onboarding.gateway-config.ts
+    ├── onboarding.ts
+    ├── onboarding.types.ts
+    ├── prompts.ts
+    └── session.ts
+

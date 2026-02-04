@@ -1,5 +1,0 @@
-body/mesh: staged integration and tooling
-
-DESCRIPTION: Staged changes across body (mesh, main, sensors), brain (cerebellum, cortex, core, maintainer, worldmodel), mind (openclaw, tui), docs, docker-compose, and tools/test_integration.
-
-IMPACT: Consolidates current working tree; no behavioral guarantee beyond staged diff.

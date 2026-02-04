@@ -1,0 +1,77 @@
+# Ippoc System DNA - Instance Configuration
+
+version: "1.0"
+organism:
+  name: "ippoc-alpha"
+  version: "0.1.0"
+  environment: "development"
+
+organs:
+  # Memory System (Persistent Storage)
+  mnemosyne:
+    enabled: true
+    type: "hybrid"
+    ports:
+      api: 8001
+      redis: 6379
+      postgres: 5432
+    resources:
+      cpu: "1.0"
+      memory: "2Gi"
+    dependencies: []
+
+  # Body System (Networking & Sensors)
+  soma:
+    enabled: true
+    type: "rust"
+    ports:
+      api: 8002
+      mesh: 9000
+      sensors: 9001
+    resources:
+      cpu: "0.5"
+      memory: "1Gi"
+    dependencies: ["mnemosyne"]
+
+  # Brain System (Cognition & Reasoning)
+  cortex:
+    enabled: true
+    type: "python"
+    ports:
+      api: 8003
+      planner: 8004
+      reasoning: 8005
+    resources:
+      cpu: "2.0"
+      memory: "4Gi"
+    dependencies: ["mnemosyne", "soma"]
+
+  # Kernel Bridge (OpenClaw Interface)
+  axons:
+    enabled: true
+    type: "bridge"
+    ports:
+      event_bus: 8006
+      command_sink: 8007
+    resources:
+      cpu: "0.2"
+      memory: "256Mi"
+    dependencies: ["cortex", "soma"]
+
+# Network Configuration
+network:
+  gateway_port: 8080
+  internal_mesh: "ippoc-mesh"
+  external_access: true
+
+# Storage Configuration
+storage:
+  data_volume: "/data"
+  models_volume: "/models"
+  logs_volume: "/logs"
+
+# Security
+security:
+  identity_key_path: "/runtime/bootstrap/identity.key"
+  tls_enabled: false
+  auth_required: false

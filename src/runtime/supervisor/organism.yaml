@@ -1,0 +1,113 @@
+# Ippoc Organism Supervisor Configuration
+
+version: "3.8"
+
+services:
+  # Memory System (Mnemosyne)
+  mnemosyne:
+    build:
+      context: ../../mnemosyne
+      dockerfile: ../../infra/docker/Dockerfile.mnemosyne
+    container_name: ippoc-mnemosyne
+    ports:
+      - "8001:8001"  # API
+      - "6379:6379"  # Redis
+      - "5432:5432"  # Postgres
+    volumes:
+      - ../data:/data
+      - ../models:/models
+    environment:
+      - DATABASE_URL=postgresql://ippoc:ippoc@localhost:5432/ippoc
+      - REDIS_URL=redis://localhost:6379
+    networks:
+      - ippoc-mesh
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Body System (Soma)
+  soma:
+    build:
+      context: ../../soma
+      dockerfile: ../../infra/docker/Dockerfile.soma
+    container_name: ippoc-soma
+    ports:
+      - "8002:8002"  # API
+      - "9000:9000"  # Mesh
+      - "9001:9001"  # Sensors
+    depends_on:
+      mnemosyne:
+        condition: service_healthy
+    environment:
+      - MEMORY_SERVICE=http://mnemosyne:8001
+    networks:
+      - ippoc-mesh
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Brain System (Cortex)
+  cortex:
+    build:
+      context: ../../cortex
+      dockerfile: ../../infra/docker/Dockerfile.cortex
+    container_name: ippoc-cortex
+    ports:
+      - "8003:8003"  # API
+      - "8004:8004"  # Planner
+      - "8005:8005"  # Reasoning
+    depends_on:
+      mnemosyne:
+        condition: service_healthy
+      soma:
+        condition: service_healthy
+    environment:
+      - MEMORY_SERVICE=http://mnemosyne:8001
+      - BODY_SERVICE=http://soma:8002
+    networks:
+      - ippoc-mesh
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Gateway (API Router)
+  gateway:
+    build:
+      context: ../../runtime/gateway
+      dockerfile: ../../infra/docker/Dockerfile.gateway
+    container_name: ippoc-gateway
+    ports:
+      - "8080:8080"  # Public API
+    depends_on:
+      cortex:
+        condition: service_healthy
+      soma:
+        condition: service_healthy
+    environment:
+      - CORTEX_URL=http://cortex:8003
+      - SOMA_URL=http://soma:8002
+      - MNEMOSYNE_URL=http://mnemosyne:8001
+    networks:
+      - ippoc-mesh
+    restart: unless-stopped
+
+networks:
+  ippoc-mesh:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  data_volume:
+  models_volume:
+  logs_volume:
