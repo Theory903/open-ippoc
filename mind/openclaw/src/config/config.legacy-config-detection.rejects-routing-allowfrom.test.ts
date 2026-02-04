@@ -32,6 +32,7 @@ describe("legacy config detection", () => {
     });
     expect(res.changes).toContain("Moved routing.allowFrom → channels.whatsapp.allowFrom.");
     expect(res.config?.channels?.whatsapp?.allowFrom).toEqual(["+15555550123"]);
+    // @ts-ignore - routing property exists in legacy config but not in current type
     expect(res.config?.routing?.allowFrom).toBeUndefined();
   });
   it("drops routing.allowFrom when whatsapp missing", async () => {
@@ -42,6 +43,7 @@ describe("legacy config detection", () => {
     });
     expect(res.changes).toContain("Removed routing.allowFrom (channels.whatsapp not configured).");
     expect(res.config?.channels?.whatsapp).toBeUndefined();
+    // @ts-ignore - routing property exists in legacy config but not in current type
     expect(res.config?.routing?.allowFrom).toBeUndefined();
   });
   it("migrates routing.groupChat.requireMention to channels whatsapp/telegram/imessage groups when whatsapp configured", async () => {
@@ -63,6 +65,7 @@ describe("legacy config detection", () => {
     expect(res.config?.channels?.whatsapp?.groups?.["*"]?.requireMention).toBe(false);
     expect(res.config?.channels?.telegram?.groups?.["*"]?.requireMention).toBe(false);
     expect(res.config?.channels?.imessage?.groups?.["*"]?.requireMention).toBe(false);
+    // @ts-ignore - routing property exists in legacy config but not in current type
     expect(res.config?.routing?.groupChat?.requireMention).toBeUndefined();
   });
   it("migrates routing.groupChat.requireMention to telegram/imessage when whatsapp missing", async () => {
@@ -83,6 +86,7 @@ describe("legacy config detection", () => {
     expect(res.config?.channels?.whatsapp).toBeUndefined();
     expect(res.config?.channels?.telegram?.groups?.["*"]?.requireMention).toBe(false);
     expect(res.config?.channels?.imessage?.groups?.["*"]?.requireMention).toBe(false);
+    // @ts-ignore - routing property exists in legacy config but not in current type
     expect(res.config?.routing?.groupChat?.requireMention).toBeUndefined();
   });
   it("migrates routing.groupChat.mentionPatterns to messages.groupChat.mentionPatterns", async () => {
@@ -95,6 +99,7 @@ describe("legacy config detection", () => {
       "Moved routing.groupChat.mentionPatterns → messages.groupChat.mentionPatterns.",
     );
     expect(res.config?.messages?.groupChat?.mentionPatterns).toEqual(["@openclaw"]);
+    // @ts-ignore - routing property exists in legacy config but not in current type
     expect(res.config?.routing?.groupChat?.mentionPatterns).toBeUndefined();
   });
   it("migrates routing agentToAgent/queue/transcribeAudio to tools/messages/media", async () => {
@@ -132,6 +137,7 @@ describe("legacy config detection", () => {
         },
       ],
     });
+    // @ts-ignore - routing property exists in legacy config but not in current type
     expect(res.config?.routing).toBeUndefined();
   });
   it("migrates agent config into agents.defaults and tools", async () => {

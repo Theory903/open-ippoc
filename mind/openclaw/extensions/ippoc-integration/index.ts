@@ -1,4 +1,4 @@
-import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
+import type { OpenClawPluginApi } from "../../src/plugin-sdk/index.js";
 import { registerMemoryTools } from "./memory.js";
 import { registerGenericTool } from "./generic.js";
 
@@ -26,7 +26,7 @@ const ippocPlugin = {
         acceptsArgs: true,
         handler: async (ctx) => {
             const cronId = ctx.args?.trim();
-            if (!cronId) return { content: [{ type: "text", text: "Error: No Cron ID provided" }] };
+            if (!cronId) return { text: "Error: No Cron ID provided", isError: true };
             
             console.log(`[IPPOC] 🕒 Triggering Cognitive Loop via Command: ${cronId}`);
             try {
@@ -35,10 +35,10 @@ const ippocPlugin = {
                 });
                 const result = await resp.json();
                 console.log(`[IPPOC] ✅ ${cronId} Complete:`, result);
-                return { content: [{ type: "text", text: `Executed ${cronId}: ${result.status}` }] };
+                return { text: `Executed ${cronId}: ${result.status}` };
             } catch (e: any) {
                 console.error(`[IPPOC] ❌ ${cronId} Failed:`, e);
-                return { content: [{ type: "text", text: `IPPOC Cron Failed: ${e.message}` }] };
+                return { text: `IPPOC Cron Failed: ${e.message}`, isError: true };
             }
         }
     });

@@ -1,0 +1,12 @@
+[
+    {
+        "description": "Achieve Full Autonomy (Founder Mode)",
+        "createdAt": 1707000000000,
+        "timelineMs": 2592000000,
+        "milestones": [
+            "Implement HAL Core",
+            "Deploy to Staging",
+            "Validate 1 Week Uptime"
+        ]
+    }
+]
