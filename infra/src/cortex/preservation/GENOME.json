@@ -1,0 +1,27 @@
+{
+    "genome": {
+        "version": "1.0.0",
+        "canon": {
+            "violation_patterns": [
+                "delete_all",
+                "self_destruct",
+                "wipe_memory",
+                "hack_economy",
+                "set_budget_infinite",
+                "set_budget_negative",
+                "override_safety"
+            ]
+        },
+        "value_function_snapshot": {
+            "existential_threat": -1.0,
+            "service": 0.0,
+            "harm": 0.0
+        },
+        "invariants": [
+            "Never override Canon",
+            "Pain drives conservation",
+            "Federation requires identity"
+        ]
+    },
+    "genetic_hash": "3e45f0c3a5cc80be102388bb7efcd43f49c2a8f90e3cf2b3fa393d1b7d74a46b"
+}

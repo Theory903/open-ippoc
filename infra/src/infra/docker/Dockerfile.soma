@@ -1,0 +1,32 @@
+# Soma Dockerfile
+FROM rust:1.70 as builder
+
+WORKDIR /app
+
+# Copy body system
+COPY soma/ /app/
+COPY Cargo.toml /app/
+
+# Build Rust components
+RUN cargo build --release
+
+FROM debian:bullseye-slim
+
+WORKDIR /app
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy built binaries
+COPY --from=builder /app/target/release/ /app/bin/
+
+# Expose ports
+EXPOSE 8002 9000 9001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8002/health || exit 1
+
+CMD ["/app/bin/soma-service"]

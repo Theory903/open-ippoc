@@ -1,0 +1,19 @@
+FROM rust:1.70 as builder
+
+WORKDIR /app
+
+COPY mesh/src/gossip.rs .
+COPY mesh/Cargo.toml .
+COPY Cargo.toml .
+
+RUN cargo build --release --bin gossip_bridge
+
+FROM debian:bullseye-slim
+
+WORKDIR /app
+
+COPY --from=builder /app/target/release/gossip_bridge .
+
+EXPOSE 9001
+
+CMD ["./gossip_bridge"]
