@@ -195,7 +195,7 @@ class ToolOrchestrator:
 
                     final_cost = result.cost_spent if result.cost_spent > 0 else estimated_cost
                     self.economy.spend(final_cost, tool_name=tool_name)
-                    self._audit_action(envelope, result, final_cost, None)
+                    await self._audit_action_async(envelope, result, final_cost, None)
                     if not result.memory_written:
                         result.memory_written = True
                     self._store_idempotency(envelope, result)
@@ -204,13 +204,13 @@ class ToolOrchestrator:
                     breaker.record_failure()
                     last_error = e
                     if attempt >= max_retries:
-                        self._audit_action(envelope, None, estimated_cost, "Execution timeout")
+                        await self._audit_action_async(envelope, None, estimated_cost, "Execution timeout")
                         raise ToolExecutionError(tool_name, "Execution timeout")
                 except Exception as e:
                     breaker.record_failure()
                     last_error = e
                     if attempt >= max_retries or not self._is_retryable(e):
-                        self._audit_action(envelope, None, estimated_cost, str(e))
+                        await self._audit_action_async(envelope, None, estimated_cost, str(e))
                         raise ToolExecutionError(tool_name, str(e))
                 attempt += 1
         finally:
@@ -316,6 +316,9 @@ class ToolOrchestrator:
         if not key:
             return
         self.idempotency_cache[key] = (time.time(), result)
+
+    async def _audit_action_async(self, envelope: ToolInvocationEnvelope, result: Optional[ToolResult], cost: float, error: Optional[str]) -> None:
+        await asyncio.to_thread(self._audit_action, envelope, result, cost, error)
 
     def _audit_action(self, envelope: ToolInvocationEnvelope, result: Optional[ToolResult], cost: float, error: Optional[str]) -> None:
         path = os.getenv("ORCHESTRATOR_AUDIT_PATH", "data/action_log.jsonl")
