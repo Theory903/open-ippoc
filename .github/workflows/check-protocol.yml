@@ -8,14 +8,11 @@ jobs:
   lint-commits:
     runs-on: ubuntu-latest
     steps:
-      - name: Check Commit Message Format
-        uses: gsly93/commit-msg-checker@v1.0.1
+      - uses: actions/checkout@v3
         with:
-          pattern: '^(brain|body|mind|memory|infra|system|docs|api)\/[a-z0-9-]+: [\s\S]+'
-          error: 'Your commit message must follow the "organ: intent" protocol (e.g., body/immune: improve git flow). See rules.md.'
-          check_all_commits: true
+          fetch-depth: 0
 
-      - name: Verify DESCRIPTION and IMPACT sections
+      - name: Verify Commit Message Protocol
         uses: actions/github-script@v6
         with:
           script: |
@@ -25,9 +22,16 @@ jobs:
               pull_number: context.issue.number,
             });
             
+            const pattern = /^(brain|body|mind|memory|infra|system|docs|api)\/[a-z0-9-]+: .+/;
+
             for (const commit of commits.data) {
-              const msg = commit.commit.message;
-              if (!msg.includes('DESCRIPTION:') || !msg.includes('IMPACT:')) {
+              const msg = commit.commit.message.split('\n')[0]; // Check title only
+              if (!pattern.test(msg)) {
+                core.setFailed(`Commit message title "${msg}" does not follow protocol. Format: 'organ/intent: description'. Allowed organs: brain, body, mind, memory, infra, system, docs, api`);
+              }
+
+              const fullMsg = commit.commit.message;
+              if (!fullMsg.includes('DESCRIPTION:') || !fullMsg.includes('IMPACT:')) {
                 core.setFailed(`Commit message for ${commit.sha} is missing DESCRIPTION: or IMPACT: sections.`);
               }
             }
