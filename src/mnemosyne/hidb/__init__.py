@@ -20,3 +20,6 @@ PUBLIC API:
 ENTRYPOINTS:
     memory.hidb.client
 """
+from .hidb import HiDB
+
+__all__ = ["HiDB"]
