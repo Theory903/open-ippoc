@@ -145,10 +145,11 @@ class SemanticManager:
                 results_with_scores = await self.vector_store.asimilarity_search_with_score(
                     query, k=k, filter=filter_metadata
                 )
-                results = [
-                    doc for doc, score in results_with_scores 
-                    if score >= min_score
-                ]
+                results = []
+                for doc, score in results_with_scores:
+                    if score >= min_score:
+                        doc.metadata["retrieval_score"] = score
+                        results.append(doc)
             
             logger.debug(f"Retrieved {len(results)} semantic memories for query: {query}")
             return results
