@@ -8,12 +8,36 @@ jobs:
   lint-commits:
     runs-on: ubuntu-latest
     steps:
-      - name: Check Commit Message Format
-        uses: gsly93/commit-msg-checker@v1.0.1
+      - uses: actions/checkout@v3
         with:
-          pattern: '^(brain|body|mind|memory|infra|system|docs|api)\/[a-z0-9-]+: [\s\S]+'
-          error: 'Your commit message must follow the "organ: intent" protocol (e.g., body/immune: improve git flow). See rules.md.'
-          check_all_commits: true
+          fetch-depth: 0
+
+      - name: Check Commit Message Format
+        run: |
+          # Get commit messages based on event type
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            commits=$(git log --format=%s origin/${{ github.base_ref }}..${{ github.sha }})
+          else
+            commits=$(git log --format=%s -n 1 ${{ github.sha }})
+          fi
+
+          # Regex pattern
+          pattern='^(brain|body|mind|memory|infra|system|docs|api)\/[a-z0-9-]+: .+'
+
+          echo "$commits" | while read -r line; do
+            if [[ -n "$line" ]]; then
+              # Skip merge commits
+              if [[ "$line" =~ ^Merge ]]; then
+                continue
+              fi
+
+              if [[ ! "$line" =~ $pattern ]]; then
+                echo "::error::Commit message '$line' does not follow protocol. Format: 'organ/intent: description'"
+                echo "::error::Allowed organs: brain, body, mind, memory, infra, system, docs, api"
+                exit 1
+              fi
+            fi
+          done
 
       - name: Verify DESCRIPTION and IMPACT sections
         uses: actions/github-script@v6
