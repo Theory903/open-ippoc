@@ -25,13 +25,20 @@ jobs:
             const pattern = /^(brain|body|mind|memory|infra|system|docs|api)\/[a-z0-9-]+: .+/;
 
             for (const commit of commits.data) {
-              const msg = commit.commit.message.split('\n')[0]; // Check title only
-              if (!pattern.test(msg)) {
-                core.setFailed(`Commit message title "${msg}" does not follow protocol. Format: 'organ/intent: description'. Allowed organs: brain, body, mind, memory, infra, system, docs, api`);
+              const msg = commit.commit.message;
+
+              // Skip merge commits
+              if (msg.startsWith('Merge ')) {
+                console.log(`Skipping merge commit: ${commit.sha}`);
+                continue;
               }
 
-              const fullMsg = commit.commit.message;
-              if (!fullMsg.includes('DESCRIPTION:') || !fullMsg.includes('IMPACT:')) {
+              const title = msg.split('\n')[0];
+              if (!pattern.test(title)) {
+                core.setFailed(`Commit message title "${title}" does not follow protocol. Format: 'organ/intent: description'. Allowed organs: brain, body, mind, memory, infra, system, docs, api`);
+              }
+
+              if (!msg.includes('DESCRIPTION:') || !msg.includes('IMPACT:')) {
                 core.setFailed(`Commit message for ${commit.sha} is missing DESCRIPTION: or IMPACT: sections.`);
               }
             }
