@@ -9,11 +9,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check Commit Message Format
-        uses: gsactions/commit-msg-checker@v1.0.1
+        uses: actions/github-script@v6
         with:
-          pattern: '^(brain|body|mind|memory|infra|system|docs|api)\/[a-z0-9-]+: [\s\S]+'
-          error: 'Your commit message must follow the "organ: intent" protocol (e.g., body/immune: improve git flow). See rules.md.'
-          check_all_commits: true
+          script: |
+            const commits = await github.rest.pulls.listCommits({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+            const pattern = /^(brain|body|mind|memory|infra|system|docs|api)\/[a-z0-9-]+: [\s\S]+/;
+            for (const commit of commits.data) {
+              const msg = commit.commit.message;
+              if (!pattern.test(msg)) {
+                core.setFailed(`Commit message for ${commit.sha} does not follow the "organ: intent" protocol (e.g., body/immune: improve git flow). Message: "${msg}"`);
+              }
+            }
 
       - name: Verify DESCRIPTION and IMPACT sections
         uses: actions/github-script@v6
