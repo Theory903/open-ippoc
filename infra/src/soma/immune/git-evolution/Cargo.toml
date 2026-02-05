@@ -12,3 +12,10 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 chrono = "0.4"
 async-trait = "0.1"
+
+[dev-dependencies]
+tempfile = "3.0"
+
+[lib]
+name = "git_evolution"
+path = "src/lib.rs"
