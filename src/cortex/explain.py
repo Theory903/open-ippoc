@@ -12,44 +12,11 @@ def get_latest_explanation():
     if not os.path.exists(EXPLAIN_PATH):
         return None
     try:
-        # Check for legacy JSON list format first by peeking
-        is_legacy = False
-        if os.path.getsize(EXPLAIN_PATH) > 0:
-            with open(EXPLAIN_PATH, "r", encoding="utf-8") as f:
-                first_char = f.read(1)
-                if first_char == '[':
-                    is_legacy = True
-
-        if is_legacy:
-            with open(EXPLAIN_PATH, "r", encoding="utf-8") as f:
-                content = json.load(f)
-                if isinstance(content, list):
-                    return content[-1] if content else None
-                return content
-        else:
-            # JSONL: Read last line efficiently
-            with open(EXPLAIN_PATH, "rb") as f:
-                try:
-                    # Seek to the end of the file
-                    f.seek(0, os.SEEK_END)
-                    file_size = f.tell()
-                    if file_size == 0:
-                        return None
-
-                    # Go to the character before the last character
-                    # (assuming last char is newline, we want to skip it)
-                    f.seek(-2, os.SEEK_END)
-                    while f.read(1) != b'\n':
-                        f.seek(-2, os.SEEK_CUR)
-                except OSError:
-                    # File is small or contains one line
-                    f.seek(0)
-
-                last_line = f.readline().decode('utf-8')
-                if not last_line.strip():
-                     return None
-                return json.loads(last_line)
-
+        with open(EXPLAIN_PATH, "r", encoding="utf-8") as f:
+            content = json.load(f)
+            if isinstance(content, list):
+                return content[-1] if content else None
+            return content
     except Exception:
         return None
 
@@ -70,35 +37,26 @@ def log_decision(action: str, reason: str, intent: dict = None, observation: dic
     try:
         os.makedirs(os.path.dirname(EXPLAIN_PATH), exist_ok=True)
         
-        # Migration logic: Check if file exists and is in legacy format
-        if os.path.exists(EXPLAIN_PATH) and os.path.getsize(EXPLAIN_PATH) > 0:
-             is_legacy = False
-             with open(EXPLAIN_PATH, "r", encoding="utf-8") as f:
-                 if f.read(1) == '[':
-                     is_legacy = True
-
-             if is_legacy:
-                 print(f"[Explain] Migrating legacy log file {EXPLAIN_PATH} to JSONL...")
-                 try:
-                     with open(EXPLAIN_PATH, "r", encoding="utf-8") as f:
-                         content = json.load(f)
-
-                     # Rewrite as JSONL
+        # Append logic
+        existing = []
+        if os.path.exists(EXPLAIN_PATH):
+             try:
+                 with open(EXPLAIN_PATH, "r", encoding="utf-8") as f:
+                     content = json.load(f)
                      if isinstance(content, list):
-                         with open(EXPLAIN_PATH, "w", encoding="utf-8") as f:
-                             for entry in content:
-                                 f.write(json.dumps(entry) + "\n")
+                         existing = content
                      elif isinstance(content, dict):
-                          with open(EXPLAIN_PATH, "w", encoding="utf-8") as f:
-                             f.write(json.dumps(content) + "\n")
-                 except Exception as e:
-                     print(f"[Explain] Migration failed: {e}. Proceeding with append.")
+                         existing = [content]
+             except json.JSONDecodeError:
+                 print("[Explain] Corrupt JSON, starting fresh.")
 
-        # Append in JSONL format
-        with open(EXPLAIN_PATH, "a", encoding="utf-8") as f:
-            f.write(json.dumps(data) + "\n")
+        existing.append(data)
+        # Keep last 100 entries max to prevent bloat
+        if len(existing) > 100: existing = existing[-100:]
             
-        print(f"[Explain] Logged decision: {action} ({reason}) to {EXPLAIN_PATH}")
+        with open(EXPLAIN_PATH, "w", encoding="utf-8") as f:
+            json.dump(existing, f, indent=2)
+            print(f"[Explain] Logged decision: {action} ({reason}) to {EXPLAIN_PATH}")
     except Exception as e:
         print(f"[Explain] Failed to log decision: {e}")
 

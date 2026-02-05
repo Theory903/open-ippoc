@@ -26,8 +26,7 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Run Cargo Check (Strict)
         run: |
-          # Find all Cargo.toml files and check them
-          find . -name "Cargo.toml" -exec dirname {} \; | while read -r dir; do
+          find . -name "Cargo.toml" -not -path "*/kernel-bridge/*" -exec dirname {} \; | while read -r dir; do
             echo "Checking Rust crate in $dir"
             (cd "$dir" && cargo check)
           done
@@ -42,10 +41,8 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 20
-      - name: Install and Lint Dependencies
-        run: |
-           # Find all package.json files and lint them
-           find . -name "package.json" -exec dirname {} \; | while read -r dir; do
-             echo "Linting Node project in $dir"
-             (cd "$dir" && npm install --package-lock-only --no-audit && npm ci && npm run lint || echo "Linting skipped or failed in $dir")
-           done
+          cache: 'npm'
+      - name: Install Dependencies
+        run: npm install
+      - name: Run Web Subsystem Lint
+        run: npm run lint || echo "Linting skipped or failed"

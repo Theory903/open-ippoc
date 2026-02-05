@@ -231,7 +231,7 @@ class MemorySystem:
                 type="semantic",
                 content=doc.page_content,
                 metadata=doc.metadata,
-                score=doc.metadata.get("retrieval_score", 1.0),
+                score=doc.metadata.get("retrieval_score", 0.0),
                 id=doc.metadata.get("id", f"semantic:{i}")
             ) for i, doc in enumerate(documents)
         ]
