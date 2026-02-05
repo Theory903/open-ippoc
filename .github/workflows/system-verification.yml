@@ -25,7 +25,16 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Run Cargo Check (Strict)
-        run: cargo check
+        run: |
+          # Find all Cargo.toml files and check them (excluding kernel modules and dependencies)
+          find . -type d \( -name target -o -name node_modules \) -prune -o -name "Cargo.toml" -exec dirname {} \; | while read -r dir; do
+            if [[ "$dir" == *"kernel-bridge"* ]]; then
+              echo "Skipping kernel module: $dir"
+              continue
+            fi
+            echo "Checking Rust crate in $dir"
+            (cd "$dir" && cargo check)
+          done
         env:
           RUSTFLAGS: "-D warnings"
 
