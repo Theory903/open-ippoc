@@ -146,7 +146,13 @@ class TelepathySwarm:
         
         # Simulating Event Bus Push
         import json
-        with open("ippoc_event_bus.log", "a") as bus:
-            bus.write(json.dumps(signal_data) + "\n")
+        import asyncio
+
+        def _write_to_bus():
+            with open("ippoc_event_bus.log", "a") as bus:
+                bus.write(json.dumps(signal_data) + "\n")
+
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, _write_to_bus)
             
         return signal_data
