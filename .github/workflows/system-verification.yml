@@ -24,8 +24,12 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Run Cargo Check (Strict)
-        run: cargo check
+      - name: Run Cargo Check (Recursive)
+        run: |
+          find . -name "Cargo.toml" -not -path "*/kernel-bridge/*" -exec dirname {} \; | while read -r dir; do
+            echo "Checking Rust crate in $dir"
+            (cd "$dir" && cargo check)
+          done
         env:
           RUSTFLAGS: "-D warnings"
 
