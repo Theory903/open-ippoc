@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check Commit Message Format
-        uses: gsly93/commit-msg-checker@v1.0.1
+        uses: gsactions/commit-msg-checker@v1.0.1
         with:
           pattern: '^(brain|body|mind|memory|infra|system|docs|api)\/[a-z0-9-]+: [\s\S]+'
           error: 'Your commit message must follow the "organ: intent" protocol (e.g., body/immune: improve git flow). See rules.md.'

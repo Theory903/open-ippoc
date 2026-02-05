@@ -10,6 +10,9 @@ jobs:
   rust-check:
     name: Rust Kernel Check
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/soma
     steps:
       - uses: actions/checkout@v3
       - name: Install Rust
@@ -32,12 +35,14 @@ jobs:
   node-lint:
     name: Node Subsystems Lint
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/cortex/cortex/openclaw-cortex
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
           node-version: 20
-          cache: 'npm'
       - name: Install Dependencies
         run: npm install
       - name: Run Web Subsystem Lint
