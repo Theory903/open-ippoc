@@ -12,34 +12,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check Commit Message Format
-        run: |
-          # Get commit messages based on event type
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            commits=$(git log --format=%s origin/${{ github.base_ref }}..${{ github.sha }})
-          else
-            commits=$(git log --format=%s -n 1 ${{ github.sha }})
-          fi
-
-          # Regex pattern
-          pattern='^(brain|body|mind|memory|infra|system|docs|api)\/[a-z0-9-]+: .+'
-
-          echo "$commits" | while read -r line; do
-            if [[ -n "$line" ]]; then
-              # Skip merge commits
-              if [[ "$line" =~ ^Merge ]]; then
-                continue
-              fi
-
-              if [[ ! "$line" =~ $pattern ]]; then
-                echo "::error::Commit message '$line' does not follow protocol. Format: 'organ/intent: description'"
-                echo "::error::Allowed organs: brain, body, mind, memory, infra, system, docs, api"
-                exit 1
-              fi
-            fi
-          done
-
-      - name: Verify DESCRIPTION and IMPACT sections
+      - name: Verify Commit Message Protocol
         uses: actions/github-script@v6
         with:
           script: |
@@ -49,8 +22,22 @@ jobs:
               pull_number: context.issue.number,
             });
             
+            const pattern = /^(brain|body|mind|memory|infra|system|docs|api)\/[a-z0-9-]+: .+/;
+
             for (const commit of commits.data) {
               const msg = commit.commit.message;
+
+              // Skip merge commits
+              if (msg.startsWith('Merge ')) {
+                console.log(`Skipping merge commit: ${commit.sha}`);
+                continue;
+              }
+
+              const title = msg.split('\n')[0];
+              if (!pattern.test(title)) {
+                core.setFailed(`Commit message title "${title}" does not follow protocol. Format: 'organ/intent: description'. Allowed organs: brain, body, mind, memory, infra, system, docs, api`);
+              }
+
               if (!msg.includes('DESCRIPTION:') || !msg.includes('IMPACT:')) {
                 core.setFailed(`Commit message for ${commit.sha} is missing DESCRIPTION: or IMPACT: sections.`);
               }
