@@ -197,7 +197,7 @@ impl GitEvolution {
         for context in conflict_contexts {
             info!("GitEvolution: Requesting resolution for {}", context.file_path);
             let file_path = context.file_path.clone();
-            let resolution = cortex.resolve_conflict(context).await?;
+            let resolution = brain.resolve_conflict(context).await?;
             resolutions.push((file_path, resolution));
         }
 
@@ -220,7 +220,7 @@ impl GitEvolution {
         // 3. Simulation Step
         info!("GitEvolution: Conflict resolved, running simulation...");
         
-        if cortex.simulate_patch(&self.path.to_string_lossy(), "conflict_resolution").await? {
+        if brain.simulate_patch(&self.path.to_string_lossy(), "conflict_resolution").await? {
              info!("GitEvolution: Resolution verified by simulation. Finalizing.");
              let repo = Repository::open(&self.path)?;
              let mut index = repo.index()?;
@@ -317,7 +317,7 @@ impl GitEvolution {
         }
 
         // 1. Simulate the patch on the feature branch
-        if cortex.simulate_patch(&self.path.to_string_lossy(), &metadata.description).await? {
+        if brain.simulate_patch(&self.path.to_string_lossy(), &metadata.description).await? {
              info!("GitEvolution: Feature PASSED simulation. Merging back to head.");
              
              let repo = Repository::open(&self.path)?;
@@ -419,7 +419,7 @@ impl GitEvolution {
         info!("GitEvolution: Initiating immune system patch review...");
         
         // 1. Ask brain to scan for governance violations
-        let violations = cortex.scan_for_governance_violations(patch_content).await?;
+        let violations = brain.scan_for_governance_violations(patch_content).await?;
         
         if !violations.is_empty() {
             for violation in violations {
@@ -429,7 +429,7 @@ impl GitEvolution {
         }
 
         // 2. Structural review
-        cortex.review_patch(patch_content).await
+        brain.review_patch(patch_content).await
     }
 }
 
