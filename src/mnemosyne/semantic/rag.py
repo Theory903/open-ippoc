@@ -6,6 +6,7 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import Runnable
 from dataclasses import dataclass, asdict
 from enum import Enum
+from collections import defaultdict
 import logging
 import re
 import json
@@ -62,6 +63,7 @@ class SemanticManager:
         self.llm = llm
         self.semantic_objects: List[SemanticObject] = []
         self.object_index: Dict[str, SemanticObject] = {}
+        self.component_index: Dict[str, List[SemanticObject]] = defaultdict(list)
         self.default_k = 5
         self.min_score_threshold = 0.8
         self.chunk_size = 1000
@@ -90,6 +92,8 @@ class SemanticManager:
             for obj in objects:
                 self.semantic_objects.append(obj)
                 self.object_index[obj.id] = obj
+                for component in obj.semantic_components:
+                    self.component_index[component].append(obj)
                 object_ids.append(obj.id)
                 
                 # Create document for vector store
@@ -439,11 +443,28 @@ class SemanticManager:
     
     async def _advanced_retrieve(self, query: str, k: int, min_score: float, filter_metadata: Dict) -> List[Document]:
         """Advanced retrieval using semantic object matching"""
+        if not self.semantic_objects:
+            return []
+
         query_components = self._extract_semantic_components(query)
         matched_objects = []
         
+        # Identify candidate objects to scan
+        if not query_components:
+            # Fallback to scanning everything if no query components
+            candidates = self.semantic_objects
+        else:
+            # Use index to find objects containing at least one query component
+            candidate_ids = set()
+            candidates = []
+            for component in query_components:
+                for obj in self.component_index[component]:
+                    if obj.id not in candidate_ids:
+                        candidates.append(obj)
+                        candidate_ids.add(obj.id)
+
         # Match against semantic components
-        for obj in self.semantic_objects:
+        for obj in candidates:
             if filter_metadata and not self._matches_filter(obj.metadata, filter_metadata):
                 continue
                 
