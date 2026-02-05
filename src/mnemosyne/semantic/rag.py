@@ -457,7 +457,7 @@ class SemanticManager:
             candidate_ids = set()
             candidates = []
             for component in query_components:
-                for obj in self.component_index[component]:
+                for obj in self.component_index.get(component, []):
                     if obj.id not in candidate_ids:
                         candidates.append(obj)
                         candidate_ids.add(obj.id)

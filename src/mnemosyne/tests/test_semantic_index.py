@@ -30,6 +30,7 @@ class TestSemanticIndex(unittest.TestCase):
         self.manager = SemanticManager(self.vector_store, self.embeddings)
 
     def test_index_population(self):
+        """Test that the component index is correctly populated and used for retrieval."""
         async def run_test():
             # Add a memory with capitalized words so they are extracted as components
             await self.manager.add_memory(
@@ -70,6 +71,11 @@ class TestSemanticIndex(unittest.TestCase):
             # "Project Beta" is one token.
             # No overlap.
             self.assertEqual(len(results_none), 0)
+
+            # Verify no memory leak (querying missing term shouldn't add it to index)
+            missing_term = "NonExistentTerm"
+            await self.manager.retrieve_relevant(missing_term, k=5, min_score=0.1)
+            self.assertNotIn(missing_term, self.manager.component_index)
 
         asyncio.run(run_test())
 
