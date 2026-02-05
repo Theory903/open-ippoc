@@ -40,7 +40,7 @@ from .procedural.manager import ProceduralManager
 from .graph.manager import GraphManager
 
 # HiDB Layer (currently under development)
-# from .hidb import HiDB  # TODO: Implement HiDB class
+from .hidb import HiDB
 
 # API Server (if needed) - temporarily disabled due to import issues
 # from .api.server import app as memory_api
@@ -51,7 +51,7 @@ __all__ = [
     "SemanticManager",
     "ProceduralManager",
     "GraphManager",
-    # "HiDB",  # TODO: Implement HiDB class
+    "HiDB",
     "memory_api"
 ]
 
