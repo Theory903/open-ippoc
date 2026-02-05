@@ -1,4 +1,5 @@
 import os
+import asyncio
 from dotenv import load_dotenv
 from typing import Dict, Any, List, Optional
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -100,7 +101,7 @@ class TwoTowerEngine:
         """
         if not self.llm_b:
             # Evolution: Log Pattern even in Mock Mode
-            self._log_pattern(candidate, "MOCK_YES", True)
+            await self._log_pattern(candidate, "MOCK_YES", True)
             return True # Mock allow
 
         prompt = f"""
@@ -119,19 +120,23 @@ class TwoTowerEngine:
             approved = content.startswith("YES")
             
             # Evolution: Log Pattern for fine-tuning
-            self._log_pattern(candidate, content, approved)
+            await self._log_pattern(candidate, content, approved)
             
             return approved
         except Exception as e:
             print(f"[Tower B] Error: {e}")
             # Evolution: Log Error Pattern
-            self._log_pattern(candidate, "ERROR", False)
+            await self._log_pattern(candidate, "ERROR", False)
             return False
 
-    def _log_pattern(self, candidate: ActionCandidate, validator_response: str, approved: bool):
+    async def _log_pattern(self, candidate: ActionCandidate, validator_response: str, approved: bool):
         """
         Saves the Impulse -> Validation pair to build the 'Pattern Engine' dataset.
         """
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, self._log_pattern_sync, candidate, validator_response, approved)
+
+    def _log_pattern_sync(self, candidate: ActionCandidate, validator_response: str, approved: bool):
         import json
         from datetime import datetime
         
