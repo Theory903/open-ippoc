@@ -1,4 +1,5 @@
 from typing import Protocol, List, Optional
+import asyncio
 import httpx
 from .schemas import TelepathyMessage
 
@@ -31,7 +32,7 @@ class HttpTransport:
         payload = message.model_dump()
         
         # Simple Flood/Gossip
-        for peer in self.peers:
+        async def send_to_peer(peer):
             try:
                 # Avoid echoing to self if peer list contains self (naive check)
                 # In prod, we check node_id.
@@ -41,6 +42,8 @@ class HttpTransport:
                 await self.client.post(url, json=payload)
             except Exception as e:
                 print(f"[Telepathy:HTTP] Failed to send to {peer}: {e}")
+
+        await asyncio.gather(*(send_to_peer(peer) for peer in self.peers))
 
     async def receive(self) -> TelepathyMessage:
         # HTTP is push-based to the server endpoint, so this polling method 
