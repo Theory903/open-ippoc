@@ -81,6 +81,21 @@ class LangGraphEngine:
              return {"proposed_action": None, "inner_monologue": ["Validator rejected action."]}
         return {}
 
+    def _assess_risk(self, action: str, params: dict) -> str:
+        """
+        Dynamically assess risk based on action and context.
+        """
+        # High risk actions
+        if action in ["execute_command", "file_operation", "network_request"]:
+            return "high"
+
+        # Low risk actions
+        if action == "economy_balance":
+            return "low"
+
+        # Default medium risk (includes openclaw skills)
+        return "medium"
+
     async def execute(self, state: CognitiveState):
         """
         Send command to Body via Tool Orchestrator.
@@ -99,7 +114,7 @@ class LangGraphEngine:
                 "caller": "langgraph.brainstem",
                 "source": "cortex"
             },
-            risk_level="medium", # TODO: Dynamic risk
+            risk_level=self._assess_risk(action.action, action.payload or {}),
             estimated_cost=0.0 # Orchestrator handles this via tool.estimate_cost
         )
         
