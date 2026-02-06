@@ -5,8 +5,10 @@
 //! Main entry point for the kernel module
 
 #![no_std]
-#![feature(allocator_api)]
+#![cfg_attr(feature = "kernel-module", feature(allocator_api))]
 
+#[cfg(feature = "kernel-module")]
 mod ippoc_sensor;
 
+#[cfg(feature = "kernel-module")]
 pub use ippoc_sensor::*;
