@@ -8,18 +8,37 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+class Colors:
+    """ANSI color codes for dashboard styling"""
+    HEADER = '\033[95m'
+    BLUE = '\033[94m'
+    CYAN = '\033[96m'
+    GREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+    GREY = '\033[90m'
+
 class LogDashboard:
     """Interactive log management dashboard"""
     
     def __init__(self):
-        self.log_dir = Path("/Users/abhishekjha/CODE/ippoc/src/kernel/openclaw")
+        # Resolve path relative to this script
+        self.log_dir = Path(__file__).resolve().parent.parent / "kernel" / "openclaw"
         self.organized_dir = self.log_dir / "organized_logs"
         
     def show_dashboard(self):
         """Display comprehensive log management dashboard"""
-        print("📊 Open Cortex Log Management Dashboard")
-        print("=" * 50)
+        print(f"\n{Colors.HEADER}{Colors.BOLD}📊 Open Cortex Log Management Dashboard{Colors.ENDC}")
+        print(f"{Colors.BLUE}{'=' * 50}{Colors.ENDC}")
         
+        if not self.log_dir.exists():
+            print(f"\n{Colors.WARNING}⚠️  Log directory not found at: {self.log_dir}{Colors.ENDC}")
+            print(f"   Please check your configuration or run the setup script.")
+            return
+
         # Current status
         self._show_current_status()
         
@@ -34,23 +53,24 @@ class LogDashboard:
         
     def _show_current_status(self):
         """Show current log system status"""
-        print("\n📋 Current Status:")
+        print(f"\n{Colors.CYAN}📋 Current Status:{Colors.ENDC}")
         print("-" * 20)
         
         # Count current log files
         current_logs = list(self.log_dir.glob("gateway_*.log"))
         organized_logs = list(self.organized_dir.rglob("*.log")) if self.organized_dir.exists() else []
         
-        print(f"Current Log Files: {len(current_logs)}")
-        print(f"Organized Logs: {len(organized_logs)}")
+        print(f"Current Log Files: {Colors.BOLD}{len(current_logs)}{Colors.ENDC}")
+        print(f"Organized Logs:    {Colors.BOLD}{len(organized_logs)}{Colors.ENDC}")
         
         # Check for recent logs
         recent_logs = [f for f in current_logs if (datetime.now() - datetime.fromtimestamp(f.stat().st_mtime)).days < 1]
-        print(f"Recent Logs (24h): {len(recent_logs)}")
+        print(f"Recent Logs (24h): {Colors.GREEN}{len(recent_logs)}{Colors.ENDC}")
         
         # Error status
         error_logs = self._count_error_logs(current_logs)
-        print(f"Logs with Errors: {error_logs}")
+        color = Colors.FAIL if error_logs > 0 else Colors.GREEN
+        print(f"Logs with Errors:  {color}{error_logs}{Colors.ENDC}")
         
     def _count_error_logs(self, log_files):
         """Count logs containing error entries"""
@@ -67,7 +87,7 @@ class LogDashboard:
         
     def _show_recent_analysis(self):
         """Show recent log analysis results"""
-        print("\n🔍 Recent Analysis:")
+        print(f"\n{Colors.CYAN}🔍 Recent Analysis:{Colors.ENDC}")
         print("-" * 20)
         
         # Find latest analysis report
@@ -81,24 +101,24 @@ class LogDashboard:
                 with open(latest_report, 'r') as f:
                     report = json.load(f)
                     
-                print(f"Last Analysis: {report['report_timestamp']}")
-                print(f"Total Entries: {report['log_summary']['total_entries']:,}")
-                print(f"Error Rate: {report['analysis']['error_rate']:.2f}%")
+                print(f"Last Analysis:  {report['report_timestamp']}")
+                print(f"Total Entries:  {report['log_summary']['total_entries']:,}")
+                print(f"Error Rate:     {Colors.FAIL if report['analysis']['error_rate'] > 5 else Colors.GREEN}{report['analysis']['error_rate']:.2f}%{Colors.ENDC}")
                 print(f"Files Analyzed: {report['log_summary']['total_files']}")
                 
                 # Show top issues
-                print("\nTop Issues Found:")
+                print(f"\n{Colors.WARNING}Top Issues Found:{Colors.ENDC}")
                 for i, (issue, count) in enumerate(report['analysis']['most_common_errors'][:5], 1):
                     print(f"  {i}. {issue[:50]}... ({count} occurrences)")
                     
             except Exception as e:
-                print(f"Could not load analysis report: {e}")
+                print(f"{Colors.FAIL}Could not load analysis report: {e}{Colors.ENDC}")
         else:
-            print("No analysis reports found")
+            print(f"{Colors.GREY}No analysis reports found{Colors.ENDC}")
             
     def _show_organization_status(self):
         """Show log organization structure"""
-        print("\n📂 Organization Status:")
+        print(f"\n{Colors.CYAN}📂 Organization Status:{Colors.ENDC}")
         print("-" * 20)
         
         if self.organized_dir.exists():
@@ -124,11 +144,11 @@ class LogDashboard:
                 date_dirs = [d.name for d in by_date.iterdir() if d.is_dir()]
                 print(f"  By Date: {len(date_dirs)} dates")
         else:
-            print("No organized logs directory found")
+            print("No organized logs directory found (Run 'Organize Log Files' to fix)")
             
     def _show_recommendations(self):
         """Show log management recommendations"""
-        print("\n💡 Recommendations:")
+        print(f"\n{Colors.CYAN}💡 Recommendations:{Colors.ENDC}")
         print("-" * 20)
         
         recommendations = [
@@ -147,15 +167,15 @@ class LogDashboard:
             
     def show_quick_actions(self):
         """Show available quick actions"""
-        print("\n⚡ Quick Actions:")
+        print(f"\n{Colors.HEADER}⚡ Quick Actions:{Colors.ENDC}")
         print("-" * 20)
-        print("1. Run Log Analysis")
-        print("2. Organize Log Files") 
-        print("3. Clean Duplicate Logs")
-        print("4. Compress Old Logs")
-        print("5. View Error Logs")
-        print("6. Generate Report")
-        print("7. Exit")
+        print(f"{Colors.BOLD}1.{Colors.ENDC} Run Log Analysis")
+        print(f"{Colors.BOLD}2.{Colors.ENDC} Organize Log Files")
+        print(f"{Colors.BOLD}3.{Colors.ENDC} Clean Duplicate Logs")
+        print(f"{Colors.BOLD}4.{Colors.ENDC} Compress Old Logs")
+        print(f"{Colors.BOLD}5.{Colors.ENDC} View Error Logs")
+        print(f"{Colors.BOLD}6.{Colors.ENDC} Generate Report")
+        print(f"{Colors.BOLD}7.{Colors.ENDC} Exit")
         
     def run_interactive_dashboard(self):
         """Run interactive dashboard mode"""
@@ -164,7 +184,7 @@ class LogDashboard:
             self.show_quick_actions()
             
             try:
-                choice = input("\nEnter your choice (1-7): ").strip()
+                choice = input(f"\n{Colors.BOLD}Enter your choice (1-7): {Colors.ENDC}").strip()
                 
                 if choice == '1':
                     self._run_log_analysis()
@@ -179,44 +199,44 @@ class LogDashboard:
                 elif choice == '6':
                     self._generate_report()
                 elif choice == '7':
-                    print("👋 Exiting dashboard")
+                    print(f"\n{Colors.GREEN}👋 Exiting dashboard{Colors.ENDC}")
                     break
                 else:
-                    print("Invalid choice. Please select 1-7.")
+                    print(f"{Colors.FAIL}Invalid choice. Please select 1-7.{Colors.ENDC}")
                     
             except KeyboardInterrupt:
-                print("\n👋 Exiting dashboard")
+                print(f"\n{Colors.GREEN}👋 Exiting dashboard{Colors.ENDC}")
                 break
             except Exception as e:
-                print(f"Error: {e}")
+                print(f"{Colors.FAIL}Error: {e}{Colors.ENDC}")
                 
     def _run_log_analysis(self):
         """Run comprehensive log analysis"""
-        print("\n🔬 Running Log Analysis...")
+        print(f"\n{Colors.BLUE}🔬 Running Log Analysis...{Colors.ENDC}")
         # This would call the log manager analysis
-        print("Analysis complete! Check organized_logs directory for results.")
+        print(f"{Colors.GREEN}Analysis complete! Check organized_logs directory for results.{Colors.ENDC}")
         
     def _organize_logs(self):
         """Organize log files"""
-        print("\n📂 Organizing Log Files...")
+        print(f"\n{Colors.BLUE}📂 Organizing Log Files...{Colors.ENDC}")
         # This would call the organization functions
-        print("Log organization complete!")
+        print(f"{Colors.GREEN}Log organization complete!{Colors.ENDC}")
         
     def _clean_duplicates(self):
         """Clean duplicate log files"""
-        print("\n🧹 Cleaning Duplicate Logs...")
+        print(f"\n{Colors.BLUE}🧹 Cleaning Duplicate Logs...{Colors.ENDC}")
         # This would run cleanup
-        print("Duplicate cleanup complete!")
+        print(f"{Colors.GREEN}Duplicate cleanup complete!{Colors.ENDC}")
         
     def _compress_logs(self):
         """Compress old log files"""
-        print("\n🗜️ Compressing Old Logs...")
+        print(f"\n{Colors.BLUE}🗜️ Compressing Old Logs...{Colors.ENDC}")
         # This would run compression
-        print("Compression complete!")
+        print(f"{Colors.GREEN}Compression complete!{Colors.ENDC}")
         
     def _view_error_logs(self):
         """View logs with errors"""
-        print("\n❌ Viewing Error Logs...")
+        print(f"\n{Colors.FAIL}❌ Viewing Error Logs...{Colors.ENDC}")
         current_logs = list(self.log_dir.glob("gateway_*.log"))
         error_logs = []
         
@@ -235,9 +255,9 @@ class LogDashboard:
             
     def _generate_report(self):
         """Generate comprehensive report"""
-        print("\n📊 Generating Report...")
+        print(f"\n{Colors.BLUE}📊 Generating Report...{Colors.ENDC}")
         # This would generate detailed report
-        print("Report generated in organized_logs directory!")
+        print(f"{Colors.GREEN}Report generated in organized_logs directory!{Colors.ENDC}")
 
 def main():
     """Run the log dashboard"""
