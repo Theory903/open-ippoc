@@ -1,11 +1,11 @@
 # brain/tests/test_api_tools.py
 
 from fastapi.testclient import TestClient
-from cortex.cortex.server import app
+from cortex.cortex.server import app, IPPOC_API_KEY
 from cortex.core.bootstrap import bootstrap_tools
 
 # Auth Header
-HEADERS = {"Authorization": "Bearer ippoc-secret-key"}
+HEADERS = {"Authorization": f"Bearer {IPPOC_API_KEY}"}
 
 def run_tests():
     # Use context manager to trigger lifespan (startup/shutdown)
