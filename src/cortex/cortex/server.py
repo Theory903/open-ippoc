@@ -542,6 +542,11 @@ async def orchestrator_budget(request: Request):
     return {"budget": get_orchestrator().get_budget()}
 
 
+def _read_json_file(path: str) -> Any:
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
 @app.get("/v1/orchestrator/explain/latest", dependencies=[Depends(verify_api_key)])
 async def orchestrator_explain_latest(request: Request):
     _require_tls(request)
@@ -549,8 +554,8 @@ async def orchestrator_explain_latest(request: Request):
     path = os.getenv("AUTONOMY_EXPLAIN_PATH", "data/explainability.json")
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="No explainability data")
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+
+    return await asyncio.to_thread(_read_json_file, path)
 
 
 @app.get("/v1/orchestrator/explain/{execution_id}", dependencies=[Depends(verify_api_key)])
