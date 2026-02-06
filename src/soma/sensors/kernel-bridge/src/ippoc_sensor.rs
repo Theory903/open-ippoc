@@ -62,7 +62,7 @@ impl IppocSensor {
 
 impl Drop for IppocSensor {
     fn drop(&mut self) {
-        pr_info!("IPPOC Sensor: Shutting down\n");
+        println!("IPPOC Sensor: Shutting down");
     }
 }
 
