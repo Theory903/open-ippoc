@@ -320,37 +320,52 @@ class GraphManager:
         
         try:
             async with self.Session() as session:
-                # Get reference entity relationships
-                ref_stmt = text("""
-                    SELECT e.name, r.relation
-                    FROM kg_relations r
-                    JOIN kg_entities e ON e.id = r.target_id
-                    WHERE r.source_id = (SELECT id FROM kg_entities WHERE name = :name)
-                """)
-                ref_res = await session.execute(ref_stmt, {"name": entity_name})
-                ref_relations = set(f"{row[0]}:{row[1]}" for row in ref_res.fetchall())
+                # Get reference entity ID
+                ref_id_stmt = text("SELECT id FROM kg_entities WHERE name = :name")
+                ref_id_res = await session.execute(ref_id_stmt, {"name": entity_name})
+                ref_row = ref_id_res.fetchone()
                 
-                if not ref_relations:
+                if not ref_row:
                     return []
+                ref_id = ref_row[0]
                 
-                # Compare with all other entities
-                all_entities_stmt = text("SELECT id, name FROM kg_entities WHERE name != :name")
-                all_entities_res = await session.execute(all_entities_stmt, {"name": entity_name})
+                # Get reference entity relation count
+                ref_count_stmt = text("SELECT COUNT(*) FROM kg_relations WHERE source_id = :ref_id")
+                ref_count_res = await session.execute(ref_count_stmt, {"ref_id": ref_id})
+                ref_total = ref_count_res.scalar()
                 
-                for entity_id, entity_name_cmp in all_entities_res.fetchall():
-                    # Get this entity's relationships
-                    cmp_stmt = text("""
-                        SELECT e.name, r.relation
-                        FROM kg_relations r
-                        JOIN kg_entities e ON e.id = r.target_id
-                        WHERE r.source_id = :entity_id
-                    """)
-                    cmp_res = await session.execute(cmp_stmt, {"entity_id": entity_id})
-                    cmp_relations = set(f"{row[0]}:{row[1]}" for row in cmp_res.fetchall())
+                if ref_total == 0:
+                    return []
+
+                # Optimized query: Get stats for all other entities in one go
+                # Calculate intersection with reference entity's relations
+                stmt = text("""
+                    SELECT
+                        e.id,
+                        e.name,
+                        COUNT(r.id) as total_cnt,
+                        COUNT(rr.id) as intersection_cnt
+                    FROM kg_relations r
+                    JOIN kg_entities e ON e.id = r.source_id
+                    LEFT JOIN kg_relations rr ON
+                        rr.source_id = :ref_id AND
+                        rr.target_id = r.target_id AND
+                        rr.relation = r.relation
+                    WHERE r.source_id != :ref_id
+                    GROUP BY e.name, e.id
+                """)
+
+                res = await session.execute(stmt, {"ref_id": ref_id})
+
+                for row in res.fetchall():
+                    # Unpack row
+                    # entity_id = row[0] # Unused but available if needed
+                    entity_name_cmp = row[1]
+                    cmp_total = row[2]
+                    intersection = row[3]
                     
-                    # Calculate Jaccard similarity
-                    intersection = len(ref_relations & cmp_relations)
-                    union = len(ref_relations | cmp_relations)
+                    # Union = |A| + |B| - |A ∩ B|
+                    union = cmp_total + ref_total - intersection
                     similarity = intersection / union if union > 0 else 0
                     
                     if similarity >= similarity_threshold:
