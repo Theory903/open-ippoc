@@ -182,3 +182,31 @@ IMPLEMENTATION:
             "metadata": metadata,
             "object_id": metadata.get("object_id")
         }
+
+    async def unregister_skill(self, name: str) -> bool:
+        """
+        Unregister a skill by name.
+
+        Args:
+            name: Skill identifier
+
+        Returns:
+            Success status
+        """
+        try:
+            if name not in self.skill_registry:
+                logger.warning(f"Attempted to unregister unknown skill: {name}")
+                return False
+
+            skill_data = self.skill_registry.pop(name)
+
+            # Remove from semantic memory if object ID is available
+            object_id = skill_data.get("id")
+            if object_id:
+                await self.semantic.delete_memories([object_id])
+
+            logger.info(f"Unregistered skill: {name}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to unregister skill '{name}': {e}")
+            return False

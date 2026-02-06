@@ -368,3 +368,85 @@ class GraphManager:
         except Exception as e:
             logger.error(f"Similar entity search failed: {e}")
             return []
+
+    async def delete_entity(self, name: str) -> bool:
+        """
+        Delete an entity and all its relations.
+
+        Args:
+            name: Entity name
+
+        Returns:
+            Success status
+        """
+        await self.init_db()
+        try:
+            async with self.Session() as session:
+                # Get entity ID
+                stmt = text("SELECT id FROM kg_entities WHERE name = :name")
+                res = await session.execute(stmt, {"name": name})
+                row = res.fetchone()
+
+                if not row:
+                    logger.warning(f"Entity not found for deletion: {name}")
+                    return False
+
+                entity_id = row[0]
+
+                # Delete relations involving this entity
+                del_rel_stmt = text("""
+                    DELETE FROM kg_relations
+                    WHERE source_id = :eid OR target_id = :eid
+                """)
+                await session.execute(del_rel_stmt, {"eid": entity_id})
+
+                # Delete the entity
+                del_ent_stmt = text("DELETE FROM kg_entities WHERE id = :eid")
+                await session.execute(del_ent_stmt, {"eid": entity_id})
+
+                await session.commit()
+                logger.info(f"Deleted entity '{name}' and its relations")
+                return True
+
+        except Exception as e:
+            logger.error(f"Failed to delete entity '{name}': {e}")
+            return False
+
+    async def delete_relation(self, source: str, relation: str, target: str) -> bool:
+        """
+        Delete a specific relationship.
+
+        Args:
+            source: Source entity name
+            relation: Relationship type
+            target: Target entity name
+
+        Returns:
+            Success status
+        """
+        await self.init_db()
+        try:
+            async with self.Session() as session:
+                # Get IDs
+                s_res = await session.execute(text("SELECT id FROM kg_entities WHERE name = :n"), {"n": source})
+                s_row = s_res.fetchone()
+                if not s_row: return False
+                s_id = s_row[0]
+
+                t_res = await session.execute(text("SELECT id FROM kg_entities WHERE name = :n"), {"n": target})
+                t_row = t_res.fetchone()
+                if not t_row: return False
+                t_id = t_row[0]
+
+                # Delete
+                stmt = text("""
+                    DELETE FROM kg_relations
+                    WHERE source_id = :s AND target_id = :t AND relation = :r
+                """)
+                result = await session.execute(stmt, {"s": s_id, "t": t_id, "r": relation})
+                await session.commit()
+
+                return result.rowcount > 0
+        except Exception as e:
+            logger.error(f"Failed to delete relation: {e}")
+            return False

@@ -207,9 +207,46 @@ class SemanticManager:
             Success status
         """
         try:
-            # Note: This depends on vector store implementation
-            # Some stores support delete by ID, others don't
-            logger.warning("Delete operation may not be supported by all vector stores")
+            # 1. Remove from in-memory indices
+            objects_to_remove = []
+            for obj_id in ids:
+                if obj_id in self.object_index:
+                    obj = self.object_index.pop(obj_id)
+                    objects_to_remove.append(obj)
+
+            if objects_to_remove:
+                # Remove from semantic_objects list
+                objects_to_remove_ids = {obj.id for obj in objects_to_remove}
+                self.semantic_objects = [
+                    obj for obj in self.semantic_objects
+                    if obj.id not in objects_to_remove_ids
+                ]
+
+                # Remove from component_index
+                for obj in objects_to_remove:
+                    for component in obj.semantic_components:
+                        if component in self.component_index:
+                            self.component_index[component] = [
+                                o for o in self.component_index[component]
+                                if o.id != obj.id
+                            ]
+                            if not self.component_index[component]:
+                                del self.component_index[component]
+
+            # 2. Remove from vector store
+            try:
+                if hasattr(self.vector_store, 'adelete'):
+                    await self.vector_store.adelete(ids)
+                elif hasattr(self.vector_store, 'delete'):
+                    import asyncio
+                    await asyncio.to_thread(self.vector_store.delete, ids)
+                else:
+                    logger.warning("Vector store does not support explicit deletion")
+            except NotImplementedError:
+                logger.warning("Vector store delete method not implemented")
+            except Exception as vs_e:
+                logger.warning(f"Vector store deletion failed (might be unsupported): {vs_e}")
+
             return True
         except Exception as e:
             logger.error(f"Delete failed: {e}")

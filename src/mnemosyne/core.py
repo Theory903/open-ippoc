@@ -22,6 +22,7 @@ Usage:
 
 import asyncio
 from typing import List, Dict, Any, Optional, Union
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -288,14 +289,92 @@ class MemorySystem:
         Remove memories matching criteria.
         
         Args:
-            criteria: Deletion criteria (implementation-dependent)
+            criteria: Deletion criteria. Supported keys:
+                - id: Specific memory ID (e.g., "episodic:123")
+                - ids: List of IDs
+                - type: Subsystem type ("episodic", "semantic", "procedural", "graph")
+
+                For type="episodic":
+                    - time_range: (start, end)
+                    - source: string
+
+                For type="semantic":
+                    - ids: List of document IDs (if not passed globally)
+
+                For type="procedural":
+                    - name: Skill name
+
+                For type="graph":
+                    - entity: Entity name
             
         Returns:
             Number of memories removed
         """
-        # TODO: Implement forgetting across subsystems
-        # This would require adding deletion methods to each manager
-        raise NotImplementedError("Forget functionality pending implementation")
+        count = 0
+        await self.initialize()
+
+        # Helper to extract IDs
+        target_ids = []
+        if "id" in criteria:
+            target_ids.append(criteria["id"])
+        if "ids" in criteria:
+            target_ids.extend(criteria["ids"])
+
+        ids_by_type = defaultdict(list)
+
+        # 1. Parse IDs with prefixes
+        unprefixed_ids = []
+        for mid in target_ids:
+            if isinstance(mid, str) and ":" in mid:
+                prefix, real_id = mid.split(":", 1)
+                ids_by_type[prefix].append(real_id)
+            else:
+                unprefixed_ids.append(mid)
+
+        # 2. If type is specified, assign unprefixed IDs to that type
+        if "type" in criteria:
+            m_type = criteria["type"]
+            if unprefixed_ids:
+                ids_by_type[m_type].extend(unprefixed_ids)
+
+        # 3. Execute Deletions based on ids_by_type
+        if ids_by_type["episodic"]:
+            e_ids = []
+            for i in ids_by_type["episodic"]:
+                if str(i).isdigit():
+                    e_ids.append(int(i))
+            if e_ids:
+                count += await self.episodic.delete(ids=e_ids)
+
+        if ids_by_type["semantic"] and self.semantic:
+            success = await self.semantic.delete_memories(ids_by_type["semantic"])
+            if success:
+                count += len(ids_by_type["semantic"])
+
+        # 4. Handle other criteria based on type
+        if "type" in criteria:
+            m_type = criteria["type"]
+
+            if m_type == "episodic":
+                # Handle time_range, source
+                # Avoid passing 'ids' again if we already handled them via ids_by_type
+                delete_kwargs = {k: v for k, v in criteria.items() if k not in ["type", "id", "ids"]}
+                if delete_kwargs:
+                    count += await self.episodic.delete(**delete_kwargs)
+
+            elif m_type == "procedural" and self.procedural:
+                if "name" in criteria:
+                    success = await self.procedural.unregister_skill(criteria["name"])
+                    if success:
+                        count += 1
+
+            elif m_type == "graph":
+                if "entity" in criteria:
+                    success = await self.graph.delete_entity(criteria["entity"])
+                    if success:
+                        count += 1
+
+        return count
     
     def health_check(self) -> Dict[str, Any]:
         """Check memory system health"""

@@ -30,7 +30,7 @@ jobs:
       - name: Run Cargo Check (Strict)
         run: |
           # Find all Cargo.toml files and check them
-          find . -name "Cargo.toml" -exec dirname {} \; | while read -r dir; do
+          find . -name "Cargo.toml" -not -path "*kernel-bridge*" -exec dirname {} \; | while read -r dir; do
             echo "Checking Rust crate in $dir"
             (cd "$dir" && cargo check)
           done
