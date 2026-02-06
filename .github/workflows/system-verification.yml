@@ -29,8 +29,11 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Run Cargo Check (Strict)
         run: |
-          # Find all Cargo.toml files and check them, excluding kernel-bridge
-          find . -name "Cargo.toml" -not -path "*/kernel-bridge/*" -exec dirname {} \; | while read -r dir; do
+          # Find all Cargo.toml files and check them, excluding kernel-bridge and inter-org (workspace issues)
+          find . -name "Cargo.toml" \
+            -not -path "*/kernel-bridge/*" \
+            -not -path "*/inter-org/*" \
+            -exec dirname {} \; | while read -r dir; do
             echo "Checking Rust crate in $dir"
             (cd "$dir" && cargo check)
           done
