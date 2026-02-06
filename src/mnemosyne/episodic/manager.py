@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List, Dict, Any, Optional
-from sqlalchemy import Column, Integer, String, JSON, DateTime, select, text
+from sqlalchemy import Column, Integer, String, JSON, DateTime, select, text, delete
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
 import os
@@ -197,3 +197,49 @@ class EpisodicManager:
         except Exception as e:
             logger.error(f"Failed to get episodic stats: {e}")
             return {"error": str(e)}
+
+    async def delete(self, ids: List[int] = None, time_range: tuple = None, source: str = None) -> int:
+        """
+        Delete episodic events matching criteria.
+
+        Args:
+            ids: List of event IDs to delete
+            time_range: (start, end) tuple of datetimes
+            source: Filter by source
+
+        Returns:
+            Number of deleted events
+        """
+        try:
+            async with self.async_session() as session:
+                stmt = delete(EpisodicEvent)
+
+                conditions = []
+                if ids:
+                    conditions.append(EpisodicEvent.id.in_(ids))
+
+                if time_range:
+                    start, end = time_range
+                    if start:
+                        conditions.append(EpisodicEvent.timestamp >= start)
+                    if end:
+                        conditions.append(EpisodicEvent.timestamp <= end)
+
+                if source:
+                    conditions.append(EpisodicEvent.source == source)
+
+                if not conditions:
+                    logger.warning("Attempted to delete episodic memory without criteria")
+                    return 0
+
+                for condition in conditions:
+                    stmt = stmt.where(condition)
+
+                result = await session.execute(stmt)
+                await session.commit()
+
+                return result.rowcount
+
+        except Exception as e:
+            logger.error(f"Failed to delete episodic events: {e}")
+            return 0
