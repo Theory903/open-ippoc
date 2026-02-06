@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, asdict, field
 from typing import Any, Dict, List, Optional
 
@@ -53,6 +54,8 @@ class EconomyManager:
     def __init__(self, path: str = None) -> None:
         self.path = path or os.getenv("ECONOMY_PATH", "data/economy.json")
         self.state = self._load()
+        # Single worker to ensure sequential writes to disk
+        self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="economy_writer")
 
     def _load(self) -> EconomyState:
         default_budget = float(os.getenv("ORCHESTRATOR_BUDGET", "1000.0"))  # Higher default
@@ -82,10 +85,28 @@ class EconomyManager:
             last_earning_timestamp=time.time(),
         )
 
+    def _save_to_disk(self, data: Dict[str, Any]) -> None:
+        """
+        Blocking write to disk, intended to run in a background thread.
+        """
+        try:
+            os.makedirs(os.path.dirname(self.path), exist_ok=True)
+            # Atomic write pattern: write to temp then rename
+            temp_path = self.path + ".tmp"
+            with open(temp_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+            os.replace(temp_path, self.path)
+        except Exception as e:
+            # Fallback for visibility, though logger might not be configured
+            print(f"Economy save failed: {e}")
+
     def _save(self) -> None:
-        os.makedirs(os.path.dirname(self.path), exist_ok=True)
-        with open(self.path, "w", encoding="utf-8") as f:
-            json.dump(asdict(self.state), f, indent=2)
+        """
+        Non-blocking save. Snapshots state and offloads I/O to thread.
+        """
+        # Snapshot state in main thread to ensure consistency
+        data = asdict(self.state)
+        self._executor.submit(self._save_to_disk, data)
 
     def tick(self) -> None:
         now = time.time()
@@ -99,7 +120,7 @@ class EconomyManager:
         self.state.budget = min(self.state.budget + regen_rate, self.state.reserve)
             
         self.state.last_tick = now
-        self._save()
+        # Performance: Don't save on every tick. Save only on state changes (spend/earn).
 
     def _append_event(self, event: Dict[str, Any]) -> None:
         max_events = int(os.getenv("ECONOMY_MAX_EVENTS", "500"))
