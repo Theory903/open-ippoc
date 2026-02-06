@@ -320,45 +320,108 @@ class GraphManager:
         
         try:
             async with self.Session() as session:
-                # Get reference entity relationships
-                ref_stmt = text("""
-                    SELECT e.name, r.relation
-                    FROM kg_relations r
-                    JOIN kg_entities e ON e.id = r.target_id
-                    WHERE r.source_id = (SELECT id FROM kg_entities WHERE name = :name)
-                """)
+                # 1. Get Reference Entity ID
+                ref_stmt = text("SELECT id FROM kg_entities WHERE name = :name")
                 ref_res = await session.execute(ref_stmt, {"name": entity_name})
-                ref_relations = set(f"{row[0]}:{row[1]}" for row in ref_res.fetchall())
-                
-                if not ref_relations:
+                row = ref_res.fetchone()
+                if not row:
                     return []
+                ref_id = row[0]
                 
-                # Compare with all other entities
-                all_entities_stmt = text("SELECT id, name FROM kg_entities WHERE name != :name")
-                all_entities_res = await session.execute(all_entities_stmt, {"name": entity_name})
+                # Get count of relations for reference entity
+                ref_count_res = await session.execute(
+                    text("SELECT COUNT(*) FROM kg_relations WHERE source_id = :ref_id"),
+                    {"ref_id": ref_id}
+                )
+                ref_count = ref_count_res.scalar()
                 
-                for entity_id, entity_name_cmp in all_entities_res.fetchall():
-                    # Get this entity's relationships
-                    cmp_stmt = text("""
-                        SELECT e.name, r.relation
-                        FROM kg_relations r
-                        JOIN kg_entities e ON e.id = r.target_id
-                        WHERE r.source_id = :entity_id
+                if ref_count == 0:
+                    return []
+
+                if similarity_threshold > 0:
+                    # Optimized Path: Only find entities with shared relations (Intersection > 0)
+                    stmt = text("""
+                        WITH RefRelations AS (
+                            SELECT relation, target_id
+                            FROM kg_relations
+                            WHERE source_id = :ref_id
+                        ),
+                        Candidates AS (
+                            SELECT
+                                r.source_id as id,
+                                COUNT(*) as intersection_count
+                            FROM kg_relations r
+                            JOIN RefRelations rr ON r.relation = rr.relation AND r.target_id = rr.target_id
+                            WHERE r.source_id != :ref_id
+                            GROUP BY r.source_id
+                        )
+                        SELECT
+                            c.id,
+                            e.name,
+                            c.intersection_count,
+                            (SELECT COUNT(*) FROM kg_relations WHERE source_id = c.id) as total_count
+                        FROM Candidates c
+                        JOIN kg_entities e ON c.id = e.id
                     """)
-                    cmp_res = await session.execute(cmp_stmt, {"entity_id": entity_id})
-                    cmp_relations = set(f"{row[0]}:{row[1]}" for row in cmp_res.fetchall())
                     
-                    # Calculate Jaccard similarity
-                    intersection = len(ref_relations & cmp_relations)
-                    union = len(ref_relations | cmp_relations)
-                    similarity = intersection / union if union > 0 else 0
+                    res = await session.execute(stmt, {"ref_id": ref_id})
+
+                    for row in res.fetchall():
+                        cid, cname, inter, total = row
+
+                        union = ref_count + total - inter
+                        sim = inter / union if union > 0 else 0
+
+                        if sim >= similarity_threshold:
+                            similar_entities.append({
+                                "entity": cname,
+                                "similarity": sim,
+                                "shared_relations": inter
+                            })
+
+                else:
+                    # Fallback Path: Need all entities (including those with 0 intersection)
+
+                    # 1. Get Intersection Counts
+                    candidates = {}
+                    intersection_stmt = text("""
+                        SELECT
+                            r2.source_id,
+                            COUNT(*) as intersection_count
+                        FROM kg_relations r1
+                        JOIN kg_relations r2 ON r1.target_id = r2.target_id AND r1.relation = r2.relation
+                        WHERE r1.source_id = :ref_id
+                          AND r2.source_id != :ref_id
+                        GROUP BY r2.source_id
+                    """)
+                    int_res = await session.execute(intersection_stmt, {"ref_id": ref_id})
+                    for row in int_res.fetchall():
+                        candidates[row[0]] = row[1]
+
+                    # 2. Get all entities
+                    ent_stmt = text("SELECT id, name FROM kg_entities WHERE id != :ref_id")
+                    ent_res = await session.execute(ent_stmt, {"ref_id": ref_id})
+                    all_entities = ent_res.fetchall()
+
+                    # 3. Get all relation counts (bulk)
+                    count_stmt = text("SELECT source_id, COUNT(*) FROM kg_relations GROUP BY source_id")
+                    count_res = await session.execute(count_stmt)
+                    all_counts = {row[0]: row[1] for row in count_res.fetchall()}
                     
-                    if similarity >= similarity_threshold:
-                        similar_entities.append({
-                            "entity": entity_name_cmp,
-                            "similarity": similarity,
-                            "shared_relations": intersection
-                        })
+                    # 4. Process
+                    for eid, ename in all_entities:
+                        inter = candidates.get(eid, 0)
+                        total = all_counts.get(eid, 0)
+
+                        union = ref_count + total - inter
+                        sim = inter / union if union > 0 else 0
+
+                        if sim >= similarity_threshold:
+                            similar_entities.append({
+                                "entity": ename,
+                                "similarity": sim,
+                                "shared_relations": inter
+                            })
                 
                 # Sort by similarity
                 similar_entities.sort(key=lambda x: x["similarity"], reverse=True)
