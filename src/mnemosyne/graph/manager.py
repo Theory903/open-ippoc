@@ -1,5 +1,6 @@
 from typing import List, Dict, Any, Tuple, Optional
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, text, DateTime
+from collections import defaultdict
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, text, DateTime, bindparam
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
@@ -145,45 +146,74 @@ class GraphManager:
             return []
     
     async def _bfs_find_paths(self, session: AsyncSession, source_id: int, target_id: int, max_depth: int) -> List[Dict[str, Any]]:
-        """BFS algorithm to find paths between entities"""
-        from collections import deque
-        
+        """BFS algorithm to find paths between entities - Optimized to avoid N+1 queries"""
         paths = []
-        queue = deque([(source_id, [], 0)])  # (current_id, path_edges, depth)
+        # Queue stores: (current_id, path_edges)
+        # Note: depth is tracked by loop iteration in batch processing
+        current_level = [(source_id, [])]
         visited = {source_id}
-        
-        while queue and len(paths) < 10:  # Limit to 10 paths
-            current_id, path_edges, depth = queue.popleft()
-            
-            if depth >= max_depth:
-                continue
-            
-            # Get outgoing relations
+        depth = 0
+
+        while current_level and depth < max_depth and len(paths) < 10:
+            # 1. Collect all IDs in current level to fetch outgoing edges
+            source_ids = [node_id for node_id, _ in current_level]
+
+            if not source_ids:
+                break
+
+            # 2. Batch fetch edges for all nodes in current level
             stmt = text("""
-                SELECT r.target_id, r.relation, e.name
+                SELECT r.source_id, r.target_id, r.relation, e.name
                 FROM kg_relations r
                 JOIN kg_entities e ON r.target_id = e.id
-                WHERE r.source_id = :source_id
+                WHERE r.source_id IN :source_ids
             """)
-            result = await session.execute(stmt, {"source_id": current_id})
-            
-            for target_id_result, relation, target_name in result.fetchall():
-                new_edge = {
-                    "from": current_id,
-                    "to": target_id_result,
-                    "relation": relation,
-                    "target_name": target_name
-                }
-                new_path = path_edges + [new_edge]
-                
-                if target_id_result == target_id:
-                    # Found target - reconstruct full path
-                    full_path = await self._reconstruct_path(session, new_path)
-                    paths.append(full_path)
-                elif target_id_result not in visited:
-                    visited.add(target_id_result)
-                    queue.append((target_id_result, new_path, depth + 1))
-        
+            stmt = stmt.bindparams(bindparam("source_ids", expanding=True))
+
+            result = await session.execute(stmt, {"source_ids": list(set(source_ids))})
+
+            # 3. Organize edges by source_id
+            edges_by_source = defaultdict(list)
+            for row in result:
+                edges_by_source[row.source_id].append({
+                    "to": row.target_id,
+                    "relation": row.relation,
+                    "target_name": row.name
+                })
+
+            # 4. Build next level
+            next_level = []
+
+            for current_id, path_edges in current_level:
+                if len(paths) >= 10:
+                    break
+
+                outgoing_edges = edges_by_source.get(current_id, [])
+
+                for edge in outgoing_edges:
+                    target_id_result = edge["to"]
+
+                    new_edge = {
+                        "from": current_id,
+                        "to": target_id_result,
+                        "relation": edge["relation"],
+                        "target_name": edge["target_name"]
+                    }
+                    new_path = path_edges + [new_edge]
+
+                    if target_id_result == target_id:
+                        # Found target - reconstruct full path
+                        full_path = await self._reconstruct_path(session, new_path)
+                        paths.append(full_path)
+                        if len(paths) >= 10:
+                            break
+                    elif target_id_result not in visited:
+                        visited.add(target_id_result)
+                        next_level.append((target_id_result, new_path))
+
+            current_level = next_level
+            depth += 1
+
         return paths
     
     async def _reconstruct_path(self, session: AsyncSession, path_edges: List[Dict]) -> Dict[str, Any]:
