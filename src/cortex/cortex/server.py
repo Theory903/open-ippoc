@@ -609,4 +609,10 @@ def health():
     }
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    import argparse
+    parser = argparse.ArgumentParser(description="IPPOC Cortex Server")
+    parser.add_argument("--host", default="0.0.0.0", help="Host interface to bind to")
+    parser.add_argument("--port", type=int, default=8001, help="Port to bind to")
+    args, _ = parser.parse_known_args()
+    
+    uvicorn.run(app, host=args.host, port=args.port)

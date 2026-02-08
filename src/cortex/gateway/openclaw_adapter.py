@@ -35,7 +35,8 @@ _kernel_status = KernelStatus(
 )
 
 # Configuration
-OPENCLAW_GATEWAY_URL = "http://localhost:3000"
+OPENCLAW_GATEWAY_URL = "http://localhost:19001"
+OPENCLAW_GATEWAY_TOKEN = "ippoc-dev-token"
 HEARTBEAT_INTERVAL = 30
 TIMEOUT_SECONDS = 30
 
@@ -48,27 +49,50 @@ async def initialize_synapse_bridge():
     # 1. Scan available skills for proprioception
     try:
         scanner = get_scanner()
-        skills = scanner.scan_skills()
+        skills = await scanner.scan_skills()
         _kernel_status.skills_available = len(skills)
         logger.info(f"[Synapse] Proprioception mapped {len(skills)} skills")
     except Exception as e:
         logger.error(f"[Synapse] Proprioception scan failed: {e}")
         
-    # 2. Establish initial connection
-    try:
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=TIMEOUT_SECONDS)) as session:
-            async with session.get(f"{OPENCLAW_GATEWAY_URL}/health") as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    _kernel_status.connected = True
-                    _kernel_status.last_heartbeat = datetime.now()
-                    _kernel_status.version = data.get("version", "unknown")
-                    logger.info(f"[Synapse] Connected to OpenClaw v{_kernel_status.version}")
-                    return True
-    except Exception as e:
-        logger.error(f"[Synapse] Failed to connect to OpenClaw: {e}")
-        _kernel_status.error_count += 1
-        return False
+    # 2. Establish initial connection (with retries)
+    max_retries = 10
+    retry_delay = 5
+    
+    for attempt in range(max_retries):
+        try:
+            headers = {
+                "Authorization": f"Bearer {OPENCLAW_GATEWAY_TOKEN}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "intent_id": "synapse-init",
+                "type": "SIGNAL",
+                "payload": {"action": "get_snapshot"},
+                "risk": 0,
+                "expected_value": 0,
+                "justification": "Synapse Initialization"
+            }
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=TIMEOUT_SECONDS)) as session:
+                async with session.post(f"{OPENCLAW_GATEWAY_URL}/body/intent", headers=headers, json=payload) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        _kernel_status.connected = True
+                        _kernel_status.last_heartbeat = datetime.now()
+                        _kernel_status.version = "integrated" 
+                        logger.info(f"[Synapse] Connected to OpenClaw via Intent Bridge")
+                        return True
+                    else:
+                        logger.warning(f"[Synapse] Connection attempt {attempt+1} failed with status {resp.status}")
+        except Exception as e:
+            logger.debug(f"[Synapse] Connection attempt {attempt+1} failed: {e}")
+            
+        if attempt < max_retries - 1:
+            await asyncio.sleep(retry_delay)
+            
+    logger.error(f"[Synapse] Failed to connect to OpenClaw after {max_retries} attempts")
+    _kernel_status.error_count += 1
+    return False
 
 def get_kernel_status() -> KernelStatus:
     """Get current kernel connection status"""

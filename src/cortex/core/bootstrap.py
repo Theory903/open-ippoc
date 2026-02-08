@@ -22,44 +22,43 @@ def bootstrap_tools():
     """
     orc = get_orchestrator()
     
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
     # 1. Initialize proprioception system (Phase 1: Spine Connection)
     print("[IPPOC] Initializing bio-digital proprioception system...")
-    try:
-        import asyncio
-        # Run async scanner
-        async def scan_wrapper():
+    
+    async def run_bootstrap_async():
+        try:
             from cortex.gateway.proprioception_scanner import get_scanner
             scanner = get_scanner()
-            return await scanner.scan_skills()
-        
-        skills = asyncio.run(scan_wrapper())
-        print(f"[IPPOC] Proprioception mapped {len(skills)} OpenClaw skills")
-    except Exception as e:
-        print(f"[IPPOC] Warning: Proprioception scan failed: {e}")
-    
-    # 2. Initialize synapse bridge to OpenClaw kernel
-    print("[IPPOC] Establishing synapse bridge to OpenClaw kernel...")
-    try:
-        # Run in background task
+            skills = await scanner.scan_skills()
+            print(f"[IPPOC] Proprioception mapped {len(skills)} OpenClaw skills")
+            
+            # Establishing synapse bridge to OpenClaw kernel
+            print("[IPPOC] Establishing synapse bridge to OpenClaw kernel...")
+            await initialize_synapse_bridge()
+            print("[IPPOC] Synapse bridge initialization complete")
+            
+            # Start heartbeat monitor in background
+            asyncio.create_task(heartbeat_monitor())
+            print("[IPPOC] Heartbeat monitor started")
+            
+        except Exception as e:
+            print(f"[IPPOC] Bio-digital integration initialization failed: {e}")
+
+    if loop:
+        loop.create_task(run_bootstrap_async())
+    else:
+        # Fallback for non-async contexts if any
         import threading
-        def start_bridge():
-            asyncio.run(initialize_synapse_bridge())
-        bridge_thread = threading.Thread(target=start_bridge, daemon=True)
-        bridge_thread.start()
-        print("[IPPOC] Synapse bridge initialization started")
-    except Exception as e:
-        print(f"[IPPOC] Warning: Synapse bridge init failed: {e}")
+        def _run_in_thread():
+             asyncio.run(run_bootstrap_async())
+        threading.Thread(target=_run_in_thread, daemon=True).start()
     
-    # 3. Start heartbeat monitor
-    try:
-        import threading
-        def start_heartbeat():
-            asyncio.run(heartbeat_monitor())
-        heartbeat_thread = threading.Thread(target=start_heartbeat, daemon=True)
-        heartbeat_thread.start()
-        print("[IPPOC] Heartbeat monitor started")
-    except Exception as e:
-        print(f"[IPPOC] Warning: Heartbeat monitor failed: {e}")
+    print("[IPPOC] Synapse bridge and proprioception tasks scheduled")
     
     # 4. Register Core Tools (Original functionality)
     print("[IPPOC] Registering core cognitive tools...")
