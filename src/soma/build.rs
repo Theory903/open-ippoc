@@ -1,5 +1,5 @@
 use std::io::Result;
 fn main() -> Result<()> {
-    prost_build::compile_protos(&["proto/body.proto"], &["proto/"])?;
+    tonic_build::compile_protos("proto/body.proto")?;
     Ok(())
 }

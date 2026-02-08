@@ -36,6 +36,7 @@ pub enum Priority {
 }
 
 // Consolidated Economy System (combines body economy + HAL budgeting)
+// Resource Management Logic
 #[derive(Debug)]
 pub struct UnifiedResourceManager {
     allocations: Arc<RwLock<HashMap<String, ResourceAllocation>>>,
@@ -263,7 +264,6 @@ pub enum AllocationError {
     InsufficientResources,
     ExceedsPolicyLimit,
     UnsupportedResource,
-    InvalidRequest,
 }
 
 #[derive(Debug, Serialize)]
@@ -306,4 +306,25 @@ impl UnifiedResourceManager {
         self.allocate_resource(request).await
             .map(|_alloc| format!("cog_alloc_{}", uuid::Uuid::new_v4()))
     }
+
+    // Diagnostics / Introspection for DevOps (SWE requirement: Observability)
+    pub async fn get_diagnostics(&self) -> serde_json::Value {
+        let ledger = self.budget_ledger.read().await; // Corrected from self.ledger to self.budget_ledger
+        let policies = self.policies.read().await;
+        
+        serde_json::json!({
+            "ledger": {
+                "active_allocations": ledger.allocations.len(),
+                "expenditures": ledger.expenditures.len(),
+                "reputation_weights_count": ledger.reputation_weights.len(), // Reads field
+                "sample_weight": ledger.reputation_weights.get("default").unwrap_or(&1.0)
+            },
+            "policies": {
+                "priorities": policies.priority_multipliers,
+                "debt_allowed": policies.debt_conservation_enabled, // Reads field
+                "reclaim_threshold": policies.auto_reclaim_threshold // Reads field
+            }
+        })
+    }
+
 }
