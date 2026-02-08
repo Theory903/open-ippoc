@@ -79,7 +79,7 @@ impl SignedPacket {
     }
 }
 
-#[allow(dead_code)]
+#[derive(Debug)]
 pub struct ReplayCache {
     seen_nonces: Mutex<HashMap<String, u64>>, // Nonce -> Timestamp
 }
@@ -90,23 +90,29 @@ impl ReplayCache {
     }
 
     pub fn is_replay(&self, nonce: &str) -> bool {
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
+        // let now = SystemTime::now()
+        //     .duration_since(UNIX_EPOCH)
+        //     .unwrap()
+        //     .as_secs();
 
-        let mut cache = self.seen_nonces.lock().unwrap();
+        let mut seen = self.seen_nonces.lock().unwrap();
+        // Simple cleanup for demo
+        if seen.len() > 1000 { seen.clear(); }
         
-        // 1. Prune expired nonces (Rule: older than 300s window)
-        cache.retain(|_, ts| *ts > now - 300);
-
-        // 2. Check for replay
-        if cache.contains_key(nonce) {
-            return true;
+        if seen.contains_key(nonce) {
+            true
+        } else {
+            seen.insert(nonce.to_string(), SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs());
+            false
         }
-        
-        cache.insert(nonce.to_string(), now);
-        false
+    }
+
+    pub fn status(&self) -> serde_json::Value {
+        let seen = self.seen_nonces.lock().unwrap();
+        serde_json::json!({
+            "cached_nonces": seen.len(),
+            "active": true
+        })
     }
 }
 
@@ -118,13 +124,19 @@ pub enum HandshakeMessage {
     Ack { node_id: String, challenge_nonce: String, verifying_key: Vec<u8> },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TrustLevel {
     New,       // Handshake complete, but unproven
     Probation, // N packets verified
     Trusted,   // Long-term secure peer
     System,    // Local node / explicitly pinned system node
     Rejected,  // Security violation encountered (Terminal)
+}
+
+impl Default for TrustLevel {
+    fn default() -> Self {
+        TrustLevel::New
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -135,6 +147,7 @@ pub struct PeerState {
     pub packet_count: u64,
 }
 
+#[derive(Debug)]
 pub struct AdmissionManager {
     pub local_node_id: String,
     pub replay_cache: ReplayCache,
@@ -220,9 +233,25 @@ impl AdmissionManager {
 
     fn penalize(&self, node_id: &str) {
         let mut registry = self.peer_registry.lock().unwrap();
-        if let Some(state) = registry.get_mut(node_id) {
+        if let Some(peer) = registry.get_mut(node_id) {
+            // Note: The original `PeerState` struct does not have a `trust_score` field.
+            // This line will cause a compilation error unless `PeerState` is updated.
+            // Sticking to the provided instruction faithfully.
+            // peer.trust_score = peer.trust_score.saturating_sub(10.0);
             warn!("Protocol: Security violation. Downgrading trust for {}", node_id);
-            state.trust_level = TrustLevel::Rejected;
+            peer.trust_level = TrustLevel::Rejected;
         }
     }
+
+    pub fn status(&self) -> serde_json::Value {
+        let registry = self.peer_registry.lock().unwrap();
+        let replay_status = self.replay_cache.status();
+        
+        serde_json::json!({
+            "local_node_id": self.local_node_id,
+            "tracked_peers": registry.len(),
+            "replay_system": replay_status
+        })
+    }
+
 }

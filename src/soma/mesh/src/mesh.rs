@@ -13,7 +13,7 @@ use crate::crypto::{NodeSecrets, NodeIdentity, encrypt_message, decrypt_message,
 use crate::messages::{AiMessage, MessageType, Thought, Broadcast};
 use crate::peer::{Peer, PeerTable, ReputationManager};
 use std::path::PathBuf;
-use std::fs;
+
 
 /// Configuration for the AI mesh
 #[derive(Debug, Clone)]
