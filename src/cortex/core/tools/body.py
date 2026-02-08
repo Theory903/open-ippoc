@@ -11,7 +11,7 @@ from cortex.core.exceptions import ToolExecutionError
 from cortex.gateway.openclaw_adapter import send_directive_to_kernel, get_kernel_status
 from cortex.gateway.proprioception_scanner import get_scanner
 
-BODY_URL = os.getenv("BODY_URL", "http://localhost:9000")
+BODY_URL = os.getenv("BODY_URL", "http://localhost:8002")
 BODY_ALLOWLIST = set(filter(None, os.getenv("BODY_ALLOWLIST", "").split(",")))
 BODY_ENFORCE_ALLOWLIST = os.getenv("BODY_ENFORCE_ALLOWLIST", "false").lower() == "true"
 

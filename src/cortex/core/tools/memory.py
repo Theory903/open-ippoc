@@ -9,8 +9,8 @@ from cortex.core.exceptions import ToolExecutionError
 logger = logging.getLogger("IPPOC.Memory")
 
 # Configuration
-MEMORY_URL = os.getenv("MEMORY_URL", "http://127.0.0.1:8000")
-HIDB_URL = os.getenv("HIDB_URL", os.getenv("BODY_URL", "http://127.0.0.1:9000"))
+MEMORY_URL = os.getenv("MEMORY_URL", "http://127.0.0.1:8003")
+HIDB_URL = os.getenv("HIDB_URL", os.getenv("BODY_URL", "http://127.0.0.1:8002"))
 MEMORY_BACKEND = os.getenv("MEMORY_BACKEND", "api")  # api|hidb|auto
 MEMORY_TIMEOUT_S = int(os.getenv("MEMORY_TIMEOUT_S", "30")) # 30 seconds
 MEMORY_MAX_RETRIES = int(os.getenv("MEMORY_MAX_RETRIES", "1"))

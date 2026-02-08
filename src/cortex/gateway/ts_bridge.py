@@ -142,7 +142,7 @@ class TypeScriptBridge:
                 databaseUrl: "postgresql://localhost/ippoc",
                 redisUrl: "redis://localhost:6379",
                 orchestratorMode: "local",
-                nodePort: 3000,
+                nodePort: 19001,
                 nodeRole: "tool",
                 enableEconomy: true,
                 enableSelfEvolution: true,
@@ -166,9 +166,13 @@ class TypeScriptBridge:
             temp_script = self.repo_root / "temp_ts_executor.js"
             temp_script.write_text(adapter_script)
             
-            # Execute with node
+            # Execute with tsx (which handles TS files directly)
+            tsx_path = self.repo_root / "src" / "kernel" / "openclaw" / "node_modules" / ".bin" / "tsx"
+            if not tsx_path.exists():
+                tsx_path = "tsx" # Fallback to global tsx
+            
             proc = await asyncio.create_subprocess_exec(
-                "node",
+                str(tsx_path),
                 str(temp_script),
                 cwd=self.repo_root,
                 stdout=subprocess.PIPE,
@@ -184,12 +188,23 @@ class TypeScriptBridge:
                 error_msg = stderr.decode() if stderr else "Unknown error"
                 raise Exception(f"TS adapter failed: {error_msg}")
                 
-            # Parse result
-            result_str = stdout.decode().strip()
+            # Parse result (safely find the JSON line)
+            output = stdout.decode()
+            result_str = None
+            for line in output.splitlines():
+                line = line.strip()
+                if line.startswith('{') and line.endswith('}'):
+                    try:
+                        result_str = line
+                        break
+                    except:
+                        continue
+            
             if result_str:
                 return json.loads(result_str)
             else:
-                return {"success": False, "error": "Empty response from TS adapter"}
+                logger.error(f"[TSBridge] No JSON found in output: {output}")
+                return {"success": False, "error": "No JSON response found in adapter output"}
                 
         except json.JSONDecodeError as e:
             raise Exception(f"Invalid JSON from TS adapter: {e}")
