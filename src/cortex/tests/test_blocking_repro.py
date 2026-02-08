@@ -4,7 +4,7 @@ import time
 import json
 from unittest.mock import patch, MagicMock
 from httpx import AsyncClient, ASGITransport
-from cortex.cortex.server import app
+from cortex.cortex.server import app, IPPOC_API_KEY
 
 @pytest.mark.asyncio
 async def test_blocking_io_behavior():
@@ -22,7 +22,7 @@ async def test_blocking_io_behavior():
             with patch("os.path.exists", return_value=True), \
                  patch("builtins.open", new_callable=MagicMock):
 
-                headers = {"Authorization": "Bearer ippoc-secret-key"}
+                headers = {"Authorization": f"Bearer {IPPOC_API_KEY}"}
 
                 start_time = time.monotonic()
 
