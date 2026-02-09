@@ -1,8 +1,10 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Security, Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 import time
 import os
+import secrets
 import asyncio
 
 # Import the Graph Builder (Phase 1)
@@ -16,6 +18,24 @@ from langchain_community.vectorstores import PGVector # legacy import wrapper or
 # Ideally we inject dependencies.
 
 app = FastAPI(title="IPPOC Hippocampus", version="2.0.0")
+
+# --- Security ---
+security = HTTPBearer()
+MNEMOSYNE_API_KEY = os.getenv("MNEMOSYNE_API_KEY")
+
+if not MNEMOSYNE_API_KEY:
+    # In development/local, we might want to allow this or warn heavily.
+    # For security, let's generate one if missing so it's secure by default (locked out unless you check logs).
+    MNEMOSYNE_API_KEY = secrets.token_hex(32)
+    print(f"\n[Memory] ⚠️ SECURITY WARNING: MNEMOSYNE_API_KEY not set. Generated key: {MNEMOSYNE_API_KEY}\n")
+
+def verify_api_key(credentials: HTTPAuthorizationCredentials = Security(security)):
+    """
+    Verifies the Bearer token against MNEMOSYNE_API_KEY.
+    """
+    if not secrets.compare_digest(credentials.credentials, MNEMOSYNE_API_KEY):
+        raise HTTPException(status_code=403, detail="Invalid API Key")
+    return credentials.credentials
 
 # --- Dependency Injection (Simple Global for now) ---
 # In production, use lifespan events or dependency overrides
@@ -56,7 +76,7 @@ class MemoryResponse(BaseModel):
 
 # --- Endpoints ---
 
-@app.post("/v1/memory/search")
+@app.post("/v1/memory/search", dependencies=[Depends(verify_api_key)])
 async def search_memory(search: SearchInput):
     """
     Semantic search over the vector store.
@@ -70,7 +90,7 @@ async def search_memory(search: SearchInput):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/v1/memory/consolidate", response_model=MemoryResponse)
+@app.post("/v1/memory/consolidate", response_model=MemoryResponse, dependencies=[Depends(verify_api_key)])
 async def consolidate_memory(event: EventInput, background_tasks: BackgroundTasks):
     """
     Triggers a memory consolidation cycle.
