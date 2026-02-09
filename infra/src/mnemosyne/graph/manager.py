@@ -358,7 +358,7 @@ class GraphManager:
                 res = await session.execute(stmt, {"ref_id": ref_id})
 
                 for row in res.fetchall():
-                    # entity_id = row[0]
+                    # entity_id = row[0] # Unused but available if needed
                     entity_name_cmp = row[1]
                     cmp_total = row[2]
                     intersection = row[3]
