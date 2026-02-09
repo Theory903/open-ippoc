@@ -37,6 +37,7 @@ class MemoryRecord:
     created_at: Optional[Any] = None
     updated_at: Optional[Any] = None
     metadata: Optional[Dict[str, Any]] = None
+    score: Optional[float] = None  # Similarity score (1 - distance)
 
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
@@ -172,9 +173,9 @@ class HiDB:
 
         # pgvector syntax for cosine distance is <=>
         query = """
-            SELECT id, embedding, content, confidence, decay_rate, source, created_at, updated_at
+            SELECT id, embedding, content, confidence, decay_rate, source, created_at, updated_at, (embedding <=> $1) as distance
             FROM memories
-            ORDER BY embedding <=> $1
+            ORDER BY distance ASC
             LIMIT $2
         """
 
@@ -187,6 +188,14 @@ class HiDB:
             if isinstance(emb, str):
                  emb = json.loads(emb) # Fallback
 
+            # Calculate score from distance (Cosine Distance is 0..2, where 0 is identical)
+            # Typically similarity = 1 - distance/2 or just 1 - distance for normalized vectors
+            # Assuming pgvector cosine distance: d(u,v) = 1 - (u.v / |u||v|)
+            # So similarity = 1 - distance.
+
+            distance = r['distance']
+            score = 1.0 - distance
+
             results.append(
                 MemoryRecord(
                     id=str(r['id']),
@@ -196,7 +205,8 @@ class HiDB:
                     decay_rate=r['decay_rate'],
                     source=r['source'],
                     created_at=r['created_at'],
-                    updated_at=r['updated_at']
+                    updated_at=r['updated_at'],
+                    score=score
                 )
             )
 

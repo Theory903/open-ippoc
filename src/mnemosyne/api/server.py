@@ -9,18 +9,21 @@ import asyncio
 from mnemosyne.logic.graph import build_memory_graph
 from mnemosyne.logic.state import MemoryState, MemoryEvent, ExtractedFact
 
+# Import HiDB singleton from package
+from mnemosyne import hidb
+from mnemosyne.hidb import MemoryRecord
+
 # Import LangChain components for the builder
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
-from langchain_community.vectorstores import PGVector # legacy import wrapper or direct?
-# We used valid imports in rag.py, let's reuse what works. 
-# Ideally we inject dependencies.
+from langchain_community.vectorstores import PGVector
 
 app = FastAPI(title="IPPOC Hippocampus", version="2.0.0")
 
-# --- Dependency Injection (Simple Global for now) ---
-# In production, use lifespan events or dependency overrides
-llm = ChatGoogleGenerativeAI(model="gemini-flash-latest", temperature=0) # Smart model for extraction
+# --- Dependency Injection ---
+llm = ChatGoogleGenerativeAI(model="gemini-flash-latest", temperature=0)
 embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+
+# Initialize Vector Store (Legacy/Fallback)
 try:
     vector_store = PGVector(
         connection_string=os.getenv("DATABASE_URL", "postgresql://ippoc:ippoc@localhost:5432/ippoc"),
@@ -28,12 +31,9 @@ try:
         collection_name="hippocampus_v2",
     )
 except Exception as e:
-    if "could not open extension control file" in str(e) or "vector" in str(e):
-        print("\n\033[91mCRITICAL ERROR: 'pgvector' extension missing from PostgreSQL.\033[0m")
-        print("Please install it (e.g., 'brew install pgvector' or 'sudo apt install postgresql-14-pgvector').")
-        print(f"Details: {e}\n")
-        import sys; sys.exit(1)
-    raise e
+    # Log but don't exit hard, as HiDB might be the primary
+    print(f"Warning: PGVector init failed: {e}")
+    vector_store = None
 
 memory_graph = build_memory_graph(llm, vector_store, embeddings)
 
@@ -46,8 +46,14 @@ class EventInput(BaseModel):
     metadata: Dict[str, Any] = {}
 
 class SearchInput(BaseModel):
-    query: str
+    query: Optional[str] = None
+    vector: Optional[List[float]] = None
     limit: int = 5
+
+class StoreInput(BaseModel):
+    content: str
+    vector: List[float]
+    metadata: Optional[Dict[str, Any]] = {}
 
 class MemoryResponse(BaseModel):
     status: str
@@ -56,17 +62,62 @@ class MemoryResponse(BaseModel):
 
 # --- Endpoints ---
 
+@app.on_event("startup")
+async def startup_event():
+    await hidb.connect()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    await hidb.close()
+
+@app.post("/v1/memory/store")
+async def store_memory(input_data: StoreInput):
+    """
+    Store memory directly into HiDB.
+    """
+    try:
+        record = MemoryRecord(
+            content=input_data.content,
+            embedding=input_data.vector,
+            metadata=input_data.metadata
+        )
+        record_id = await hidb.insert_memory(record)
+        return {"id": record_id, "status": "stored"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/v1/memory/search")
 async def search_memory(search: SearchInput):
     """
-    Semantic search over the vector store.
+    Semantic search over the vector store (HiDB or PGVector).
     """
     try:
-        results = await vector_store.asimilarity_search_with_score(search.query, k=search.limit)
-        return [
-            {"content": doc.page_content, "metadata": doc.metadata, "score": score} 
-            for doc, score in results
-        ]
+        if search.vector:
+            # Direct vector search via HiDB
+            results = await hidb.semantic_search(search.vector, k=search.limit)
+            return [
+                {
+                    "id": r.id,
+                    "content": r.content,
+                    "metadata": r.metadata,
+                    "score": r.score # Uses similarity score (1 - distance)
+                }
+                for r in results
+            ]
+        elif search.query and vector_store:
+            # Text search via LangChain/PGVector
+            results = await vector_store.asimilarity_search_with_score(search.query, k=search.limit)
+            return [
+                {"content": doc.page_content, "metadata": doc.metadata, "score": score}
+                for doc, score in results
+            ]
+        else:
+            raise HTTPException(status_code=400, detail="Either 'vector' (for HiDB) or 'query' (for Text Search) is required.")
+
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -119,9 +170,11 @@ async def consolidate_memory(event: EventInput, background_tasks: BackgroundTask
                 )
             ]
             # Use the node's function directly if possible or wrap it
-            from memory.logic.nodes.index_vectors import index_vectors
-            fallback_node = index_vectors(vector_store, embeddings)
-            await fallback_node(input_state)
+            from mnemosyne.logic.nodes.index_vectors import index_vectors
+            # Requires vector_store to be valid for fallback logic currently implemented in nodes
+            if vector_store:
+                fallback_node = index_vectors(vector_store, embeddings)
+                await fallback_node(input_state)
             
             return MemoryResponse(
                 status="fallback_stored",
@@ -134,7 +187,7 @@ async def consolidate_memory(event: EventInput, background_tasks: BackgroundTask
 
 @app.get("/health")
 def health():
-    return {"status": "hippocampus_active", "mode": "graph_v1"}
+    return {"status": "hippocampus_active", "mode": "graph_v1", "hidb": "connected" if hidb._connected else "disconnected"}
 
 if __name__ == "__main__":
     import uvicorn
