@@ -10,6 +10,7 @@ from typing import Dict, Optional, Tuple, Any
 from cortex.core.exceptions import ToolExecutionError, SecurityViolation, BudgetExceeded
 from cortex.core.economy import get_economy
 from cortex.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult
+from cortex.core.policy import PolicyEngine
 
 # Configure Logging
 logger = logging.getLogger("IPPOC.Orchestrator")
@@ -76,6 +77,7 @@ class ToolOrchestrator:
         self.domain_denylist = set(filter(None, os.getenv("ORCHESTRATOR_DOMAIN_DENYLIST", "").split(",")))
         self.circuit_breakers: Dict[str, CircuitBreaker] = {}
         self.idempotency_cache: Dict[str, Tuple[float, ToolResult]] = {}
+        self.policy_engine = PolicyEngine(os.getenv("ORCHESTRATOR_POLICY_PATH"))
         self._load_budget_overrides()
         self.initialized = True
         logger.info("ToolOrchestrator initialized.")
@@ -222,32 +224,11 @@ class ToolOrchestrator:
         """
         Verify if the caller is allowed to use this tool.
         """
-        if os.getenv("ORCHESTRATOR_KILL_SWITCH", "false").lower() == "true":
-            raise SecurityViolation("Kill switch enabled")
-        tool_allow = set(filter(None, os.getenv("ORCHESTRATOR_TOOL_ALLOWLIST", "").split(",")))
-        tool_deny = set(filter(None, os.getenv("ORCHESTRATOR_TOOL_DENYLIST", "").split(",")))
-        if tool_allow and envelope.tool_name not in tool_allow:
-            raise SecurityViolation(f"Tool '{envelope.tool_name}' not allowed")
-        if envelope.tool_name in tool_deny:
-            raise SecurityViolation(f"Tool '{envelope.tool_name}' denied")
-        # TODO: Connect to explicit Policy Engine / ACLs
-        # For now, simplistic safety check:
-        max_risk = os.getenv("ORCHESTRATOR_MAX_RISK", "high").lower()
-        risk_order = {"low": 0, "medium": 1, "high": 2}
-        if risk_order.get(envelope.risk_level, 0) > risk_order.get(max_risk, 2):
-            raise SecurityViolation(f"Risk level '{envelope.risk_level}' exceeds policy")
+        # Delegate to explicit Policy Engine
+        self.policy_engine.evaluate(envelope)
+
         if envelope.risk_level == "high" and not envelope.requires_validation:
             logger.warning(f"High risk action invoked without validation flag: {envelope.tool_name}")
-        
-        # Placeholder for 'sandbox' enforcement
-        if envelope.domain == "evolution" and envelope.context.get("environment") == "stable":
-             if not envelope.requires_validation:
-                 raise SecurityViolation("Stable channel evolution requires manual validation.")
-
-        if self.domain_allowlist and envelope.domain not in self.domain_allowlist:
-            raise SecurityViolation(f"Domain '{envelope.domain}' not allowed")
-        if envelope.domain in self.domain_denylist:
-            raise SecurityViolation(f"Domain '{envelope.domain}' denied")
 
     def _check_budget(self, envelope: ToolInvocationEnvelope, tool_name: str, estimated_cost: float) -> None:
         """
