@@ -10,6 +10,8 @@ from cortex.core.bootstrap import bootstrap_tools
 def get_high_pain_signals():
     # Force high pain: many errors, high cost
     return SignalSummary(
+        pain_score=0.8,
+        confidence=1.0,
         errors_last_hour=10,
         avg_cost=5.0,
         success_rate=0.5
@@ -18,6 +20,8 @@ def get_high_pain_signals():
 def get_low_pain_signals():
     # Force zen mode
     return SignalSummary(
+        pain_score=0.1,
+        confidence=1.0,
         errors_last_hour=0,
         avg_cost=0.5,
         success_rate=1.0

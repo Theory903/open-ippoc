@@ -162,6 +162,18 @@ class EconomyManager:
         self._save()
         return True
 
+    def get_moving_average_cost(self, window: int = 100) -> float:
+        """
+        Calculates the moving average cost of recent spend events.
+        """
+        spend_events = [e for e in self.state.events if e.get("kind") == "spend"]
+        if not spend_events:
+            return 0.0
+
+        recent = spend_events[-window:]
+        total = sum(e.get("cost", 0.0) for e in recent)
+        return total / len(recent)
+
     def record_value(self, value: float, confidence: float = 1.0, source: str = "unknown", tool_name: str | None = None) -> None:
         """
         Record earned value (real fiat/crypto). Updates both budget and earnings.
