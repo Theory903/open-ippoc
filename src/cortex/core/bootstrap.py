@@ -1,3 +1,4 @@
+import sys
 from cortex.core.orchestrator import get_orchestrator
 from cortex.core.tools.memory import MemoryAdapter
 from cortex.core.tools.body import BodyAdapter
@@ -28,26 +29,21 @@ def bootstrap_tools():
         loop = None
 
     # 1. Initialize proprioception system (Phase 1: Spine Connection)
-    print("[IPPOC] Initializing bio-digital proprioception system...")
+    print("[IPPOC] Initializing bio-digital proprioception system...", file=sys.stderr)
     
     async def run_bootstrap_async():
         try:
-            from cortex.gateway.proprioception_scanner import get_scanner
-            scanner = get_scanner()
-            skills = await scanner.scan_skills()
-            print(f"[IPPOC] Proprioception mapped {len(skills)} OpenClaw skills")
-            
-            # Establishing synapse bridge to OpenClaw kernel
-            print("[IPPOC] Establishing synapse bridge to OpenClaw kernel...")
+            # Synapse bridge initialization (Proprioception is now lazy-loaded by tools)
+            print("[IPPOC] Establishing synapse bridge to OpenClaw kernel...", file=sys.stderr)
             await initialize_synapse_bridge()
-            print("[IPPOC] Synapse bridge initialization complete")
+            print("[IPPOC] Synapse bridge initialization complete", file=sys.stderr)
             
             # Start heartbeat monitor in background
             asyncio.create_task(heartbeat_monitor())
-            print("[IPPOC] Heartbeat monitor started")
+            print("[IPPOC] Heartbeat monitor started", file=sys.stderr)
             
         except Exception as e:
-            print(f"[IPPOC] Bio-digital integration initialization failed: {e}")
+            print(f"[IPPOC] Bio-digital integration initialization failed: {e}", file=sys.stderr)
 
     if loop:
         loop.create_task(run_bootstrap_async())
@@ -58,10 +54,10 @@ def bootstrap_tools():
              asyncio.run(run_bootstrap_async())
         threading.Thread(target=_run_in_thread, daemon=True).start()
     
-    print("[IPPOC] Synapse bridge and proprioception tasks scheduled")
+    print("[IPPOC] Synapse bridge and proprioception tasks scheduled", file=sys.stderr)
     
     # 4. Register Core Tools (Original functionality)
-    print("[IPPOC] Registering core cognitive tools...")
+    print("[IPPOC] Registering core cognitive tools...", file=sys.stderr)
     
     # Register Memory Tool
     orc.register(MemoryAdapter())
@@ -90,5 +86,5 @@ def bootstrap_tools():
     # Register Earnings Tool (NEW: Real value generation)
     orc.register(EarningsAdapter())
     
-    print("[IPPOC] Core Tools Registered: Memory, Body, Evolution, Research, Simulation, Social, Maintainer, Economy, Earnings")
-    print("[IPPOC] Bio-digital integration layer active")
+    print("[IPPOC] Core Tools Registered: Memory, Body, Evolution, Research, Simulation, Social, Maintainer, Economy, Earnings", file=sys.stderr)
+    print("[IPPOC] Bio-digital integration layer active", file=sys.stderr)

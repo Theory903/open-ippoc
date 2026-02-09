@@ -1,5 +1,6 @@
 # brain/core/tools/worldmodel.py
 import os
+import sys
 from typing import Dict, Any
 from cortex.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult
 import asyncio
@@ -12,12 +13,13 @@ class WorldModelAdapter(IPPOC_Tool):
     """
     def __init__(self):
         super().__init__(name="simulation", domain="simulation")
-        self.binary_path = os.path.abspath("brain/worldmodel/target/release/worldmodel")
+        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
+        self.binary_path = os.path.join(repo_root, "src/cortex/worldmodel/target/debug/world-model")
         self.use_binary = os.path.exists(self.binary_path)
         if self.use_binary:
-            print(f"[WorldModel] Rust Physics Engine Detected. Syncing Reality...")
+            print(f"[WorldModel] Rust Physics Engine Detected. Syncing Reality...", file=sys.stderr)
         else:
-            print(f"[WorldModel] Rust Engine not found. Using low-res Python mock.")
+            print(f"[WorldModel] Rust Engine not found. Using low-res Python mock.", file=sys.stderr)
 
     def estimate_cost(self, envelope: ToolInvocationEnvelope) -> float:
         # Simulation is compute heavy

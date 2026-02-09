@@ -4,6 +4,7 @@
 import aiohttp
 import asyncio
 import os
+import sys
 import nest_asyncio
 from typing import Dict, Any
 from cortex.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult
@@ -41,9 +42,9 @@ class BodyAdapter(IPPOC_Tool):
             scanner = get_scanner()
             tool_defs = scanner.to_tool_definitions()
             TOOL_REGISTRY.update(tool_defs)
-            print(f"[BodyAdapter] Registered {len(tool_defs)} OpenClaw skills")
+            print(f"[BodyAdapter] Registered {len(tool_defs)} OpenClaw skills", file=sys.stderr)
         except Exception as e:
-            print(f"[BodyAdapter] Failed to populate OpenClaw tools: {e}")
+            print(f"[BodyAdapter] Failed to populate OpenClaw tools: {e}", file=sys.stderr)
 
     def estimate_cost(self, envelope: ToolInvocationEnvelope) -> float:
         """Enhanced cost estimation with proprioceptive awareness"""

@@ -79,7 +79,7 @@ impl UnifiedTrustManager {
         };
 
         // Register self as system identity
-        let mut identities = self.identities.blocking_write();
+        let mut identities = self.identities.write().await;
         identities.insert(node_id, identity.clone());
 
         Ok(identity)

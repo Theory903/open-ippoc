@@ -5,6 +5,7 @@
 import os
 import json
 import yaml
+import sys
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
@@ -15,6 +16,21 @@ try:
     _TS_BRIDGE_AVAILABLE = True
 except ImportError:
     _TS_BRIDGE_AVAILABLE = False
+
+# Configure logging to stderr so it doesn't interfere with JSON output
+import logging
+logger = logging.getLogger("IPPOC.Proprioception")
+logger.setLevel(logging.INFO)
+
+# Add a handler that writes to stderr - ensure it's properly flushed
+class FlushStreamHandler(logging.StreamHandler):
+    def emit(self, record):
+        super().emit(record)
+        self.flush()
+
+handler = FlushStreamHandler(sys.stderr)
+handler.setFormatter(logging.Formatter("[Proprioception] %(message)s"))
+logger.addHandler(handler)
 
 @dataclass
 class SkillDefinition:
@@ -47,7 +63,7 @@ class ProprioceptionScanner:
         if not self.skills_root.exists():
             raise FileNotFoundError(f"OpenClaw skills directory not found: {self.skills_root}")
             
-        print(f"[Proprioception] Scanning OpenClaw skills at {self.skills_root}")
+        logger.info(f"Scanning OpenClaw skills at {self.skills_root}")
         
         # 1. Scan filesystem skills (traditional method)
         fs_skills = await self._scan_filesystem_skills()
@@ -63,7 +79,7 @@ class ProprioceptionScanner:
         for skill in self.discovered_skills.values():
             self._index_skill_intents(skill)
             
-        print(f"[Proprioception] Discovered {len(self.discovered_skills)} total skills ({len(fs_skills)} filesystem + {len(ts_skills)} TypeScript)")
+        logger.info(f"Discovered {len(self.discovered_skills)} total skills ({len(fs_skills)} filesystem + {len(ts_skills)} TypeScript)")
         return self.discovered_skills
     
     async def _scan_filesystem_skills(self) -> Dict[str, SkillDefinition]:
@@ -78,15 +94,15 @@ class ProprioceptionScanner:
             skill_md_path = skill_dir / "SKILL.md"
             
             if not skill_md_path.exists():
-                print(f"[Proprioception] Warning: No SKILL.md found for {skill_name}")
+                logger.warning(f"No SKILL.md found for {skill_name}")
                 continue
                 
             try:
                 definition = self._parse_skill_md(skill_md_path, skill_name)
                 skills[skill_name] = definition
-                print(f"[Proprioception] Registered FS skill: {skill_name} (Cost: {definition.energy_cost})")
+                logger.info(f"Registered FS skill: {skill_name} (Cost: {definition.energy_cost})")
             except Exception as e:
-                print(f"[Proprioception] Error parsing {skill_name}: {e}")
+                logger.error(f"Error parsing {skill_name}: {e}")
                 continue
                 
         return skills
@@ -96,14 +112,14 @@ class ProprioceptionScanner:
         skills = {}
         
         if not _TS_BRIDGE_AVAILABLE:
-            print("[Proprioception] TS bridge not available, skipping dynamic skill discovery")
+            logger.info("TS bridge not available, skipping dynamic skill discovery")
             return skills
             
         try:
             # Initialize TS bridge
             bridge = get_ts_bridge()
             if not await bridge.initialize():
-                print("[Proprioception] TS bridge initialization failed")
+                logger.warning("TS bridge initialization failed")
                 return skills
                 
             # Get available skills from TS adapter
@@ -122,13 +138,13 @@ class ProprioceptionScanner:
                         metadata=skill_info.get("metadata", {})
                     )
                     skills[skill_name] = definition
-                    print(f"[Proprioception] Registered TS skill: {skill_name} (Cost: {definition.energy_cost})")
+                    logger.info(f"Registered TS skill: {skill_name} (Cost: {definition.energy_cost})")
                 except Exception as e:
-                    print(f"[Proprioception] Error processing TS skill {skill_name}: {e}")
+                    logger.error(f"Error processing TS skill {skill_name}: {e}")
                     continue
                     
         except Exception as e:
-            print(f"[Proprioception] TS skill discovery failed: {e}")
+            logger.error(f"TS skill discovery failed: {e}")
             
         return skills
     
@@ -389,7 +405,7 @@ class ProprioceptionScanner:
         with open(output_path, 'w') as f:
             json.dump(map_data, f, indent=2)
             
-        print(f"[Proprioception] Map exported to {output_path}")
+        logger.info(f"Map exported to {output_path}")
 
 # Global scanner instance
 _scanner: Optional[ProprioceptionScanner] = None

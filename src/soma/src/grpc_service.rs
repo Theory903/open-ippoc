@@ -8,6 +8,7 @@ use crate::resource_manager::{UnifiedResourceManager, ResourceType, Priority, Re
 
 // Import generated protobuf code
 include!(concat!(env!("OUT_DIR"), "/body.rs"));
+include!(concat!(env!("OUT_DIR"), "/ippoc.two_tower.rs"));
 
 // Body service implementation
 #[derive(Debug)]
@@ -310,6 +311,136 @@ impl body_service_server::BodyService for BodyServiceImpl {
     }
 }
 
+// Two-Tower service implementation
+#[derive(Debug)]
+pub struct TwoTowerServiceImpl {
+    // Shared state between components
+    system_state: Arc<RwLock<SystemState>>,
+    admission: Arc<AdmissionManager>,
+    trust: Arc<UnifiedTrustManager>,
+    resources: Arc<UnifiedResourceManager>,
+}
+
+impl TwoTowerServiceImpl {
+    pub fn new(
+        admission: Arc<AdmissionManager>,
+        trust: Arc<UnifiedTrustManager>,
+        resources: Arc<UnifiedResourceManager>,
+    ) -> Self {
+        Self {
+            system_state: Arc::new(RwLock::new(SystemState::default())),
+            admission,
+            trust,
+            resources,
+        }
+    }
+}
+
+#[tonic::async_trait]
+impl two_tower_service_server::TwoTowerService for TwoTowerServiceImpl {
+    // Send action candidate for validation
+    async fn validate_action(
+        &self,
+        request: Request<ActionCandidate>,
+    ) -> Result<Response<ValidationDecision>, Status> {
+        let req = request.into_inner();
+        
+        // For now, implement a simple validation logic
+        // In real implementation, this would integrate with the validation tower
+        let approved = req.risk <= RiskLevel::Medium as i32 || req.confidence > 0.8;
+        
+        let response = ValidationDecision {
+            approved,
+            reason: if approved {
+                "Action approved based on risk and confidence levels".to_string()
+            } else {
+                "Action rejected due to high risk or low confidence".to_string()
+            },
+            cost_spent: 0.1,
+            warnings: if req.risk == RiskLevel::High as i32 {
+                vec!["High risk action".to_string()]
+            } else {
+                vec![]
+            },
+            trace_id: req.trace_id,
+            timestamp: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs() as i64,
+        };
+        
+        Ok(Response::new(response))
+    }
+    
+    // Batch validation for multiple candidates
+    async fn batch_validate_actions(
+        &self,
+        request: Request<BatchValidationRequest>,
+    ) -> Result<Response<BatchValidationResponse>, Status> {
+        let req = request.into_inner();
+        
+        let mut decisions = Vec::new();
+        
+        for candidate in req.candidates {
+            let approved = candidate.risk <= RiskLevel::Medium as i32 || candidate.confidence > 0.8;
+            
+            decisions.push(ValidationDecision {
+                approved,
+                reason: if approved {
+                    "Action approved based on risk and confidence levels".to_string()
+                } else {
+                    "Action rejected due to high risk or low confidence".to_string()
+                },
+                cost_spent: 0.1,
+                warnings: if candidate.risk == RiskLevel::High as i32 {
+                    vec!["High risk action".to_string()]
+                } else {
+                    vec![]
+                },
+                trace_id: candidate.trace_id,
+                timestamp: std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs() as i64,
+            });
+        }
+        
+        let response = BatchValidationResponse {
+            decisions,
+            trace_id: req.trace_id,
+        };
+        
+        Ok(Response::new(response))
+    }
+    
+    // Get validation statistics
+    async fn get_validation_stats(
+        &self,
+        request: Request<ValidationStatsRequest>,
+    ) -> Result<Response<ValidationStatsResponse>, Status> {
+        let _req = request.into_inner();
+        
+        // For now, return mock statistics
+        let response = ValidationStatsResponse {
+            total_requests: 100,
+            approved_requests: 85,
+            rejected_requests: 15,
+            avg_validation_time: 0.05,
+            risk_distribution: [
+                ("LOW".to_string(), 0.4),
+                ("MEDIUM".to_string(), 0.35),
+                ("HIGH".to_string(), 0.2),
+                ("CRITICAL".to_string(), 0.05),
+            ]
+            .iter()
+            .cloned()
+            .collect(),
+        };
+        
+        Ok(Response::new(response))
+    }
+}
+
 pub async fn start_grpc_server(
     port: u16,
     admission: Arc<AdmissionManager>,
@@ -317,12 +448,14 @@ pub async fn start_grpc_server(
     resources: Arc<UnifiedResourceManager>
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let addr = format!("0.0.0.0:{}", port).parse()?;
-    let body_service = BodyServiceImpl::new(admission, trust, resources);
+    let body_service = BodyServiceImpl::new(admission.clone(), trust.clone(), resources.clone());
+    let two_tower_service = TwoTowerServiceImpl::new(admission, trust, resources);
     
     println!("Starting Body gRPC server on port {}", port);
     
     Server::builder()
         .add_service(body_service_server::BodyServiceServer::new(body_service))
+        .add_service(two_tower_service_server::TwoTowerServiceServer::new(two_tower_service))
         .serve(addr)
         .await?;
         

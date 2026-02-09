@@ -1,0 +1,40 @@
+{
+  "budget": 1039.3820717861256,
+  "reserve": 5000.0,
+  "total_spent": 0.0,
+  "total_value": 0.0,
+  "total_earnings": 0.0,
+  "tool_stats": {
+    "memory": {
+      "calls": 3,
+      "failures": 0,
+      "total_spent": 0.0,
+      "total_value": 0.0
+    }
+  },
+  "events": [
+    {
+      "kind": "spend",
+      "tool": "memory",
+      "cost": 0.0,
+      "failed": false,
+      "ts": 1770592741.405725
+    },
+    {
+      "kind": "spend",
+      "tool": "memory",
+      "cost": 0.0,
+      "failed": false,
+      "ts": 1770592760.760125
+    },
+    {
+      "kind": "spend",
+      "tool": "memory",
+      "cost": 0.0,
+      "failed": false,
+      "ts": 1770592867.87791
+    }
+  ],
+  "last_tick": 1770592867.877878,
+  "last_earning_timestamp": 1770592584.892931
+}

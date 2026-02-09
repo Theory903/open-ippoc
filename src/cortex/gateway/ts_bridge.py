@@ -155,10 +155,13 @@ class TypeScriptBridge:
             await adapter.initialize();
             
             const result = await adapter.invokeTool({json.dumps(envelope)});
-            console.log(JSON.stringify(result));
+            console.log("__RESULT__:" + JSON.stringify(result));
         }}
         
-        executeTool().catch(console.error);
+        executeTool().catch(err => {{
+            console.error("__ERROR__:" + err.message);
+            process.exit(1);
+        }});
         """
         
         try:
@@ -188,23 +191,25 @@ class TypeScriptBridge:
                 error_msg = stderr.decode() if stderr else "Unknown error"
                 raise Exception(f"TS adapter failed: {error_msg}")
                 
-            # Parse result (safely find the JSON line)
+            # Parse result (safely find the JSON line with marker)
             output = stdout.decode()
+            error_output = stderr.decode()
+            
             result_str = None
             for line in output.splitlines():
                 line = line.strip()
-                if line.startswith('{') and line.endswith('}'):
-                    try:
-                        result_str = line
-                        break
-                    except:
-                        continue
+                if line.startswith("__RESULT__:"):
+                    result_str = line[len("__RESULT__:"):]
+                    break
+                # Fallback for old adapters if needed
+                elif line.startswith('{') and line.endswith('}'):
+                    result_str = line
             
             if result_str:
                 return json.loads(result_str)
             else:
-                logger.error(f"[TSBridge] No JSON found in output: {output}")
-                return {"success": False, "error": "No JSON response found in adapter output"}
+                logger.error(f"[TSBridge] No JSON found in output. Stdout: {output}\nStderr: {error_output}")
+                return {"success": False, "error": f"No JSON response found in adapter output. Stderr: {error_output[:200]}"}
                 
         except json.JSONDecodeError as e:
             raise Exception(f"Invalid JSON from TS adapter: {e}")

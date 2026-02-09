@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package ippoc.two_tower;
+
+// Action candidate from Impulse Tower
+message ActionCandidate {
+  string action = 1;
+  float confidence = 2;
+  RiskLevel risk = 3;
+  map<string, string> payload = 4;
+  bool requires_validation = 5;
+  string trace_id = 6;
+  int64 timestamp = 7;
+}
+
+// Validation decision from Validation Tower
+message ValidationDecision {
+  bool approved = 1;
+  string reason = 2;
+  float cost_spent = 3;
+  repeated string warnings = 4;
+  string trace_id = 5;
+  int64 timestamp = 6;
+}
+
+// Risk levels
+enum RiskLevel {
+  LOW = 0;
+  MEDIUM = 1;
+  HIGH = 2;
+  CRITICAL = 3;
+}
+
+// Two-Tower communication service
+service TwoTowerService {
+  // Send action candidate for validation
+  rpc ValidateAction (ActionCandidate) returns (ValidationDecision);
+  
+  // Batch validation for multiple candidates
+  rpc BatchValidateActions (BatchValidationRequest) returns (BatchValidationResponse);
+  
+  // Get validation statistics
+  rpc GetValidationStats (ValidationStatsRequest) returns (ValidationStatsResponse);
+}
+
+// Batch validation request
+message BatchValidationRequest {
+  repeated ActionCandidate candidates = 1;
+  string trace_id = 2;
+}
+
+// Batch validation response
+message BatchValidationResponse {
+  repeated ValidationDecision decisions = 1;
+  string trace_id = 2;
+}
+
+// Validation statistics request
+message ValidationStatsRequest {
+  int64 start_time = 1;
+  int64 end_time = 2;
+}
+
+// Validation statistics response
+message ValidationStatsResponse {
+  int32 total_requests = 1;
+  int32 approved_requests = 2;
+  int32 rejected_requests = 3;
+  float avg_validation_time = 4;
+  map<string, float> risk_distribution = 5;
+}
