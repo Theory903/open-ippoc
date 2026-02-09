@@ -136,8 +136,8 @@ class GraphManager:
                     return []
                 target_id = target_row[0]
                 
-                # BFS to find paths
-                paths = await self._bfs_find_paths(session, source_id, target_id, max_depth)
+                # Use Recursive CTE for optimized path finding
+                paths = await self._find_paths_cte(session, source_id, target_id, max_depth)
                 
             return paths
             
@@ -145,102 +145,102 @@ class GraphManager:
             logger.error(f"Path finding failed: {e}")
             return []
     
-    async def _bfs_find_paths(self, session: AsyncSession, source_id: int, target_id: int, max_depth: int) -> List[Dict[str, Any]]:
-        """BFS algorithm to find paths between entities - Optimized to avoid N+1 queries"""
-        paths = []
-        # Queue stores: (current_id, path_edges)
-        # Note: depth is tracked by loop iteration in batch processing
-        current_level = [(source_id, [])]
-        visited = {source_id}
-        depth = 0
+    async def _find_paths_cte(self, session: AsyncSession, source_id: int, target_id: int, max_depth: int) -> List[Dict[str, Any]]:
+        """Recursive CTE based path finding - Faster than BFS and avoids N+1 queries"""
+        # Recursive CTE query
+        # We use simple string concatenation for path tracking which is portable between Postgres and SQLite
+        cte_query = text("""
+            WITH RECURSIVE path_search(last_id, path_ids, path_rels, depth) AS (
+                -- Base case
+                SELECT
+                    target_id,
+                    cast(source_id as text) || ',' || cast(target_id as text),
+                    cast(relation as text),
+                    1
+                FROM kg_relations
+                WHERE source_id = :source_id
 
-        while current_level and depth < max_depth and len(paths) < 10:
-            # 1. Collect all IDs in current level to fetch outgoing edges
-            source_ids = [node_id for node_id, _ in current_level]
+                UNION ALL
 
-            if not source_ids:
-                break
-
-            # 2. Batch fetch edges for all nodes in current level
-            stmt = text("""
-                SELECT r.source_id, r.target_id, r.relation, e.name
+                -- Recursive step
+                SELECT
+                    r.target_id,
+                    p.path_ids || ',' || cast(r.target_id as text),
+                    p.path_rels || ',' || cast(r.relation as text),
+                    p.depth + 1
                 FROM kg_relations r
-                JOIN kg_entities e ON r.target_id = e.id
-                WHERE r.source_id IN :source_ids
-            """)
-            stmt = stmt.bindparams(bindparam("source_ids", expanding=True))
+                JOIN path_search p ON r.source_id = p.last_id
+                WHERE p.depth < :max_depth
+            )
+            SELECT path_ids, path_rels, depth
+            FROM path_search
+            WHERE last_id = :target_id
+            ORDER BY depth ASC
+            LIMIT 10
+        """)
 
-            result = await session.execute(stmt, {"source_ids": list(set(source_ids))})
+        result = await session.execute(cte_query, {
+            "source_id": source_id,
+            "target_id": target_id,
+            "max_depth": max_depth
+        })
 
-            # 3. Organize edges by source_id
-            edges_by_source = defaultdict(list)
-            for row in result:
-                edges_by_source[row.source_id].append({
-                    "to": row.target_id,
-                    "relation": row.relation,
-                    "target_name": row.name
+        rows = result.fetchall()
+
+        if not rows:
+            return []
+
+        # Collect all unique node IDs to fetch names in bulk
+        all_node_ids = set()
+        parsed_rows = []
+        
+        for row in rows:
+            # Parse path IDs and relations
+            # path_ids is "id1,id2,id3"
+            ids = [int(x) for x in row[0].split(',')]
+            # path_rels is "rel1,rel2"
+            rels = row[1].split(',')
+
+            # Basic cycle check: if IDs are not unique, skip cyclic path
+            if len(ids) != len(set(ids)):
+                continue
+
+            all_node_ids.update(ids)
+            parsed_rows.append((ids, rels))
+            
+        if not parsed_rows:
+            return []
+
+        # Bulk fetch all entity names
+        name_stmt = text("SELECT id, name FROM kg_entities WHERE id IN :ids")
+        name_stmt = name_stmt.bindparams(bindparam("ids", expanding=True))
+        name_res = await session.execute(name_stmt, {"ids": list(all_node_ids)})
+
+        id_to_name = {row.id: row.name for row in name_res}
+        
+        paths = []
+        # Construct result objects
+        for ids, rels in parsed_rows:
+            # Map IDs to names
+            nodes = []
+            valid_path = True
+            for nid in ids:
+                name = id_to_name.get(nid)
+                if name is None:
+                    # Should not happen if DB is consistent, but handle gracefully
+                    valid_path = False
+                    break
+                nodes.append(name)
+
+            if valid_path:
+                paths.append({
+                    "nodes": nodes,
+                    "relations": rels,
+                    "length": len(rels),
+                    "confidence": 1.0 - (len(rels) * 0.1)
                 })
 
-            # 4. Build next level
-            next_level = []
-
-            for current_id, path_edges in current_level:
-                if len(paths) >= 10:
-                    break
-
-                outgoing_edges = edges_by_source.get(current_id, [])
-
-                for edge in outgoing_edges:
-                    target_id_result = edge["to"]
-
-                    new_edge = {
-                        "from": current_id,
-                        "to": target_id_result,
-                        "relation": edge["relation"],
-                        "target_name": edge["target_name"]
-                    }
-                    new_path = path_edges + [new_edge]
-
-                    if target_id_result == target_id:
-                        # Found target - reconstruct full path
-                        full_path = await self._reconstruct_path(session, new_path)
-                        paths.append(full_path)
-                        if len(paths) >= 10:
-                            break
-                    elif target_id_result not in visited:
-                        visited.add(target_id_result)
-                        next_level.append((target_id_result, new_path))
-
-            current_level = next_level
-            depth += 1
-
         return paths
-    
-    async def _reconstruct_path(self, session: AsyncSession, path_edges: List[Dict]) -> Dict[str, Any]:
-        """Reconstruct full path with entity names"""
-        nodes = []
-        relations = []
-        
-        if path_edges:
-            # Get source entity name
-            first_edge = path_edges[0]
-            source_stmt = text("SELECT name FROM kg_entities WHERE id = :id")
-            source_res = await session.execute(source_stmt, {"id": first_edge["from"]})
-            source_row = source_res.fetchone()
-            if source_row:
-                nodes.append(source_row[0])
-            
-            # Add intermediate nodes and relations
-            for edge in path_edges:
-                relations.append(edge["relation"])
-                nodes.append(edge["target_name"])
-        
-        return {
-            "nodes": nodes,
-            "relations": relations,
-            "length": len(relations),
-            "confidence": 1.0 - (len(relations) * 0.1)  # Decrease confidence with path length
-        }
     
     async def get_entity_context(self, entity_name: str, context_types: List[str] = None) -> Dict[str, Any]:
         """
@@ -413,3 +413,44 @@ class GraphManager:
         except Exception as e:
             logger.error(f"Similar entity search failed: {e}")
             return []
+
+    async def delete_entity(self, name: str) -> bool:
+        """
+        Delete an entity and its relationships.
+
+        Args:
+            name: Entity name
+
+        Returns:
+            Success status
+        """
+        await self.init_db()
+        try:
+            async with self.Session() as session:
+                # Find Entity ID
+                res = await session.execute(text("SELECT id FROM kg_entities WHERE name = :n"), {"n": name})
+                row = res.fetchone()
+                if not row:
+                    logger.warning(f"Entity '{name}' not found")
+                    return False
+                eid = row[0]
+
+                # Delete relationships involving the entity
+                await session.execute(
+                    text("DELETE FROM kg_relations WHERE source_id = :eid OR target_id = :eid"),
+                    {"eid": eid}
+                )
+
+                # Delete the entity
+                await session.execute(
+                    text("DELETE FROM kg_entities WHERE id = :eid"),
+                    {"eid": eid}
+                )
+
+                await session.commit()
+                logger.info(f"Deleted entity '{name}' and its relations")
+                return True
+
+        except Exception as e:
+            logger.error(f"Failed to delete entity '{name}': {e}")
+            return False

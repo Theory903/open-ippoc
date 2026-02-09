@@ -256,7 +256,7 @@ class AutonomyController:
         self.planner = Planner()
         self.decider = Decider()
         self.reflector = Reflector()
-        self.planner_queue = get_planner_queue()
+        self.skill_stats: Dict[str, Dict[str, int]] = {}
         self._load_state()
 
     async def _process_external_requests(self) -> None:
@@ -303,15 +303,30 @@ class AutonomyController:
                 for intent_data in data.get("intents", []):
                     # Convert string enum back to Enum if needed, or rely on compatibility
                     self.intent_stack.add(Intent(**intent_data))
+                self.skill_stats = data.get("skill_stats", {})
             except Exception:
                 pass
 
     def _save_state(self) -> None:
         os.makedirs(os.path.dirname(STATE_PATH), exist_ok=True)
         # Convert dataclasses to dicts
-        data = {"intents": [asdict(i) for i in self.intent_stack.intents]}
+        data = {
+            "intents": [asdict(i) for i in self.intent_stack.intents],
+            "skill_stats": self.skill_stats
+        }
         with open(STATE_PATH, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
+
+    def _is_statistically_significant(self, skill_key: str) -> bool:
+        stats = self.skill_stats.get(skill_key, {"attempts": 0, "successes": 0})
+        attempts = stats.get("attempts", 0)
+        successes = stats.get("successes", 0)
+
+        if attempts < 5:
+            return False
+
+        success_rate = successes / attempts
+        return success_rate > 0.6
 
     def _record_explain(self, explanation: Dict[str, Any]) -> None:
         os.makedirs(os.path.dirname(EXPLAIN_PATH), exist_ok=True)
@@ -386,19 +401,32 @@ class AutonomyController:
 
     async def learn(self, intent: Intent, evaluation: Dict[str, Any]) -> None:
         # Record skill memory using orchestrator
-        # TODO: Only learn if statistically significant
-        pass 
-#         envelope = ToolInvocationEnvelope(
-#             tool_name="memory",
-#             domain="memory",
-#             action="store_skill",
-#             context={"skill": str(intent.intent_type), "success": evaluation.get("success", False)},
-#             risk_level="low",
-#             estimated_cost=0.0,
-#             caller="autonomy",
-#             source="autonomy",
-#         )
-#         await self.orchestrator.invoke_async(envelope)
+        skill_key = str(intent.intent_type)
+
+        if skill_key not in self.skill_stats:
+            self.skill_stats[skill_key] = {"attempts": 0, "successes": 0}
+
+        self.skill_stats[skill_key]["attempts"] += 1
+        if evaluation.get("success", False):
+            self.skill_stats[skill_key]["successes"] += 1
+
+        # Only learn if statistically significant
+        if self._is_statistically_significant(skill_key) and evaluation.get("success", False):
+            envelope = ToolInvocationEnvelope(
+                tool_name="memory",
+                domain="memory",
+                action="store_skill",
+                context={
+                    "skill": skill_key,
+                    "success": True,
+                    "stats": self.skill_stats[skill_key]
+                },
+                risk_level="low",
+                estimated_cost=0.0,
+                caller="autonomy",
+                source="autonomy",
+            )
+            await self.orchestrator.invoke_async(envelope)
 
     async def run_cycle(self) -> Dict[str, Any]:
         await self._process_external_requests()
