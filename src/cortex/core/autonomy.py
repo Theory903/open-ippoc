@@ -10,6 +10,7 @@ from typing import Any, Dict, Optional
 
 from cortex.core.ledger import get_ledger
 from cortex.core.orchestrator import get_orchestrator
+from cortex.core.redis_queue import get_planner_queue
 from cortex.core.tools.base import ToolInvocationEnvelope
 from cortex.core.economy import get_economy
 from cortex.maintainer.observer import collect_signals
@@ -258,6 +259,41 @@ class AutonomyController:
         self.skill_stats: Dict[str, Dict[str, int]] = {}
         self._load_state()
 
+    async def _process_external_requests(self) -> None:
+        """Checks the planner queue for user/api requests."""
+        if not self.planner_queue:
+            return
+
+        try:
+            # Fetch batch of requests
+            items = await self.planner_queue.fetch(count=10)
+            for msg_id, payload in items:
+                try:
+                    envelope_json = payload.get("envelope")
+                    if envelope_json:
+                        data = json.loads(envelope_json)
+                        # Convert string to Enum if needed
+                        if "intent_type" in data:
+                            try:
+                                data["intent_type"] = IntentType(data["intent_type"])
+                            except ValueError:
+                                print(f"[Autonomy] Invalid intent_type: {data['intent_type']}")
+                                await self.planner_queue.ack(msg_id)
+                                continue
+
+                        # data is the Intent dict
+                        intent = Intent(**data)
+                        print(f"[Autonomy] Ingested external intent: {intent.description}")
+                        self.intent_stack.add(intent)
+
+                    await self.planner_queue.ack(msg_id)
+                except Exception as e:
+                    print(f"[Autonomy] Failed to process external request {msg_id}: {e}")
+                    # Still ack to prevent infinite loop of bad message
+                    await self.planner_queue.ack(msg_id)
+        except Exception as e:
+            print(f"[Autonomy] Error checking planner queue: {e}")
+
     def _load_state(self) -> None:
         if os.path.exists(STATE_PATH):
             try:
@@ -393,6 +429,7 @@ class AutonomyController:
             await self.orchestrator.invoke_async(envelope)
 
     async def run_cycle(self) -> Dict[str, Any]:
+        await self._process_external_requests()
         observation = await self.observe()
         
         self.intent_stack.decay()
