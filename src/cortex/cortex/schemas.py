@@ -117,6 +117,14 @@ class EconomicDecision(BaseModel):
     reason: str
     allocation_bucket: Literal["survival", "earning", "learning", "reserve", "growth"]
 
+# User Intent Schema
+class UserIntent(BaseModel):
+    description: str
+    priority: float = 0.5
+    intent_type: str = "serve"
+    source: str = "user"
+    context: Dict[str, Any] = Field(default_factory=dict)
+
 # Internal Cognitive State for LangGraph
 from typing import TypedDict
 class CognitiveState(TypedDict):
@@ -125,4 +133,3 @@ class CognitiveState(TypedDict):
     inner_monologue: List[str]
     proposed_action: Optional[ActionCandidate]
     execution_result: Optional[str]
-
