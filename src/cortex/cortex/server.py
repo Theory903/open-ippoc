@@ -12,7 +12,7 @@ from typing import List, Optional, Dict, Any, Literal
 from contextlib import asynccontextmanager
 
 # Import new Cognitive Core
-from cortex.cortex.schemas import Signal, ActionCandidate, TelepathyMessage, ChatRoom
+from cortex.cortex.schemas import Signal, ActionCandidate, TelepathyMessage, ChatRoom, UserIntent
 from cortex.cortex.two_tower import TwoTowerEngine
 from cortex.cortex.telepathy import TelepathySwarm, TransportLayer, HttpTransport, MeshTransport
 from cortex.cortex.langgraph_engine import LangGraphEngine    
@@ -21,7 +21,7 @@ from cortex.core.orchestrator import get_orchestrator
 from cortex.core.tools.base import ToolInvocationEnvelope, ToolResult
 from cortex.core.exceptions import ToolExecutionError, BudgetExceeded, SecurityViolation
 from cortex.core.ledger import get_ledger, ExecutionStatus
-from cortex.core.redis_queue import get_queue
+from cortex.core.redis_queue import get_queue, get_planner_queue
 from cortex.core.autonomy import run_autonomy_loop
 from cortex.cortex.persistence import ChatPersistence
 import nest_asyncio
@@ -71,6 +71,7 @@ if trace and TracerProvider and OTLPSpanExporter:
 # Orchestrator runtime
 ledger = get_ledger()
 queue = get_queue()
+planner_queue = get_planner_queue()
 
 # Metrics
 if Counter and Histogram:
@@ -351,6 +352,22 @@ async def ingest_signal(signal: Signal):
     """
     state_update = await engine.run_step(signal)
     return {"status": "accepted", "cognitive_state_snapshot": state_update}
+
+
+@app.post("/v1/autonomy/intents", dependencies=[Depends(verify_api_key)])
+async def submit_intent(intent: UserIntent):
+    """
+    Submit a high-level intent directly to the Autonomy Planner.
+    """
+    if planner_queue is None:
+        raise HTTPException(status_code=503, detail="Planner queue not configured")
+
+    intent_id = str(uuid.uuid4())
+    # We use intent_id as execution_id
+    # Ensure Pydantic v1/v2 compatibility
+    payload = intent.model_dump() if hasattr(intent, "model_dump") else intent.dict()
+    await planner_queue.enqueue(intent_id, payload)
+    return {"status": "queued", "intent_id": intent_id}
 
 @app.post("/v1/telepathy/receive") # Public or Auth? P2P usually needs Mutual TLS or Shared Secret. Using same key for now.
 async def receive_thought(message: TelepathyMessage, token: str = Depends(verify_api_key)):
