@@ -13,7 +13,10 @@ class ChatPersistence:
         self._ensure_dir()
 
     def _ensure_dir(self):
-        os.makedirs(os.path.dirname(self.storage_path), exist_ok=True)
+        # Use absolute path to avoid Errno 2 during shutdown if CWD changed
+        abs_path = os.path.abspath(self.storage_path)
+        os.makedirs(os.path.dirname(abs_path), exist_ok=True)
+        self.storage_path = abs_path
 
     def save(self, rooms: Dict[str, ChatRoom]):
         """

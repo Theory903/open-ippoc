@@ -100,7 +100,7 @@ async function runLocalOrchestrator(
   const cliPath =
     config.orchestratorCli ||
     process.env.IPPOC_ORCH_CLI ||
-    path.join(repoRoot, "brain", "core", "orchestrator_cli.py");
+    path.join(repoRoot, "src", "cortex", "core", "orchestrator_cli.py");
 
   if (!fs.existsSync(cliPath)) {
     throw new Error(`IPPOC orchestrator CLI not found: ${cliPath}`);
@@ -126,8 +126,22 @@ async function runLocalOrchestrator(
   }
 
   try {
-    return JSON.parse(stdout) as ToolResult;
+    const result = JSON.parse(stdout) as ToolResult;
+    // Machine-readable JSON with protocol marker
+    process.stdout.write("__RESULT__:" + JSON.stringify(result) + "\n");
+    return result;
   } catch (err: any) {
+    // Try to extract JSON from stdout if it contains non-JSON lines (e.g., log messages)
+    const jsonMatch = stdout.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try {
+        const result = JSON.parse(jsonMatch[0]) as ToolResult;
+        process.stdout.write("__RESULT__:" + JSON.stringify(result) + "\n");
+        return result;
+      } catch {
+        // Ignore extraction error, fall through to original error
+      }
+    }
     throw new Error(`Invalid orchestrator JSON: ${err.message}\n${stderr}`);
   }
 }
@@ -155,11 +169,11 @@ export class IPPOCAdapter {
   }
 
   async initialize(): Promise<void> {
-    console.log("[IPPOC] Initializing adapter...");
-    console.log("[IPPOC] Configuration:", this.config);
+    process.stderr.write("[IPPOC] Initializing adapter...\n");
+    process.stderr.write(`[IPPOC] Configuration: ${JSON.stringify(this.config)}\n`);
 
     this.initialized = true;
-    console.log("[IPPOC] Adapter initialized successfully");
+    process.stderr.write("[IPPOC] Adapter initialized successfully\n");
   }
 
   private async invokeTool(envelope: ToolEnvelope): Promise<ToolResult> {

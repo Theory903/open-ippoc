@@ -39,7 +39,7 @@ async fn main() -> anyhow::Result<()> {
     let hidb = Arc::new(HiDB::connect(&database_url, &redis_url).await?);
 
     // 2. Boot Cerebrum
-    let brain = Cerebrum::new(hidb);
+    let cortex = Cerebrum::new(hidb);
 
     let cli = Cli::parse();
 

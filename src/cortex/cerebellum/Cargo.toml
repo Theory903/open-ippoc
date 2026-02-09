@@ -17,6 +17,6 @@ chrono = "0.4"
 # For parsing papers/HTML
 scraper = "0.18"
 # For integration with OpenClaw/Node
-nervous-system = { path = "../../../network/body/mesh" }
-hidb = { path = "../../../memory/memory" }
+nervous-system = { path = "../../soma/mesh" }
+hidb = { path = "../../mnemosyne" }
 clap = { version = "4.4", features = ["derive"] }

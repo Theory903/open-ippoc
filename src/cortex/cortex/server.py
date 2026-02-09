@@ -21,7 +21,7 @@ from cortex.core.orchestrator import get_orchestrator
 from cortex.core.tools.base import ToolInvocationEnvelope, ToolResult
 from cortex.core.exceptions import ToolExecutionError, BudgetExceeded, SecurityViolation
 from cortex.core.ledger import get_ledger, ExecutionStatus
-from cortex.core.queue import get_queue
+from cortex.core.redis_queue import get_queue
 from cortex.core.autonomy import run_autonomy_loop
 from cortex.cortex.persistence import ChatPersistence
 import nest_asyncio

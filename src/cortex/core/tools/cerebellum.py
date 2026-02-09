@@ -4,6 +4,7 @@ from typing import Dict, Any, Optional
 from cortex.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult
 import asyncio
 import os
+import sys
 import nest_asyncio # Imported here for consistency, though it's in execute method in snippet
 import importlib.util
 from pathlib import Path
@@ -15,12 +16,18 @@ class CerebellumAdapter(IPPOC_Tool):
     """
     def __init__(self):
         super().__init__(name="research", domain="cognition")
-        self.binary_path = os.path.abspath("brain/cerebellum/target/release/cerebellum")
+        # Updated binary path for consolidated ippoc-node (Soma)
+        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
+        debug_path = os.path.join(repo_root, "src/soma/target/debug/ippoc-node")
+        release_path = os.path.join(repo_root, "src/soma/target/release/ippoc-node")
+        
+        self.binary_path = release_path if os.path.exists(release_path) else debug_path
         self.use_binary = os.path.exists(self.binary_path)
+        
         if self.use_binary:
-            print(f"[Cerebellum] Rust Kernel Detected at {self.binary_path}. High Performance Mode: ON")
+            print(f"[Cerebellum] Rust Kernel Detected at {self.binary_path}. High Performance Mode: ON", file=sys.stderr)
         else:
-            print(f"[Cerebellum] Rust Kernel not found. Falling back to Python Simulation.")
+            print(f"[Cerebellum] Rust Kernel not found ({self.binary_path}). Falling back to Python Simulation.", file=sys.stderr)
 
     def estimate_cost(self, envelope: ToolInvocationEnvelope) -> float:
         # Research is expensive (reading papers, processing tokens)

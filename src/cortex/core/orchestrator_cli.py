@@ -1,7 +1,39 @@
 import json
 import sys
-from typing import Any, Dict
+import logging
 
+# CRITICAL: Configure logging FIRST, before any other imports that might log
+# This ensures all logs go to stderr and stdout stays clean for JSON output
+for handler in logging.root.handlers[:]:
+    logging.root.removeHandler(handler)
+    handler.close()
+
+# Remove any existing handlers on all loggers to prevent duplicate streams
+for logger_name in logging.Logger.manager.loggerDict.keys():
+    logger = logging.getLogger(logger_name)
+    for handler in logger.handlers[:]:
+        logger.removeHandler(handler)
+        handler.close()
+
+logging.basicConfig(
+    level=logging.INFO,
+    stream=sys.stderr,
+    format='%(message)s',
+    force=True  # Force reconfiguration even if already configured
+)
+
+# Ensure stderr is flushed after each log message
+class FlushStreamHandler(logging.StreamHandler):
+    def emit(self, record):
+        super().emit(record)
+        self.flush()
+
+# Add a flush handler to root logger
+root_handler = FlushStreamHandler(sys.stderr)
+root_handler.setFormatter(logging.Formatter('%(message)s'))
+logging.root.addHandler(root_handler)
+
+from typing import Any, Dict
 from cortex.core.bootstrap import bootstrap_tools
 from cortex.core.orchestrator import get_orchestrator
 from cortex.core.tools.base import ToolInvocationEnvelope
@@ -11,7 +43,9 @@ def _error(message: str, details: str | None = None, code: int = 1) -> None:
     payload: Dict[str, Any] = {"success": False, "error": message}
     if details:
         payload["details"] = details
-    print(json.dumps(payload))
+    # Ensure output goes to stdout only - strip any trailing newlines and write cleanly
+    sys.stdout.write(json.dumps(payload) + "\n")
+    sys.stdout.flush()
     sys.exit(code)
 
 
@@ -38,7 +72,9 @@ def main() -> None:
     try:
         result = get_orchestrator().invoke(envelope)
         output = result.model_dump() if hasattr(result, "model_dump") else result.dict()
-        print(json.dumps(output))
+        # Output only JSON to stdout - no logging output
+        sys.stdout.write(json.dumps(output) + "\n")
+        sys.stdout.flush()
     except Exception as exc:
         _error("Tool invocation failed.", str(exc))
 
