@@ -40,49 +40,83 @@ class ServiceManager:
         print(f"📦 [OSC-01] Starting Soma (Identity & Trust)...")
         
         # Determine Soma directory based on environment (production vs development)
-        if os.getenv("IPPOC_PRODUCTION"):
-            soma_dir = self.ippoc_home / "bin"
-            soma_binary = soma_dir / "soma"
-            if not soma_binary.exists():
-                print("❌ Soma binary not found in production path. Run install.sh first.")
-                sys.exit(1)
-        else:
-            # Development context - assume running from project root
-            soma_dir = Path(__file__).parent.parent.parent / "soma"
+        soma_binary = None
+        soma_dir = None
         
+        if os.getenv("IPPOC_PRODUCTION") or os.getenv("IPPOC_FROZEN"): # Check for packaged env
+            # Try to find binary in PATH or adjacent to module
+            search_paths = [
+                self.ippoc_home / "bin" / "soma",
+                Path(sys.prefix) / "bin" / "soma",
+                Path("/usr/local/bin/soma")
+            ]
+            for p in search_paths:
+                if p.exists():
+                    soma_binary = p
+                    break
+        else:
+            # Development context
+            soma_dir = Path(__file__).parent.parent.parent / "soma"
+            if (soma_dir / "Cargo.toml").exists():
+                 # We are in dev source tree
+                 pass
+            else:
+                 soma_dir = None
+
+        proc = None
         env = os.environ.copy()
         env["IPPOC_HOME"] = str(self.ippoc_home)
         env["IPPOC_DATABASE_TYPE"] = db_type
-        
-        if os.getenv("IPPOC_PRODUCTION"):
-            proc = subprocess.Popen(
-                [str(soma_binary)],
-                env=env,
-                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
-            )
+
+        if soma_binary:
+            try:
+                proc = subprocess.Popen(
+                    [str(soma_binary)],
+                    env=env,
+                    stdout=None, stderr=None, text=True
+                )
+            except Exception as e:
+                print(f"⚠️  [OSC-01] Failed to spawn Soma binary: {e}")
+        elif soma_dir:
+             try:
+                proc = subprocess.Popen(
+                    ["cargo", "run"],
+                    cwd=soma_dir, env=env,
+                    stdout=None, stderr=None, text=True
+                )
+             except Exception as e:
+                 print(f"⚠️  [OSC-01] Failed to run cargo for Soma: {e}")
         else:
-            # Development run with cargo
-            proc = subprocess.Popen(
-                ["cargo", "run"],
-                cwd=soma_dir, env=env,
-                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
-            )
-            
-        self.processes["Soma"] = proc
-        
-        # Verify Soma health before continuing (Hierarchical Dependency)
-        if not self._wait_for_health("Soma", "http://localhost:8081/v1/system/diagnostics"):
-            print("🛑 Soma failed to reach nominal state. KILLING CORTEX & ABORTING.")
-            self.shutdown()
-            sys.exit(1)
+            print("\n🔴 [OSC-01] SOMA NOT AVAILABLE")
+            print("==================================")
+            print("Running in BRAIN-ONLY MODE")
+            print("Identity & Trust services DISABLED")
+            print("Capabilities:")
+            print("  - Cognition (Cortex only)")
+            print("  - Tool execution (limited)")
+            print("  - No trust mesh")
+            print("  - No reputation system")
+            print("  - No body verification")
+            print("==================================")
+            return
+
+        if proc:
+            self.processes["Soma"] = proc
+            # Verify Soma health
+            if not self._wait_for_health("Soma", "http://localhost:8081/v1/system/diagnostics"):
+                print("⚠️  [OSC-01] Soma failed health check. Continuing in degraded mode (Brain-Only).")
+                # We don't kill here, just continue, but maybe remove from processes list if dead?
+                if proc.poll() is not None:
+                     del self.processes["Soma"]
+
 
     def start_cortex(self, redis_url=None):
         if self.is_shutting_down: return
         
         # Dependency Check: Soma must be alive
         if "Soma" not in self.processes or self.processes["Soma"].poll() is not None:
-            print("❌ [OSC-01] Cortex cannot start without Soma. Aborting.")
-            return
+            print("⚠️  [OSC-01] Cortex starting without Soma (Brain-Only Mode). Identity & Trust services unavailable.")
+            # Proceed anyway
 
         print(f"🧠 [OSC-01] Starting Cortex (Cognition & Tools)...")
         
@@ -98,12 +132,16 @@ class ServiceManager:
         else:
             env["IPPOC_USE_INTERNAL_QUEUE"] = "true"
 
-        # Explicitly point to the venv python if we are in production
-        python_bin = os.getenv("VIRTUAL_ENV", "") + "/bin/python3" if os.getenv("VIRTUAL_ENV") else "python3"
+        # Use the same python interpreter that launched this process to ensure venv/dependencies are inherited
+        # RC FIX: Launch as a module to preserve package structure and imports
+        # RC FIX: Explicitly forward API Key if present
+        if "IPPOC_API_KEY" in os.environ:
+            env["IPPOC_API_KEY"] = os.environ["IPPOC_API_KEY"]
+
         proc = subprocess.Popen(
-            [python_bin, "server.py"],
-            cwd=cortex_dir, env=env,
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+            [sys.executable, "-m", "ippoc.cortex.cortex.server"],
+            env=env,
+            stdout=sys.stdout, stderr=sys.stderr, text=True
         )
         self.processes["Cortex"] = proc
         
@@ -120,6 +158,11 @@ class ServiceManager:
                     status = proc.poll()
                     if status is not None:
                         count = self.restart_counts.get(name, 0)
+                        if status in [48, 98]: # Port collision
+                            print(f"🔥 [OSC-01] {name} failed with PORT COLLISION (Exit {status}). Fatal configuration error.")
+                            self.shutdown()
+                            return
+
                         if count >= 3: # Reduced threshold for hard hardening
                             print(f"🔥 [OSC-01] {name} exited with status {status}. Threshold exceeded. System Panic.")
                             self.shutdown()

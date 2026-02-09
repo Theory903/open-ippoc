@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ippoc-platform"
-version = "0.9.0rc1"
+version = "0.9.0rc21"
 description = "Sovereign cognitive operating system with constitutional capability enforcement"
 readme = "README.md"
 license = { text = "MIT" }
@@ -43,7 +43,13 @@ dependencies = [
   "pydantic>=2.5.2",
   "nest-asyncio>=1.5.8",
   "requests>=2.31.0",
-  "aiohttp>=3.9.0"
+  "aiohttp>=3.9.0",
+  "python-dotenv>=1.0.0",
+  "langchain>=0.1.0",
+  "langchain-core>=0.1.0",
+  "langchain-google-genai>=0.0.1",
+  "langchain-ollama>=0.0.1",
+  "langgraph>=0.0.10"
 ]
 
 [project.urls]
@@ -55,31 +61,22 @@ Issues = "https://github.com/Theory903/open-ippoc/issues"
 [project.scripts]
 ippoc = "ippoc.cli.main:main"
 
+# 🔒 EXPLICIT PACKAGING — NO DISCOVERY
 [tool.setuptools]
 package-dir = {"" = "src"}
 include-package-data = true
 packages = [
-    "ippoc",
-    "ippoc.cli",
-    "ippoc.cortex",
-    "ippoc.cortex.api",
-    "ippoc.cortex.cerebellum",
-    "ippoc.cortex.core",
-    "ippoc.cortex.cortex",
-    "ippoc.cortex.evolution",
-    "ippoc.cortex.gateway",
-    "ippoc.cortex.maintainer",
-    "ippoc.cortex.plugins",
-    "ippoc.cortex.plugins.native",
-    "ippoc.cortex.plugins.openclaw",
-    "ippoc.cortex.worldmodel",
-    "ippoc.maksad",
-    "ippoc.mnemosyne",
-    "ippoc.mnemosyne.episodic",
-    "ippoc.mnemosyne.graph",
-    "ippoc.mnemosyne.hidb",
-    "ippoc.mnemosyne.procedural",
-    "ippoc.mnemosyne.semantic"
+  "ippoc",
+  "ippoc.cli",
+  "ippoc.cortex",
+  "ippoc.cortex.core",
+  "ippoc.cortex.plugins",
+  "ippoc.cortex.plugins.native",
+  "ippoc.maksad",
+  "ippoc.runtime",
+  "ippoc.runtime.bootstrap",
+  "ippoc.soma",
+  "ippoc.mnemosyne"
 ]
 
 [tool.setuptools.package-data]
