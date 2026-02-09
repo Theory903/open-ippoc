@@ -1,8 +1,10 @@
-# Security & Trust Attestation (v1.0.1)
+# Security & Trust Attestation (v0.9.0-sovereign)
+
+> **"IPPOC stands on its own, and integrates by choice."**
 
 ## 1. Overview
 
-This document provides security and trust information for the IPPOC platform (v1.0.1). It includes details about supply chain integrity, dependency management, and security practices.
+This document provides security and trust information for the IPPOC platform (v0.9.0-sovereign). It defines the technical and cognitive boundaries that ensure IPPOC functions as a sovereign agentic operating system.
 
 ## 2. Supply Chain Integrity
 
@@ -45,9 +47,25 @@ dependencies = [
 ]
 ```
 
-## 3. Security Practices
+## 3. Security Practices & CAP-01 (Capability Law)
 
-### 3.1 Capability Enforcement
+IPPOC-OS is governed by the **Capability Law (CAP-01)**, which enforces hard boundaries on what the system can do autonomously.
+
+### 3.1 Trust Enforcement
+1. **Structural Independence**: Enforced by CI contract tests preventing re-coupling with external UI or control planes.
+2. **Role-Based Validation**: Mandatory cognitive role checks for every tool invocation (SENSOR, ACTOR, PLANNER, AUDITOR).
+3. **Capability Gating**: SENSOR tools are structurally incapable of side effects (e.g., writes or network egress).
+4. **Audit Immutability**: All cognitive actions and law violations are recorded in the immutable Ledger.
+
+### 3.2 Threat Model
+| Threat Category | Mitigation |
+|---|---|
+| **Hostile Plugins** | Isolated in `plugins/`, lazy-loaded, and capability-limited. |
+| **Cognitive Runaway** | Protected by reflection cycles, memory decay, and the Operator CLI override. |
+| **Parameter Injection** | Native adapters (e.g., NativeShell) sanitize parameters to prevent shell injection. |
+| **Vendor Reliance** | Two-Tower architecture prevents hard-locking to any single model provider. |
+
+### 3.3 Capability Enforcement
 
 The IPPOC system enforces strict capability boundaries to prevent unauthorized access and abuse. The capability enforcement system includes:
 
@@ -56,7 +74,7 @@ The IPPOC system enforces strict capability boundaries to prevent unauthorized a
 3. **Risk-Based Validation:** Requires explicit user validation for high-risk ACTOR operations
 4. **Audit Trail:** Comprehensive logging of all operations and violations
 
-### 3.2 Supervisor Fault Tolerance
+### 3.4 Supervisor Fault Tolerance
 
 The system includes a supervisor process that monitors and manages system health:
 
@@ -104,9 +122,8 @@ If you discover a security vulnerability in the IPPOC platform, please:
 
 ## 7. Version History
 
-### v1.0.1 (Current)
-- Added SHA-256 checksum verification for Soma binaries
-- Version-locked PyPI dependencies
-- Created SECURITY.md and TRUST_CHAIN.md
-- Completed capability abuse audit
-- Completed supervisor fault injection testing
+### v0.0.9.0-sovereign (Current)
+- **Sovereign Independence**: Achieved full structural and runtime decoupling from OpenClaw.
+- **Contract Verification**: Implemented non-negotiable independence contract test.
+- **Hardened Native Body**: Optimized parameters and path verification for NativeShell.
+- **Enhanced Disclosure**: Refined SECURITY.md with v1 threat model.

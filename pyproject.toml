@@ -1,0 +1,86 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ippoc-platform"
+version = "0.9.0rc1"
+description = "Sovereign cognitive operating system with constitutional capability enforcement"
+readme = "README.md"
+license = { text = "MIT" }
+
+authors = [
+  { name = "Abhishek Jha", email = "abhijha903@gmail.com" }
+]
+
+requires-python = ">=3.10"
+
+keywords = [
+  "agent",
+  "sovereign-ai",
+  "cognitive-os",
+  "capability-security",
+  "agent-runtime"
+]
+
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: MacOS",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Topic :: Security",
+  "Topic :: Artificial Intelligence"
+]
+
+dependencies = [
+  "fastapi>=0.104.1",
+  "uvicorn>=0.24.0",
+  "sqlalchemy[asyncio]>=2.0.23",
+  "aiosqlite>=0.19.0",
+  "pydantic>=2.5.2",
+  "nest-asyncio>=1.5.8",
+  "requests>=2.31.0",
+  "aiohttp>=3.9.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/Theory903/open-ippoc"
+Documentation = "https://github.com/Theory903/open-ippoc/docs"
+Repository = "https://github.com/Theory903/open-ippoc.git"
+Issues = "https://github.com/Theory903/open-ippoc/issues"
+
+[project.scripts]
+ippoc = "ippoc.cli.main:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+packages = [
+    "ippoc",
+    "ippoc.cli",
+    "ippoc.cortex",
+    "ippoc.cortex.api",
+    "ippoc.cortex.cerebellum",
+    "ippoc.cortex.core",
+    "ippoc.cortex.cortex",
+    "ippoc.cortex.evolution",
+    "ippoc.cortex.gateway",
+    "ippoc.cortex.maintainer",
+    "ippoc.cortex.plugins",
+    "ippoc.cortex.plugins.native",
+    "ippoc.cortex.plugins.openclaw",
+    "ippoc.cortex.worldmodel",
+    "ippoc.maksad",
+    "ippoc.mnemosyne",
+    "ippoc.mnemosyne.episodic",
+    "ippoc.mnemosyne.graph",
+    "ippoc.mnemosyne.hidb",
+    "ippoc.mnemosyne.procedural",
+    "ippoc.mnemosyne.semantic"
+]
+
+[tool.setuptools.package-data]
+ippoc = ["**/*.json", "**/*.yaml", "**/*.md", "**/*.sha256"]

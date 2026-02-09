@@ -2,9 +2,14 @@
 node_modules/
 target/
 dist/
+build/
+*.egg-info/
+.eggs/
 **/node_modules/
 **/target/
 **/dist/
+**/build/
+**/*.egg-info/
 .next/
 .turbo/
 .pnpm-debug.log
@@ -13,6 +18,9 @@ dist/
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+*.cert
 
 # OS files
 .DS_Store
@@ -20,12 +28,16 @@ Thumbs.db
 .Spotlight-V100
 .Trashes
 *.DS_Store
+.AppleDouble
+.LSOverride
 
 # Rust/Cargo
 target/
 **/target/
 **/*.rs.bk
 Cargo.lock.bak
+debug/
+release/
 
 # Node/PNPM
 node_modules/
@@ -36,6 +48,7 @@ pnpm-lock.yaml
 package-lock.json
 yarn.lock
 .pnpm-debug.log*
+npm-debug.log*
 
 # Python
 __pycache__/
@@ -45,12 +58,20 @@ __pycache__/
 venv/
 ENV/
 .env/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+pip-wheel-metadata/
 
 # IDEs
 .vscode/
 .idea/
 *.swp
 *.swo
+.run/
 
 # Project Specific
 data/nodes/
@@ -66,3 +87,5 @@ memory/db.sqlite*
 **/*.sqlite*
 .cache/
 **/.cache/
+experiments/
+legacy/

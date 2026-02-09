@@ -7,7 +7,9 @@
 set -eo pipefail
 shopt -s nullglob
 
-OPENCLAW_DIR="/Users/abhishekjha/CODE/ippoc/src/kernel/openclaw"
+# Get script directory
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+OPENCLAW_DIR="$SCRIPT_DIR/src/kernel/openclaw"
 TARGET_DIRS=("extensions" "docs" "git-hooks" "skills" "src")
 
 # Default output file

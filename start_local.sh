@@ -159,7 +159,7 @@ item_ok "Redis/Postgres assumed externally managed"
 
 # -------------------- Phase 2: Soma --------------------
 section "Soma (Rust Body)"
-cd "$ROOT_DIR/src/soma"
+cd "$ROOT_DIR/src/ippoc/soma"
 "$CARGO_CMD" build --quiet
 "$CARGO_CMD" run --bin ippoc-node -- --port "$PORT_SOMA" \
   2>&1 | sed 's/^/  │ SOMA │ /' &
@@ -172,7 +172,7 @@ wait_for_port "$PORT_SOMA" "Soma" || DEGRADED=1
 # -------------------- Phase 3: Cortex --------------------
 section "Cortex (Python Brain)"
 export PYTHONPATH="$ROOT_DIR/src"
-"$PYTHON_CMD" -m cortex.cortex.server --port "$PORT_CORTEX" 2>&1 | awk '!seen[$0]++' | sed 's/^/  │ CORTEX │ /' &
+"$PYTHON_CMD" -m ippoc.cortex.cortex.server --port "$PORT_CORTEX" 2>&1 | awk '!seen[$0]++' | sed 's/^/  │ CORTEX │ /' &
 CORTEX_PID=$!
 PIDS+=("$CORTEX_PID:Cortex")
 

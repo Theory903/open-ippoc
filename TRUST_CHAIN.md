@@ -1,8 +1,10 @@
-# Trust Chain Attestation (v1.0.1)
+# Trust Chain Attestation (v0.9.0-sovereign)
+
+> **"IPPOC stands on its own, and integrates by choice."**
 
 ## 1. Trust Chain Overview
 
-This document provides a comprehensive attestation of the IPPOC platform's (v1.0.1) trust chain. It includes details about the supply chain integrity, binary verification, and dependency management processes.
+This document provides a comprehensive attestation of the IPPOC platform's (v0.9.0-sovereign) trust chain. It establishes the verifiable bridge between open source code, secure builds, and constitutional independence.
 
 ## 2. Binary Verification
 
@@ -126,14 +128,19 @@ For more details, see: [`security/supervision_fault_matrix.md`](security/supervi
 
 ### 6.1 Overall Architecture
 
-The IPPOC system architecture consists of:
+The IPPOC system (v0.9.0-sovereign) is a standalone cognitive organism with a modular plugin architecture:
 
-1. **Soma:** The main runtime system
-2. **Cortex:** The cognitive engine
-3. **OpenClaw:** The kernel interface
-4. **Supervisor:** System health monitoring
+1. **Soma**: The structural foundation (Identity & Mesh).
+2. **Cortex**: The cognitive brain (Orchestration & Tools).
+3. **Mnemosyne**: The associative memory (Knowledge Graph & Vector).
+4. **Plugins (e.g. OpenClaw)**: Optional peripheral interfaces for kernel-level embodiment.
+5. **Supervisor**: System health and watchdog monitoring.
 
-### 6.2 Security Boundaries
+### 6.2 Structural Independence
+
+Strict structural boundaries are enforced between the Core and Plugins:
+- **Lazy Loading**: Plugins are only loaded if present and required; their absence never prevents boot.
+- **Contract Enforcement**: `test_independence_no_openclaw.py` verifies that the core registers all vital tools (Memory, Body, Evolution) in a hermetic standalone environment.
 
 Strict security boundaries are enforced between components:
 
@@ -213,9 +220,8 @@ Security vulnerabilities are tracked and addressed following industry best pract
 
 ## 10. Version History
 
-### v1.0.1 (Current)
-- Added SHA-256 checksum verification for Soma binaries
-- Version-locked PyPI dependencies
-- Created SECURITY.md and TRUST_CHAIN.md
-- Completed capability abuse audit
-- Completed supervisor fault injection testing
+### v0.9.0-sovereign (Current)
+- **Architectural Independence**: Completed structural separation of OpenClaw integration.
+- **Sovereignty Verification**: Integrated non-negotiable CI contract test for standalone operation.
+- **Dependency Hardening**: Standardized `CognitiveRole` across all tool adapters.
+- **Refined Manifest**: Updated Independence Manifest with dependency constraints.

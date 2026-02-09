@@ -2,7 +2,11 @@
 # OpenClaw Log Cleanup Script
 # Runs daily to clean up old log files
 
-LOG_DIR="/Users/abhishekjha/CODE/ippoc/src/kernel/openclaw"
+# Get the script's directory and resolve LOG_DIR relative to it
+# (assuming script stays in <project_root>/scripts/)
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+LOG_DIR="$PROJECT_ROOT/src/kernel/openclaw"
 ORGANIZED_DIR="$LOG_DIR/organized_logs"
 MAX_AGE_DAYS=7
 
