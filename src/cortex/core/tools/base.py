@@ -3,6 +3,14 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Literal, Optional
 from pydantic import BaseModel, Field
+from enum import Enum
+
+class CognitiveRole(str, Enum):
+    SENSOR = "sensor"     # Observing state, no side effects
+    PLANNER = "planner"   # Reasoning, hypothesis generation
+    ACTOR = "actor"       # Executing side effects in the real world
+    AUDITOR = "auditor"   # Reflection, verification, self-audit
+    SURVIVOR = "survivor" # Infrastructure, restoration, heartbeat
 
 class ToolInvocationEnvelope(BaseModel):
     """
@@ -12,6 +20,7 @@ class ToolInvocationEnvelope(BaseModel):
     tool_name: str = Field(description="The unique identifier of the tool (e.g., 'memory.store_episodic')")
     domain: Literal["memory", "body", "evolution", "cognition", "economy", "social", "simulation"] = Field(description="The owning domain")
     action: str = Field(description="The specific action being requested")
+    role: Optional[CognitiveRole] = Field(default=None, description="The intended cognitive role for this call")
     
     context: Dict[str, Any] = Field(default_factory=dict, description="Contextual metadata (caller, reason, etc.)")
     risk_level: Literal["low", "medium", "high"] = Field(default="low", description="Risk assessment of the action")

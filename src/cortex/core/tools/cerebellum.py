@@ -1,7 +1,7 @@
 # brain/core/tools/cerebellum.py
 
 from typing import Dict, Any, Optional
-from cortex.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult
+from cortex.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult, CognitiveRole
 import asyncio
 import os
 import sys
@@ -11,11 +11,10 @@ from pathlib import Path
 
 class CerebellumAdapter(IPPOC_Tool):
     """
-    Adapter for the Cerebellum (Research & Learning Engine).
-    Wraps: brain/cerebellum/
+    Wraps the Research & Reasoning subsystem.
     """
     def __init__(self):
-        super().__init__(name="research", domain="cognition")
+        super().__init__(name="cerebellum", domain="cognition", role=CognitiveRole.PLANNER)
         # Updated binary path for consolidated ippoc-node (Soma)
         repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
         debug_path = os.path.join(repo_root, "src/soma/target/debug/ippoc-node")

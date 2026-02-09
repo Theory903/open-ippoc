@@ -10,6 +10,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import JSONResponse, PlainTextResponse
 from typing import List, Optional, Dict, Any, Literal
 from contextlib import asynccontextmanager
+from sse_starlette.sse import EventSourceResponse
 
 # Import new Cognitive Core
 from cortex.cortex.schemas import Signal, ActionCandidate, TelepathyMessage, ChatRoom
@@ -24,6 +25,9 @@ from cortex.core.ledger import get_ledger, ExecutionStatus
 from cortex.core.redis_queue import get_queue
 from cortex.core.autonomy import run_autonomy_loop
 from cortex.cortex.persistence import ChatPersistence
+from maksad.intent_engine import get_intent_engine, IntentStatus
+from maksad.reflection_engine import get_reflection_engine
+from maksad.cognitive_bus import get_thought_queue, emit_thought
 import nest_asyncio
 nest_asyncio.apply()
 
@@ -142,6 +146,10 @@ async def lifespan(app: FastAPI):
     # Startup
     print(f"[Server] Booting Node: {NODE_ID}")
     bootstrap_tools()
+    
+    # Emit boot thought
+    await emit_thought("info", f"Cognitive Core Online: {NODE_ID}", {"version": "1.0.0-PROD"})
+
     try:
         await ledger.init()
     except Exception as e:
@@ -149,14 +157,25 @@ async def lifespan(app: FastAPI):
 
     worker_task = None
     autonomy_task = None
+    chronos_task = None
+    reflection_task = None
+
     if queue and os.getenv("ORCHESTRATOR_WORKER", "false").lower() == "true":
         print("[Server] Starting orchestrator worker...")
         worker_task = asyncio.create_task(queue.consume(_queue_handler))
+    
     if os.getenv("IPPOC_AUTONOMY", "false").lower() == "true":
         interval = int(os.getenv("IPPOC_HEARTBEAT_SECONDS", "60"))
         print(f"[Server] Starting autonomy loop (every {interval}s)...")
         autonomy_task = asyncio.create_task(run_autonomy_loop(interval))
     
+    # Start Chronos & Reflection
+    intent_interval = int(os.getenv("IPPOC_INTENT_TICK_SECONDS", "30"))
+    reflect_interval = int(os.getenv("IPPOC_REFLECTION_SECONDS", "300"))
+    
+    chronos_task = asyncio.create_task(get_intent_engine().main_loop(intent_interval))
+    reflection_task = asyncio.create_task(get_reflection_engine().main_loop(reflect_interval))
+
     # Load State
     global chat_rooms
     chat_rooms.update(chat_persistence.load())
@@ -170,6 +189,10 @@ async def lifespan(app: FastAPI):
         worker_task.cancel()
     if autonomy_task:
         autonomy_task.cancel()
+    if chronos_task:
+        chronos_task.cancel()
+    if reflection_task:
+        reflection_task.cancel()
     # Close HTTP clients if any
     for t in swarm.transports:
         if isinstance(t, HttpTransport):
@@ -177,7 +200,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="IPPOC Cognitive Core (Two-Tower + Chat)", 
-    version="3.2.0-PROD",
+    version="1.0.0-PROD", # Unified Release Version
     lifespan=lifespan
 )
 
@@ -582,12 +605,96 @@ def healthz():
 
 @app.get("/readyz")
 async def readyz():
-    # Minimal readiness check: ledger init + orchestrator tools
+    """
+    Readiness probe for the Organ Supervisor (OSC-01).
+    """
+    orc = get_orchestrator()
     return {
         "status": "ready",
-        "tools_loaded": list(get_orchestrator().tools.keys())
+        "node_id": NODE_ID,
+        "tools_loaded": list(orc.tools.keys())
     }
 
+@app.get("/v1/system/diagnostics", dependencies=[Depends(verify_api_key)])
+async def system_diagnostics():
+    """
+    Deep metabolic diagnostics for Cortex.
+    """
+    orc = get_orchestrator()
+    refl = get_reflection_engine()
+    return {
+        "status": "healthy",
+        "node_id": NODE_ID,
+        "organs": {
+            "orchestrator": {"tools": len(orc.tools)},
+            "reflection": {"last_cycle": refl.last_reflection_time},
+            "intent_engine": {"active": len(await get_intent_engine().get_active_intents())}
+        }
+    }
+
+
+# --- Neural Interface (Streaming API) ---
+
+
+@app.get("/v1/cognitive/stream", dependencies=[Depends(verify_api_key)])
+async def stream_cognitive_state(request: Request):
+    """
+    SSE stream of IPPOC's internal state (thoughts, intents, reflections).
+    """
+    async def event_generator():
+        # First, send current state
+        refl = get_reflection_engine()
+        intents = await get_intent_engine().get_active_intents()
+        yield {
+            "event": "init",
+            "data": json.dumps({
+                "active_intents": [i.model_dump() for i in intents],
+                "last_reflection": refl.last_reflection_time
+            })
+        }
+
+        queue = get_thought_queue()
+        while True:
+            # Check for client disconnect
+            if await request.is_disconnected():
+                break
+
+            try:
+                # Wait for next thought event
+                thought = await asyncio.wait_for(queue.get(), timeout=1.0)
+                level = thought.get("level", "thought")
+                # Map info level to standard 'thought' event for Neural Interface
+                event_type = "thought" if level == "info" else level
+                
+                yield {
+                    "event": event_type,
+                    "data": json.dumps(thought)
+                }
+            except asyncio.TimeoutError:
+                # Keepalive
+                yield {"event": "ping", "data": ""}
+            except Exception as e:
+                yield {"event": "error", "data": str(e)}
+
+    return EventSourceResponse(event_generator())
+
+# --- Intent API (Chronos) ---
+
+@app.post("/v1/intents/create", dependencies=[Depends(verify_api_key)])
+async def create_intent(goal: str, urgency: float = 0.5, ttl: int = 3600):
+    """
+    Create a new autonomous intent in the Chronos engine.
+    """
+    intent_id = await get_intent_engine().add_intent(goal, urgency, ttl)
+    return {"status": "intent_created", "intent_id": intent_id}
+
+@app.get("/v1/intents/list", dependencies=[Depends(verify_api_key)])
+async def list_intents():
+    """
+    List all active and pending intents.
+    """
+    intents = await get_intent_engine().get_active_intents()
+    return {"intents": [i.model_dump() for i in intents]}
 
 @app.get("/metrics")
 def metrics():

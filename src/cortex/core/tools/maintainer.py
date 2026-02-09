@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-from cortex.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult
+from cortex.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult, CognitiveRole
 from cortex.core.exceptions import ToolExecutionError
 from cortex.maintainer.scheduler import maintainer_tick
 
 
 class MaintainerAdapter(IPPOC_Tool):
     """
-    Wraps the internal maintainer loop so it can be invoked via orchestrator.
+    Wraps the infrastructure maintenance and restoration subsystem.
     """
     def __init__(self):
-        super().__init__(name="maintainer", domain="cognition")
+        super().__init__(name="maintainer", domain="body", role=CognitiveRole.SURVIVOR)
 
     def estimate_cost(self, envelope: ToolInvocationEnvelope) -> float:
         return 1.0

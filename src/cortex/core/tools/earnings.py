@@ -5,7 +5,7 @@
 import asyncio
 import os
 from typing import Dict, Any
-from cortex.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult
+from cortex.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult, CognitiveRole
 from cortex.core.economy import get_economy
 
 class EarningsAdapter(IPPOC_Tool):

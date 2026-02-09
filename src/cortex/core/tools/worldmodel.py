@@ -2,17 +2,16 @@
 import os
 import sys
 from typing import Dict, Any
-from cortex.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult
+from cortex.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult, CognitiveRole
 import asyncio
 import nest_asyncio
 
 class WorldModelAdapter(IPPOC_Tool):
     """
-    Adapter for the WorldModel (Simulation Metaverse).
-    Wraps: brain/worldmodel/
+    Wraps the Simulation & Forecasting subsystem.
     """
     def __init__(self):
-        super().__init__(name="simulation", domain="simulation")
+        super().__init__(name="simulation", domain="simulation", role=CognitiveRole.PLANNER)
         repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
         self.binary_path = os.path.join(repo_root, "src/cortex/worldmodel/target/debug/world-model")
         self.use_binary = os.path.exists(self.binary_path)

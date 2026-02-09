@@ -3,17 +3,17 @@
 import os
 import asyncio
 from typing import Optional
-from cortex.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult
+from cortex.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult, CognitiveRole
 from cortex.core.exceptions import ToolExecutionError, SecurityViolation
 # Assuming cortex.evolution has a propose_mutation function
 # from cortex.evolution import propose_mutation
 
 class EvolutionAdapter(IPPOC_Tool):
     """
-    Wraps the Evolution Engine (Git/Self-Modification).
+    Wraps the Autonomic Development subsystem (Immune/Evolution).
     """
     def __init__(self):
-        super().__init__(name="evolution", domain="evolution")
+        super().__init__(name="evolution", domain="evolution", role=CognitiveRole.ACTOR)
 
     def estimate_cost(self, envelope: ToolInvocationEnvelope) -> float:
         # Evolution is high-stakes and potentially high-compute if simulation is needed

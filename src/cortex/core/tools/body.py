@@ -7,7 +7,7 @@ import os
 import sys
 import nest_asyncio
 from typing import Dict, Any
-from cortex.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult
+from cortex.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult, CognitiveRole
 from cortex.core.exceptions import ToolExecutionError
 from cortex.gateway.openclaw_adapter import send_directive_to_kernel, get_kernel_status
 from cortex.gateway.proprioception_scanner import get_scanner

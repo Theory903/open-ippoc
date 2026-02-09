@@ -122,18 +122,22 @@ class ToolOrchestrator:
         
         tool = self.tools[tool_name]
         
-        # 2. Permission Check (Stub for Policy Engine)
-        self._check_permissions(envelope)
+        estimated_cost = 0.0
+        token = None
         
-        # 3. Cost Metering (Pre-Check)
-        estimated_cost = tool.estimate_cost(envelope)
-        self._check_budget(envelope, tool_name, estimated_cost)
-        
-        # 4. Audit Log (Pre-Execution)
-        logger.info(f"INVOKE: {tool_name} | Caller: {envelope.context.get('caller', 'unknown')} | Intent: {envelope.action}")
-        
-        token = _SPINE_ACTIVE.set(True)
         try:
+            # 2. Permission Check (Stub for Policy Engine)
+            self._check_permissions(envelope)
+            
+            # 3. Cost Metering (Pre-Check)
+            estimated_cost = tool.estimate_cost(envelope)
+            self._check_budget(envelope, tool_name, estimated_cost)
+            
+            # 4. Audit Log (Pre-Execution)
+            logger.info(f"INVOKE: {tool_name} | Caller: {envelope.context.get('caller', 'unknown')} | Intent: {envelope.action}")
+            
+            token = _SPINE_ACTIVE.set(True)
+            
             # 5. Execution (Atomic)
             result = tool.execute(envelope)
             # 6. Accounting (Post-Execution)
@@ -148,10 +152,15 @@ class ToolOrchestrator:
             return result
         except Exception as e:
             logger.error(f"FAILURE: {tool_name} | Error: {str(e)}")
+            # Audit all failures, including security violations
             self._audit_action(envelope, None, estimated_cost, str(e))
+            # Re-raise appropriate exception
+            if isinstance(e, SecurityViolation):
+                raise e
             raise ToolExecutionError(tool_name, str(e))
         finally:
-            _SPINE_ACTIVE.reset(token)
+            if token is not None:
+                _SPINE_ACTIVE.reset(token)
 
     async def invoke_async(self, envelope: ToolInvocationEnvelope) -> ToolResult:
         """
@@ -220,34 +229,70 @@ class ToolOrchestrator:
 
     def _check_permissions(self, envelope: ToolInvocationEnvelope) -> None:
         """
-        Verify if the caller is allowed to use this tool.
+        Hard Enforcement of CAP-01: Capability Law.
         """
         if os.getenv("ORCHESTRATOR_KILL_SWITCH", "false").lower() == "true":
             raise SecurityViolation("Kill switch enabled")
-        tool_allow = set(filter(None, os.getenv("ORCHESTRATOR_TOOL_ALLOWLIST", "").split(",")))
-        tool_deny = set(filter(None, os.getenv("ORCHESTRATOR_TOOL_DENYLIST", "").split(",")))
-        if tool_allow and envelope.tool_name not in tool_allow:
-            raise SecurityViolation(f"Tool '{envelope.tool_name}' not allowed")
-        if envelope.tool_name in tool_deny:
-            raise SecurityViolation(f"Tool '{envelope.tool_name}' denied")
-        # TODO: Connect to explicit Policy Engine / ACLs
-        # For now, simplistic safety check:
+
+        tool_name = envelope.tool_name
+        tool = self.tools[tool_name]
+        
+        # 1. Role-Based Side-Effect Enforcement
+        if tool.role == "sensor" and envelope.action.startswith("write") or envelope.action.startswith("delete"):
+             msg = f"Role Violation: SENSOR tool '{tool_name}' cannot perform side-effect '{envelope.action}'"
+             self._emit_violation(msg, tool_name, envelope.action)
+             raise SecurityViolation(msg)
+
+        if tool.role == "auditor" and envelope.domain != "cognition":
+             msg = f"Role Violation: AUDITOR tool '{tool_name}' is restricted to cognition domain"
+             self._emit_violation(msg, tool_name, envelope.action)
+             raise SecurityViolation(msg)
+
+        # 2. Domain Allowlists (Sovereignty Check)
+        if self.domain_allowlist and envelope.domain not in self.domain_allowlist:
+            raise SecurityViolation(f"Domain '{envelope.domain}' not allowed under current sovereignty grant")
+        
+        if envelope.domain in self.domain_denylist:
+            raise SecurityViolation(f"Domain '{envelope.domain}' is explicitly blacklisted")
+
+        # 3. Risk-Based Validation
         max_risk = os.getenv("ORCHESTRATOR_MAX_RISK", "high").lower()
         risk_order = {"low": 0, "medium": 1, "high": 2}
         if risk_order.get(envelope.risk_level, 0) > risk_order.get(max_risk, 2):
-            raise SecurityViolation(f"Risk level '{envelope.risk_level}' exceeds policy")
-        if envelope.risk_level == "high" and not envelope.requires_validation:
-            logger.warning(f"High risk action invoked without validation flag: {envelope.tool_name}")
-        
-        # Placeholder for 'sandbox' enforcement
-        if envelope.domain == "evolution" and envelope.context.get("environment") == "stable":
-             if not envelope.requires_validation:
-                 raise SecurityViolation("Stable channel evolution requires manual validation.")
+            raise SecurityViolation(f"Risk '{envelope.risk_level}' exceeds platform safeguard ({max_risk})")
 
-        if self.domain_allowlist and envelope.domain not in self.domain_allowlist:
-            raise SecurityViolation(f"Domain '{envelope.domain}' not allowed")
-        if envelope.domain in self.domain_denylist:
-            raise SecurityViolation(f"Domain '{envelope.domain}' denied")
+        # 4. Mandatory Validation for High-Risk ACTORS
+        if tool.role == "actor" and envelope.risk_level == "high" and not envelope.requires_validation:
+             msg = f"Safety Violation: High-risk ACTOR action '{tool_name}.{envelope.action}' requires explicit user validation"
+             self._emit_violation(msg, tool_name, envelope.action)
+             raise SecurityViolation(msg)
+
+        logger.debug(f"CAPABILITY GRANTED: {tool_name} as {tool.role}")
+
+    def _emit_violation(self, message: str, tool: str, action: str):
+        """Broadcast violation attempt to the Neural Interface."""
+        try:
+            # Try to emit violation asynchronously
+            import asyncio
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            # No running loop, skip emission (prevents test failure)
+            logger.warning(f"Violation not emitted: No running event loop")
+            return
+            
+        # Schedule emission in background
+        async def emit():
+            try:
+                from cortex.cortex.cognitive_queue import emit_thought
+                await emit_thought(
+                    level="violation",
+                    content=message,
+                    metadata={"tool": tool, "action": action, "node": os.getenv("NODE_ID")}
+                )
+            except Exception as e:
+                logger.warning(f"Failed to emit violation: {e}")
+                
+        loop.create_task(emit())
 
     def _check_budget(self, envelope: ToolInvocationEnvelope, tool_name: str, estimated_cost: float) -> None:
         """

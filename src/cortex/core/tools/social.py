@@ -3,16 +3,16 @@ from __future__ import annotations
 import json
 import os
 from typing import Dict, Any
-from cortex.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult
+from cortex.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult, CognitiveRole
 from cortex.core.exceptions import ToolExecutionError
 
 
 class SocialAdapter(IPPOC_Tool):
     """
-    Minimal social cognition layer: reputation + mentor queries.
+    Wraps the social interaction and identity subsystem.
     """
     def __init__(self):
-        super().__init__(name="social", domain="social")
+        super().__init__(name="social", domain="social", role=CognitiveRole.SENSOR)
         self.path = os.getenv("SOCIAL_MEMORY_PATH", "data/social_memory.json")
 
     def estimate_cost(self, envelope: ToolInvocationEnvelope) -> float:

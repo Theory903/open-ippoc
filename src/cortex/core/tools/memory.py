@@ -22,7 +22,7 @@ class MemoryAdapter(IPPOC_Tool):
     Wraps the Memory Subsystem (HiDB/Rust) as a tool.
     """
     def __init__(self):
-        super().__init__(name="memory", domain="memory")
+        super().__init__(name="memory", domain="memory", role=CognitiveRole.SENSOR)
 
     def estimate_cost(self, envelope: ToolInvocationEnvelope) -> float:
         # Memory is now free

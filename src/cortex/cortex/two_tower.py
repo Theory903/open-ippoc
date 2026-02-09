@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from typing import Dict, Any, List, Optional
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_ollama import ChatOllama
 from .schemas import ActionCandidate, ModelMetadata
 
 load_dotenv()
@@ -14,37 +15,46 @@ class TwoTowerEngine:
     
     def __init__(self):
         # Configuration
-        self.tower_a_model_name = os.getenv("TOWER_A_MODEL", "gemini-2.0-flash-exp")
-        self.tower_b_model_name = os.getenv("TOWER_B_MODEL", "gemini-2.0-flash-thinking-exp-01-21")
+        self.tower_a_model_name = os.getenv("TOWER_A_MODEL", "kimi-k2.5:cloud")
+        self.tower_b_model_name = os.getenv("TOWER_B_MODEL", "kimi-k2.5:cloud")
+        self.provider = os.getenv("LLM_PROVIDER", "ollama")  # Options: "google", "ollama"
         self.api_key = os.getenv("GOOGLE_API_KEY")
         
         self.risk_threshold = "medium"
         
         # Initialize Clients
-        # In a real system, we'd use a factory based on TOWER_A_PROVIDER
-        if not self.api_key:
-            print("[WARN] GOOGLE_API_KEY not found. TwoTowerEngine running in Mock Mode.")
+        if self.provider == "google":
+            if not self.api_key:
+                print("[WARN] GOOGLE_API_KEY not found. TwoTowerEngine running in Mock Mode.")
+                self.llm_a = None
+                self.llm_b = None
+            else:
+                self.llm_a = ChatGoogleGenerativeAI(model=self.tower_a_model_name, google_api_key=self.api_key, temperature=0.7)
+                self.llm_b = ChatGoogleGenerativeAI(model=self.tower_b_model_name, google_api_key=self.api_key, temperature=0.2)
+        elif self.provider == "ollama":
+            print(f"[INFO] Using Ollama with models: Tower A = {self.tower_a_model_name}, Tower B = {self.tower_b_model_name}")
+            self.llm_a = ChatOllama(model=self.tower_a_model_name, temperature=0.7)
+            self.llm_b = ChatOllama(model=self.tower_b_model_name, temperature=0.2)
+        else:
+            print(f"[WARN] Unknown LLM provider: {self.provider}. Running in Mock Mode.")
             self.llm_a = None
             self.llm_b = None
-        else:
-            self.llm_a = ChatGoogleGenerativeAI(model=self.tower_a_model_name, google_api_key=self.api_key, temperature=0.7)
-            self.llm_b = ChatGoogleGenerativeAI(model=self.tower_b_model_name, google_api_key=self.api_key, temperature=0.2)
         
         # Model Market
         self.model_market: Dict[str, ModelMetadata] = {
             self.tower_a_model_name: ModelMetadata(
                 model=self.tower_a_model_name,
-                strengths=["speed", "cost"],
-                weaknesses=["complex reasoning"],
-                avg_cost=0.1,
-                trust_score=0.8
+                strengths=["speed", "cost", "multimodal"],
+                weaknesses=["very complex reasoning"],
+                avg_cost=0.05,
+                trust_score=0.9
             ),
             self.tower_b_model_name: ModelMetadata(
                 model=self.tower_b_model_name,
-                strengths=["reasoning", "coding"],
+                strengths=["reasoning", "coding", "deep thinking"],
                 weaknesses=["latency"],
-                avg_cost=1.0,
-                trust_score=0.95
+                avg_cost=0.5,
+                trust_score=0.98
             )
         }
 
@@ -145,7 +155,16 @@ class TwoTowerEngine:
         }
         
         try:
-            with open("brain/data/patterns.jsonl", "a") as f:
+            # Use proper path based on file location
+            import os
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            patterns_file = os.path.join(current_dir, "../../../data/patterns.jsonl")
+            
+            # Create directory if it doesn't exist
+            import os
+            os.makedirs(os.path.dirname(patterns_file), exist_ok=True)
+            
+            with open(patterns_file, "a") as f:
                 f.write(json.dumps(entry) + "\n")
         except Exception as e:
             print(f"[Evolution] Failed to log pattern: {e}")

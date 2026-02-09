@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from cortex.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult
+from cortex.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult, CognitiveRole
 from cortex.core.economy import get_economy
 from cortex.core.exceptions import ToolExecutionError
 from cortex.core.orchestrator import require_spine
@@ -11,7 +11,7 @@ class EconomyAdapter(IPPOC_Tool):
     Exposes economy state for inspection and controlled updates.
     """
     def __init__(self):
-        super().__init__(name="economy", domain="economy")
+        super().__init__(name="economy", domain="economy", role=CognitiveRole.SENSOR)
         self.economy = get_economy()
 
     def estimate_cost(self, envelope: ToolInvocationEnvelope) -> float:

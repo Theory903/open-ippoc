@@ -4,3 +4,9 @@ statistics
 nest_asyncio
 grpcio>=1.78.0
 grpcio-tools>=1.78.0
+aiosqlite
+fastapi
+uvicorn
+sqlalchemy[asyncio]
+pydantic
+requests

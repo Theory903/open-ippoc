@@ -1,8 +1,7 @@
-from __future__ import annotations
-
+import asyncio
 import json
 import os
-from typing import Any, Awaitable, Callable, Dict, Optional
+from typing import Any, Awaitable, Callable, Dict, Optional, Union
 
 try:
     import redis.asyncio as redis
@@ -24,7 +23,6 @@ class RedisQueue:
         try:
             await self.client.xgroup_create(self.stream, self.group, id="0", mkstream=True)
         except Exception:
-            # Group may already exist
             return None
 
     async def enqueue(self, execution_id: str, envelope: Dict[str, Any]) -> None:
@@ -52,16 +50,40 @@ class RedisQueue:
                         await handler(execution_id, envelope)
                         await self.client.xack(self.stream, self.group, msg_id)
                     except Exception:
-                        # Do not ack on failure; message will be retried
                         continue
 
 
-_queue_instance: Optional[RedisQueue] = None
+class InternalQueue:
+    def __init__(self) -> None:
+        self.queue = asyncio.Queue()
+
+    async def enqueue(self, execution_id: str, envelope: Dict[str, Any]) -> None:
+        await self.queue.put((execution_id, envelope))
+
+    async def consume(self, handler: Callable[[str, Dict[str, Any]], Awaitable[None]]) -> None:
+        print("[InternalQueue] Starting task consumer...")
+        while True:
+            execution_id, envelope = await self.queue.get()
+            try:
+                await handler(execution_id, envelope)
+            except Exception as e:
+                print(f"[InternalQueue] Error handling {execution_id}: {e}")
+            finally:
+                self.queue.task_done()
 
 
-def get_queue() -> Optional[RedisQueue]:
+_queue_instance: Union[RedisQueue, InternalQueue, None] = None
+
+
+def get_queue() -> Union[RedisQueue, InternalQueue, None]:
     global _queue_instance
     if _queue_instance is not None:
+        return _queue_instance
+
+    use_internal = os.getenv("IPPOC_USE_INTERNAL_QUEUE", "false").lower() == "true"
+    if use_internal:
+        print("[Queue] Using isolated internal asyncio queue.")
+        _queue_instance = InternalQueue()
         return _queue_instance
 
     url = os.getenv("ORCHESTRATOR_REDIS_URL") or os.getenv("REDIS_URL")

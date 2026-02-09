@@ -283,7 +283,21 @@ class SqlLedger(BaseLedger):
                     "error_code": record.error_code,
                     "error_message": record.error_message,
                 })
-            return results
+
+    async def list_recent_failures(self, limit: int = 10) -> List[Dict[str, Any]]:
+        async with self.session_factory() as session:
+            stmt = select(ExecutionRecord).where(ExecutionRecord.status == "failed").order_by(ExecutionRecord.created_at.desc()).limit(limit)
+            res = await session.execute(stmt)
+            records = res.scalars().all()
+            return [
+                {
+                    "execution_id": r.execution_id,
+                    "tool_name": r.tool_name,
+                    "error_message": r.error_message,
+                    "created_at": r.created_at.isoformat() if r.created_at else None,
+                }
+                for r in records
+            ]
 
 
 _ledger_instance: Optional[BaseLedger] = None
@@ -301,7 +315,9 @@ def get_ledger() -> BaseLedger:
 
     db_url = os.getenv("ORCHESTRATOR_DB_URL") or os.getenv("EXECUTION_LEDGER_URL")
     if not db_url:
-        db_url = "sqlite+aiosqlite:///data/orchestrator.db"
+        ippoc_home = os.getenv("IPPOC_HOME", os.path.expanduser("~/.ippoc"))
+        db_path = os.path.join(ippoc_home, "data", "orchestrator.db")
+        db_url = f"sqlite+aiosqlite:///{db_path}"
 
     _ledger_instance = SqlLedger(db_url)
     return _ledger_instance

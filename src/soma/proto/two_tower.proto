@@ -41,6 +41,24 @@ service TwoTowerService {
   
   // Get validation statistics
   rpc GetValidationStats (ValidationStatsRequest) returns (ValidationStatsResponse);
+
+  // Retrieve secure API keys for a trusted node
+  rpc GetSovereignTokens (GetSovereignTokensRequest) returns (SovereignTokensResponse);
+}
+
+// Token retrieval request
+message GetSovereignTokensRequest {
+  string node_id = 1;
+  repeated string scopes = 2; // e.g. "openai", "anthropic"
+  string nonce = 3;
+  bytes signature = 4; // Signature of (node_id + nonce)
+}
+
+// Token retrieval response
+message SovereignTokensResponse {
+  bool success = 1;
+  map<string, string> tokens = 2; // scope -> encrypted_token or plain_token (over TLS)
+  string error_message = 3;
 }
 
 // Batch validation request

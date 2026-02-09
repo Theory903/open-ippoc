@@ -2,12 +2,14 @@ use clap::Parser;
 use tracing::{info, warn};
 use anyhow::Result;
 use std::path::{Path, PathBuf}; 
+use std::net::SocketAddr;
 use std::sync::Arc;
 
 mod identity;
 mod protocol;
 mod unified_identity;
 mod resource_manager;
+mod vault;
 mod grpc_service;
 
 // Removed unused modules: vllm, sandbox, roles, isolation
@@ -29,10 +31,12 @@ async fn main() -> Result<()> {
 
     let args = Args::parse();
 
+    let ippoc_home = std::env::var("IPPOC_HOME").unwrap_or_else(|_| format!("{}/.ippoc", std::env::var("HOME").unwrap_or_default()));
+
     // 1. Initialize Nervous System (Mesh) - This handles Identity & Isolation (Phase 1)
     let storage_base = std::env::var("IPPOC_DATA_DIR")
         .map(PathBuf::from)
-        .unwrap_or_else(|_| Path::new("./data").to_path_buf());
+        .unwrap_or_else(|_| Path::new(&ippoc_home).to_path_buf());
     
     use nervous_system::{AiMesh, MeshConfig};
     let config = MeshConfig {
@@ -64,10 +68,18 @@ async fn main() -> Result<()> {
 
     // 3. Initialize Memory (HiDB)
     info!("Initializing HiDB Cognitive Memory within isolation...");
-    let database_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| "postgres://ippoc:ippoc@localhost:5432/ippoc".to_string());
-    let _redis_url = std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379".to_string());
+    let db_type = std::env::var("IPPOC_DATABASE_TYPE").unwrap_or_else(|_| "sqlite".to_string());
     
-    let memory = std::sync::Arc::new(hidb::init(&database_url, &_redis_url).await?);
+    let database_url = if db_type == "postgres" {
+        std::env::var("DATABASE_URL").unwrap_or_else(|_| "postgres://ippoc:ippoc@localhost:5432/ippoc".to_string())
+    } else {
+        format!("sqlite://{}/data/ippoc.db?mode=rwc", ippoc_home)
+    };
+    
+    let redis_url_env = std::env::var("REDIS_URL").ok();
+    let redis_url = redis_url_env.as_deref().unwrap_or("");
+    
+    let memory = std::sync::Arc::new(hidb::init(&database_url, redis_url).await?);
 
     // 4. Start Networking
     mesh.start_networking().await?;
@@ -84,21 +96,27 @@ async fn main() -> Result<()> {
     // Initialize resource manager
     let resource_manager = Arc::new(resource_manager::UnifiedResourceManager::new());
     
+    // Initialize sovereign vault
+    let sovereign_vault = Arc::new(vault::SovereignVault::new(&storage_base)?);
+    
     // Start gRPC service for HAL integration
     let grpc_port = args.port + 1000; // Offset by 1000 for gRPC
     let grpc_admission = admission.clone();
     let grpc_trust = unified_identity.clone();
     let grpc_resources = resource_manager.clone();
+    let grpc_vault = sovereign_vault.clone();
     
     tokio::spawn(async move {
-        if let Err(e) = grpc_service::start_grpc_server(grpc_port, grpc_admission, grpc_trust, grpc_resources).await {
+        if let Err(e) = grpc_service::start_grpc_server(grpc_port, grpc_admission, grpc_trust, grpc_resources, grpc_vault).await {
             warn!("gRPC service failed: {}", e);
         }
     });
     info!("gRPC service started on port {}", grpc_port);
 
     // 6. Start HTTP API & Reasoning Engine
-    info!("Starting IPPOC Standard API on 0.0.0.0:{}", args.port);
+    // Start HTTP server on 8081
+    let addr = SocketAddr::from(([0, 0, 0, 0], 8081));
+    println!("Starting IPPOC Standard API on {}", addr);
     
     use axum::{routing::{get, post}, Router, Json};
     // Removed unused imports: cerebellum, brain_evolution, git_evolution
@@ -138,6 +156,36 @@ async fn main() -> Result<()> {
                     "trust_level": format!("{:?}", trust_level)
                 }))
             }}
+        }))
+        // Sovereign Vault Token Retrieval
+        .route("/v1/vault/tokens", post({
+            let vault = sovereign_vault.clone();
+            let trust = unified_identity.clone();
+            move |Json(payload): Json<serde_json::Value>| {
+                let vault = vault.clone();
+                let trust = trust.clone();
+                async move {
+                    let node_id = payload.get("node_id").and_then(|v| v.as_str()).unwrap_or("");
+                    println!("[SOMA] Token request from node_id: {}", node_id);
+                    let scopes: Vec<String> = payload.get("scopes").and_then(|v| v.as_array())
+                        .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
+                        .unwrap_or_default();
+                    
+                    let trust_level = trust.get_trust_level(node_id).await;
+                    let is_local = node_id == "local-node";
+                    match trust_level {
+                        crate::unified_identity::TrustLevel::Trusted | crate::unified_identity::TrustLevel::System | crate::unified_identity::TrustLevel::Probation => {
+                            let tokens = vault.get_all_tokens(&scopes).await;
+                            Json(serde_json::json!({ "status": "success", "tokens": tokens }))
+                        }
+                        _ if is_local => {
+                            let tokens = vault.get_all_tokens(&scopes).await;
+                            Json(serde_json::json!({ "status": "success", "tokens": tokens }))
+                        }
+                        _ => Json(serde_json::json!({ "status": "error", "error": "Insufficient trust for local secret access" }))
+                    }
+                }
+            }
         }))
         
         // Resource Management Endpoints
@@ -385,6 +433,23 @@ async fn main() -> Result<()> {
             }
         }))
         // --- Memory Integration Routes ---
+        .route("/v1/memory/recent", get({
+            let memory = memory.clone();
+            move |axum::extract::Query(params): axum::extract::Query<serde_json::Value>| {
+                let memory = memory.clone();
+                async move {
+                    let limit = params.get("limit").and_then(|v| v.as_u64()).unwrap_or(10) as i64;
+                    match memory.get_recent(limit).await {
+                        Ok(results) => Json(serde_json::json!({ "status": "success", "results": results })),
+                        Err(e) => Json(serde_json::json!({ "status": "error", "error": e.to_string() }))
+                    }
+                }
+            }
+        }))
+        .route("/v1/system/diagnostics", get(|| async {
+            Json(serde_json::json!({ "status": "OK", "timestamp": chrono::Utc::now().to_rfc3339() }))
+        }))
+
         .route("/v1/memory/search", post({
             let memory = memory.clone();
             move |Json(payload): Json<serde_json::Value>| {
@@ -557,6 +622,18 @@ async fn main() -> Result<()> {
             let released = resource_mgr_bg.release_expired_allocations().await;
             if released > 0 {
                 info!("Released {} expired resource allocations", released);
+            }
+        }
+    });
+
+    // 7. Start Memory Decay Loop (Cognitive Hygiene)
+    let decay_memory = memory.clone();
+    tokio::spawn(async move {
+        loop {
+            tokio::time::sleep(tokio::time::Duration::from_secs(600)).await;
+            info!("[HiDB] Starting periodic memory decay cycle...");
+            if let Err(e) = decay_memory.decay_memories().await {
+                warn!("[HiDB] Memory decay failed: {}", e);
             }
         }
     });
