@@ -413,3 +413,44 @@ class GraphManager:
         except Exception as e:
             logger.error(f"Similar entity search failed: {e}")
             return []
+
+    async def delete_entity(self, name: str) -> bool:
+        """
+        Delete an entity and its relationships.
+
+        Args:
+            name: Entity name
+
+        Returns:
+            Success status
+        """
+        await self.init_db()
+        try:
+            async with self.Session() as session:
+                # Find Entity ID
+                res = await session.execute(text("SELECT id FROM kg_entities WHERE name = :n"), {"n": name})
+                row = res.fetchone()
+                if not row:
+                    logger.warning(f"Entity '{name}' not found")
+                    return False
+                eid = row[0]
+
+                # Delete relationships involving the entity
+                await session.execute(
+                    text("DELETE FROM kg_relations WHERE source_id = :eid OR target_id = :eid"),
+                    {"eid": eid}
+                )
+
+                # Delete the entity
+                await session.execute(
+                    text("DELETE FROM kg_entities WHERE id = :eid"),
+                    {"eid": eid}
+                )
+
+                await session.commit()
+                logger.info(f"Deleted entity '{name}' and its relations")
+                return True
+
+        except Exception as e:
+            logger.error(f"Failed to delete entity '{name}': {e}")
+            return False
