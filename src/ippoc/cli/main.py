@@ -8,9 +8,12 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 
 # --- Configuration ---
+# --- Configuration ---
+from ippoc.runtime.bootstrap.auth import get_api_key
+
 CORTEX_URL = os.getenv("CORTEX_URL", "http://localhost:8001")
 SOMA_URL = os.getenv("SOMA_URL", "http://localhost:8002")
-API_KEY = os.getenv("IPPOC_API_KEY")
+API_KEY = get_api_key()
 
 class IppocClient:
     def __init__(self, api_key: Optional[str] = None):
@@ -201,6 +204,10 @@ def setup_env(instance_name: str):
 
 def run_services(args):
     # This import is here to avoid heavy dependencies for simple CLI commands
+    # Ensure default key is set for subprocesses if not present
+    if "IPPOC_API_KEY" not in os.environ:
+        os.environ["IPPOC_API_KEY"] = get_api_key()
+        
     from ippoc.runtime.supervisor.watchdog import ServiceManager
     instance_root = setup_env(args.instance)
     manager = ServiceManager(instance_root)

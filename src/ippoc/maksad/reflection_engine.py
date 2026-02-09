@@ -1,7 +1,7 @@
 import asyncio
 import time
 from typing import List, Optional, Dict, Any
-from ippoc.cortex.cortex.chronos import get_intent_engine
+from ippoc.maksad.intent_engine import get_intent_engine
 import requests
 import os
 from .cognitive_bus import emit_thought
@@ -31,9 +31,10 @@ class ReflectionEngine:
                             urgency=0.6
                         )
             else:
-                print(f"[Reflection] Soma memory audit returned status: {resp.status_code}")
-        except Exception as e:
-            print(f"[Reflection] Memory audit failed: {e}")
+                pass # Silently ignore non-200 from Soma (might be starting up)
+        except Exception:
+            print("[Reflection] Memory unavailable - skipping audit")
+            return
 
     async def reflect_on_failures(self):
         """

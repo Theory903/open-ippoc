@@ -110,8 +110,8 @@ class TwoTowerEngine:
         """
         if not self.llm_b:
             # Evolution: Log Pattern even in Mock Mode
-            self._log_pattern(candidate, "MOCK_YES", True)
-            return True # Mock allow
+            self._log_pattern(candidate, "MOCK_NO", False)
+            return False # Mock deny - fail closed
 
         prompt = f"""
         You are Tower B (Validator).

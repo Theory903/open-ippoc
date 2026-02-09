@@ -5,17 +5,21 @@ from ippoc.cortex.core.tools.base import ToolInvocationEnvelope
 from ippoc.cortex.cortex.two_tower import TwoTowerEngine
 from ippoc.cortex.cortex.telepathy import TelepathySwarm
 from ippoc.cortex.cortex.schemas import CognitiveState, Signal
+import os
 try:
     from langgraph.graph import StateGraph, END
 except ImportError:
-    # Prototyping Mock if dependency missing
-    class StateGraph:
-        def __init__(self, state_schema): pass
-        def add_node(self, name, func): pass
-        def add_edge(self, start, end): pass
-        def set_entry_point(self, name): pass
-        def compile(self): return "compiled_graph_stub"
-    END = "END"
+    if os.getenv("DEV_MODE", "false").lower() == "true":
+        # Prototyping Mock only for development
+        class StateGraph:
+            def __init__(self, state_schema): pass
+            def add_node(self, name, func): pass
+            def add_edge(self, start, end): pass
+            def set_entry_point(self, name): pass
+            def compile(self): return "compiled_graph_stub"
+        END = "END"
+    else:
+        raise RuntimeError("LangGraph is required for production operation. Please install langgraph>=0.0.10")
 
 class LangGraphEngine:
     """
@@ -84,6 +88,7 @@ class LangGraphEngine:
     def _assess_risk(self, action: str, params: dict) -> str:
         """
         Dynamically assess risk based on action and context.
+        Defaults to HIGH risk for unknown actions.
         """
         # High risk actions
         if action in ["execute_command", "file_operation", "network_request"]:
@@ -93,8 +98,8 @@ class LangGraphEngine:
         if action == "economy_balance":
             return "low"
 
-        # Default medium risk (includes openclaw skills)
-        return "medium"
+        # Default to high risk for unknown actions
+        return "high"
 
     async def execute(self, state: CognitiveState):
         """

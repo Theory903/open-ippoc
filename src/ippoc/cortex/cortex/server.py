@@ -1,18 +1,19 @@
 import uvicorn
+import sys
 import os
+from dotenv import load_dotenv
+load_dotenv()
 import time
 import json
 import uuid
 import asyncio
+import tempfile
 import secrets
 from fastapi import FastAPI, HTTPException, Depends, Security, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import JSONResponse, PlainTextResponse, StreamingResponse
 from typing import List, Optional, Dict, Any, Literal
 from contextlib import asynccontextmanager
-
-# Import new Cognitive Core
-# Import new Cognitive Core
 from ippoc.cortex.cortex.schemas import Signal, ActionCandidate, TelepathyMessage, ChatRoom
 from ippoc.cortex.cortex.two_tower import TwoTowerEngine
 from ippoc.cortex.cortex.telepathy import TelepathySwarm, TransportLayer, HttpTransport, MeshTransport
@@ -52,42 +53,33 @@ except Exception:  # pragma: no cover
     OTLPSpanExporter = None
 
 # --- Configuration ---
+# --- Configuration ---
+# --- Security & Ports ---
+from ippoc.runtime.ports import PORTS, get_port
+from ippoc.runtime.bootstrap.auth import get_api_key
+import socket
+
+# Security: Use centralized key logic
+IPPOC_API_KEY = get_api_key()
+
+# Configuration
 NODE_ID = os.getenv("NODE_ID", "ippoc-local")
+PERSISTENCE_PATH = os.getenv("CHAT_DB_PATH", os.path.join(tempfile.gettempdir(), "ippoc_chat.json"))
+PEER_NODES = [p for p in os.getenv("PEER_NODES", "").split(",") if p]
 
-# Security: Generate a random key if not provided (Critical Fix)
-IPPOC_API_KEY = os.getenv("IPPOC_API_KEY")
-if not IPPOC_API_KEY:
-    IPPOC_API_KEY = secrets.token_hex(32)
-    print(f"[Server] ⚠️  SECURITY WARNING: IPPOC_API_KEY not set! Generated temporary admin key: {IPPOC_API_KEY}")
-
-PERSISTENCE_PATH = os.getenv("CHAT_DB_PATH", "data/state/chat_rooms.json")
-PEER_NODES = os.getenv("PEER_NODES", "").split(",") # Comma separated URLs
-PEER_NODES = [p for p in PEER_NODES if p] # Filter empty
-
-# Optional OpenTelemetry
-if trace and TracerProvider and OTLPSpanExporter:
-    otel_endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
-    if otel_endpoint:
-        provider = TracerProvider(resource=Resource.create({"service.name": "ippoc-cortex"}))
-        processor = BatchSpanProcessor(OTLPSpanExporter(endpoint=otel_endpoint))
-        provider.add_span_processor(processor)
-        trace.set_tracer_provider(provider)
-
-# Orchestrator runtime
-ledger = get_ledger()
-queue = get_queue()
-
-# Metrics
+# Metrics Setup
 if Counter and Histogram:
     ORCH_REQUESTS = Counter("ippoc_orchestrator_requests_total", "Orchestrator requests", ["tool", "status"])
     ORCH_LATENCY = Histogram("ippoc_orchestrator_latency_seconds", "Orchestrator latency", ["tool"])
 else:  # pragma: no cover
     ORCH_REQUESTS = ORCH_LATENCY = None
 
-# --- Auth Security ---
-security = HTTPBearer()
+# Orchestrator runtime
+ledger = get_ledger()
+queue = get_queue() # This was missing fix!
 
-# Token scopes (token -> list of scopes). If not provided, fallback to IPPOC_API_KEY with admin scope.
+# Auth Security
+security = HTTPBearer()
 TOKEN_SCOPES: Dict[str, List[str]] = {}
 scopes_raw = os.getenv("ORCHESTRATOR_TOKENS_JSON")
 if scopes_raw:
@@ -95,8 +87,11 @@ if scopes_raw:
         TOKEN_SCOPES = json.loads(scopes_raw)
     except Exception:
         TOKEN_SCOPES = {}
+# Enforce the active key has admin scope
 if IPPOC_API_KEY:
     TOKEN_SCOPES.setdefault(IPPOC_API_KEY, ["*"])
+    print(f"[DEBUG] IPPOC_API_KEY loaded: {IPPOC_API_KEY[:3]}... Length: {len(IPPOC_API_KEY)}")
+print(f"[DEBUG] Valid tokens: {list(TOKEN_SCOPES.keys())}")
 
 def verify_api_key(request: Request, credentials: HTTPAuthorizationCredentials = Security(security)):
     """
@@ -783,7 +778,15 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="IPPOC Cortex Server")
     parser.add_argument("--host", default="0.0.0.0", help="Host interface to bind to")
-    parser.add_argument("--port", type=int, default=8001, help="Port to bind to")
+    parser.add_argument("--port", type=int, default=get_port("cortex"), help="Port to bind to")
     args, _ = parser.parse_known_args()
     
-    uvicorn.run(app, host=args.host, port=args.port)
+    def port_available(port):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            return s.connect_ex(("127.0.0.1", port)) != 0
+
+    if not port_available(args.port):
+        print(f"❌ [Fatal] Port {args.port} is already in use. Aborting startup.")
+        sys.exit(48) # Standard exit code for address in use
+
+    uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
