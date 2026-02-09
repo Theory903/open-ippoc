@@ -298,7 +298,7 @@ class MemorySystem:
                 }
             
         Returns:
-            Number of memories removed (approximate)
+            Number of memories removed (approximate count from all subsystems)
         """
         await self.initialize()
         count = 0
