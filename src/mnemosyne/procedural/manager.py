@@ -182,3 +182,35 @@ IMPLEMENTATION:
             "metadata": metadata,
             "object_id": metadata.get("object_id")
         }
+
+    async def delete_skill(self, name: str) -> bool:
+        """
+        Delete a skill by name.
+
+        Args:
+            name: Skill name
+
+        Returns:
+            Success status
+        """
+        try:
+            skill = self.skill_registry.get(name)
+            if not skill:
+                logger.warning(f"Skill '{name}' not found")
+                return False
+
+            object_ids = []
+            if skill.get("id"):
+                object_ids.append(skill["id"])
+
+            # Delete from semantic memory
+            if object_ids:
+                await self.semantic.delete_memories(object_ids)
+
+            # Remove from registry
+            del self.skill_registry[name]
+            logger.info(f"Deleted skill '{name}'")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to delete skill '{name}': {e}")
+            return False
