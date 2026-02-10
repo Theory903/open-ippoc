@@ -1,5 +1,6 @@
 import uvicorn
 import os
+import sys
 import time
 import json
 import uuid
@@ -48,12 +49,25 @@ except Exception:  # pragma: no cover
 
 # --- Configuration ---
 NODE_ID = os.getenv("NODE_ID", "ippoc-local")
+IPPOC_PRODUCTION = os.getenv("IPPOC_PRODUCTION", "false").lower() == "true"
+AUTH_ENABLED = os.getenv("IPPOC_AUTH_ENABLED", "true").lower() == "true"
+
+# Enforce Security in Production
+if IPPOC_PRODUCTION:
+    if not os.getenv("IPPOC_API_KEY"):
+        print("[Server] 🚨 FATAL: IPPOC_API_KEY must be set in production!", file=sys.stderr)
+        sys.exit(1)
+    if not AUTH_ENABLED:
+        print("[Server] ⚠️  WARNING: Ignoring IPPOC_AUTH_ENABLED=false in production. Auth is ENFORCED.", file=sys.stderr)
+        AUTH_ENABLED = True
 
 # Security: Generate a random key if not provided (Critical Fix)
 IPPOC_API_KEY = os.getenv("IPPOC_API_KEY")
 if not IPPOC_API_KEY:
     IPPOC_API_KEY = secrets.token_hex(32)
-    print(f"[Server] ⚠️  SECURITY WARNING: IPPOC_API_KEY not set! Generated temporary admin key: {IPPOC_API_KEY}")
+    # Only print key in dev mode, and to stderr
+    if not IPPOC_PRODUCTION:
+        print(f"[Server] ⚠️  SECURITY WARNING: IPPOC_API_KEY not set! Generated temporary admin key: {IPPOC_API_KEY}", file=sys.stderr)
 
 PERSISTENCE_PATH = os.getenv("CHAT_DB_PATH", "data/state/chat_rooms.json")
 PEER_NODES = os.getenv("PEER_NODES", "").split(",") # Comma separated URLs
@@ -81,7 +95,7 @@ else:  # pragma: no cover
     ORCH_REQUESTS = ORCH_LATENCY = None
 
 # --- Auth Security ---
-security = HTTPBearer()
+security = HTTPBearer(auto_error=AUTH_ENABLED)
 
 # Token scopes (token -> list of scopes). If not provided, fallback to IPPOC_API_KEY with admin scope.
 TOKEN_SCOPES: Dict[str, List[str]] = {}
@@ -94,10 +108,17 @@ if scopes_raw:
 if IPPOC_API_KEY:
     TOKEN_SCOPES.setdefault(IPPOC_API_KEY, ["*"])
 
-def verify_api_key(request: Request, credentials: HTTPAuthorizationCredentials = Security(security)):
+def verify_api_key(request: Request, credentials: Optional[HTTPAuthorizationCredentials] = Security(security)):
     """
     Enforces Bearer Token Authentication.
     """
+    if not AUTH_ENABLED:
+        request.state.scopes = ["*"]
+        return "disabled"
+
+    if not credentials:
+        raise HTTPException(status_code=403, detail="Missing API Key")
+
     token = credentials.credentials
     if token not in TOKEN_SCOPES:
         raise HTTPException(status_code=403, detail="Invalid API Key")
@@ -618,7 +639,7 @@ def health():
     return {
         "status": "cognitive_core_active", 
         "node_id": NODE_ID,
-        "auth_enabled": True,
+        "auth_enabled": AUTH_ENABLED,
         "rooms_loaded": len(chat_rooms),
         "architecture": "two_tower",
         "tower_a": two_tower.tower_a_model_name,
