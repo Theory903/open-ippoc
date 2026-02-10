@@ -114,7 +114,8 @@ def verify_api_key(request: Request, credentials: Optional[HTTPAuthorizationCred
     """
     if not AUTH_ENABLED:
         request.state.scopes = ["*"]
-        return "disabled"
+        # Return a dummy credential token to satisfy downstream type hints/logic that expect a string
+        return "auth_disabled"
 
     if not credentials:
         raise HTTPException(status_code=403, detail="Missing API Key")
