@@ -367,46 +367,58 @@ class GraphManager:
                 if ref_total == 0:
                     return []
 
-                # Optimized query: Get stats for all other entities in one go
-                # Calculate intersection with reference entity's relations
+                # Intersection-first optimization using CTEs
+                # 1. Identify candidates (entities sharing >=1 relation) -> O(Neighbors)
+                # 2. Count totals for candidates only
+                # 3. Calculate Jaccard in SQL
+                # Note: This query avoids full table scans of unrelated entities.
                 stmt = text("""
+                    WITH ref_rels AS (
+                        SELECT target_id, relation
+                        FROM kg_relations
+                        WHERE source_id = :ref_id
+                    ),
+                    candidates AS (
+                        SELECT
+                            r.source_id,
+                            COUNT(r.id) as intersection_cnt
+                        FROM kg_relations r
+                        JOIN ref_rels rr ON r.target_id = rr.target_id AND r.relation = rr.relation
+                        WHERE r.source_id != :ref_id
+                        GROUP BY r.source_id
+                    ),
+                    candidate_totals AS (
+                        SELECT
+                            r.source_id,
+                            COUNT(r.id) as total_cnt
+                        FROM kg_relations r
+                        JOIN candidates c ON r.source_id = c.source_id
+                        GROUP BY r.source_id
+                    )
                     SELECT
-                        e.id,
                         e.name,
-                        COUNT(r.id) as total_cnt,
-                        COUNT(rr.id) as intersection_cnt
-                    FROM kg_relations r
-                    JOIN kg_entities e ON e.id = r.source_id
-                    LEFT JOIN kg_relations rr ON
-                        rr.source_id = :ref_id AND
-                        rr.target_id = r.target_id AND
-                        rr.relation = r.relation
-                    WHERE r.source_id != :ref_id
-                    GROUP BY e.name, e.id
+                        c.intersection_cnt,
+                        t.total_cnt,
+                        (CAST(c.intersection_cnt AS FLOAT) / (t.total_cnt + :ref_total - c.intersection_cnt)) as similarity
+                    FROM candidates c
+                    JOIN candidate_totals t ON c.source_id = t.source_id
+                    JOIN kg_entities e ON c.source_id = e.id
+                    WHERE (CAST(c.intersection_cnt AS FLOAT) / (t.total_cnt + :ref_total - c.intersection_cnt)) >= :threshold
+                    ORDER BY similarity DESC
                 """)
 
-                res = await session.execute(stmt, {"ref_id": ref_id})
+                res = await session.execute(stmt, {
+                    "ref_id": ref_id,
+                    "ref_total": ref_total,
+                    "threshold": similarity_threshold
+                })
 
                 for row in res.fetchall():
-                    # Unpack row
-                    # entity_id = row[0] # Unused but available if needed
-                    entity_name_cmp = row[1]
-                    cmp_total = row[2]
-                    intersection = row[3]
-                    
-                    # Union = |A| + |B| - |A ∩ B|
-                    union = cmp_total + ref_total - intersection
-                    similarity = intersection / union if union > 0 else 0
-                    
-                    if similarity >= similarity_threshold:
-                        similar_entities.append({
-                            "entity": entity_name_cmp,
-                            "similarity": similarity,
-                            "shared_relations": intersection
-                        })
-                
-                # Sort by similarity
-                similar_entities.sort(key=lambda x: x["similarity"], reverse=True)
+                    similar_entities.append({
+                        "entity": row[0],
+                        "similarity": row[3],
+                        "shared_relations": row[1]
+                    })
                 
             return similar_entities
             
