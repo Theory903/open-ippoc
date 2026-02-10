@@ -30,12 +30,14 @@ logger = logging.getLogger("IPPOC.CLI")
 # Service Ports
 SOMA_PORT = 8081          # Rust-based Soma (Identity + Mesh + Economy)
 SOMA_GRPC_PORT = 9081     # gRPC service
-CORTEX_PORT = 8000        # Cortex (Cognition & Tools)
+CORTEX_PORT = 8001        # Cortex (Cognition & Tools) - note: server.py uses 8001
 BODY_PORT = 8002          # Body (placeholder for execution)
 MEMORY_PORT = 8003        # Memory/Mnemosyne (optional)
 ECONOMY_PORT = 8004       # Economy (placeholder)
 
 # Instance Configuration
+# Use current working directory as project root (assumes CLI is run from project dir)
+PROJECT_ROOT = os.environ.get('IPPOC_PROJECT_ROOT', os.getcwd())
 INSTANCE_ROOT = os.path.expanduser("~/.ippoc/instances/main")
 INSTANCE_DATA = os.path.join(INSTANCE_ROOT, "data")
 INSTANCE_STATE = os.path.join(INSTANCE_ROOT, "state")
@@ -155,7 +157,7 @@ def start_soma() -> Optional[subprocess.Popen]:
     
     kill_process_on_port(SOMA_PORT)
     
-    soma_src = os.path.join(INSTANCE_ROOT, "..", "..", "src", "ippoc", "soma")
+    soma_src = os.path.join(PROJECT_ROOT, "src", "ippoc", "soma")
     soma_cargo = os.path.join(soma_src, "Cargo.toml")
     
     if os.path.exists(soma_cargo):
@@ -219,10 +221,20 @@ def start_cortex(api_key: str) -> Optional[subprocess.Popen]:
     cortex_env["IPPOC_DATA_DIR"] = INSTANCE_DATA
     cortex_env["DEV_MODE"] = "true"
     cortex_env["IPPOC_LOG_LEVEL"] = "INFO"
+    # Add src directories to PYTHONPATH for cortex imports
+    cortex_pythonpath = os.pathsep.join([
+        os.path.join(PROJECT_ROOT, "src"),
+        os.path.join(PROJECT_ROOT, "src", "cortex"),
+        os.path.join(PROJECT_ROOT, "src", "ippoc"),
+    ])
+    if "PYTHONPATH" in cortex_env:
+        cortex_env["PYTHONPATH"] = cortex_pythonpath + os.pathsep + cortex_env["PYTHONPATH"]
+    else:
+        cortex_env["PYTHONPATH"] = cortex_pythonpath
     
-    cortex_py = os.path.join(INSTANCE_ROOT, "..", "..", "src", "cortex", "server.py")
+    cortex_py = os.path.join(PROJECT_ROOT, "src", "ippoc", "cortex", "cortex", "server.py")
     if not os.path.exists(cortex_py):
-        cortex_py = os.path.join(INSTANCE_ROOT, "..", "..", "src", "ippoc", "cortex", "server.py")
+        cortex_py = os.path.join(PROJECT_ROOT, "src", "ippoc", "cortex", "server.py")
     
     if not os.path.exists(cortex_py):
         logger.error("  Cortex server.py not found")
@@ -262,6 +274,7 @@ def start_body() -> Optional[subprocess.Popen]:
 import http.server
 import socketserver
 import json
+import os
 
 PORT = 8002
 DATA_DIR = os.path.expanduser("~/.ippoc/instances/main/data")
@@ -293,9 +306,8 @@ class BodyHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
 
 if __name__ == "__main__":
-    import os
     os.makedirs(DATA_DIR, exist_ok=True)
-    with socketserver.TCServer(("localhost", PORT), BodyHandler) as httpd:
+    with socketserver.TCPServer(("localhost", PORT), BodyHandler) as httpd:
         print(f"Body service ready on port {PORT}")
         httpd.serve_forever()
 ''')
