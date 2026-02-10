@@ -157,6 +157,35 @@ class ProceduralManager:
         
         return skills
 
+    async def delete_skill(self, name: str) -> int:
+        """
+        Delete a skill by name.
+
+        Args:
+            name: Skill identifier
+
+        Returns:
+            Number of deleted skills (1 or 0)
+        """
+        try:
+            skill = self.skill_registry.get(name)
+            if not skill:
+                return 0
+
+            # Remove from semantic memory
+            object_id = skill.get("id")
+            if object_id:
+                await self.semantic.delete_memories([object_id])
+
+            # Remove from registry
+            del self.skill_registry[name]
+            logger.info(f"Deleted skill '{name}'")
+            return 1
+
+        except Exception as e:
+            logger.error(f"Failed to delete skill '{name}': {e}")
+            return 0
+
     def _format_skill_content(self, name: str, code: str, description: str, language: str) -> str:
         """Format skill content for storage"""
         return f"""
