@@ -6,6 +6,8 @@ import time
 import os
 import secrets
 import asyncio
+import logging
+logger = logging.getLogger(__name__)
 
 # Import the Graph Builder (Phase 1)
 from ippoc.mnemosyne.logic.graph import build_memory_graph
@@ -27,7 +29,8 @@ if not MNEMOSYNE_API_KEY:
     # In development/local, we might want to allow this or warn heavily.
     # For security, let's generate one if missing so it's secure by default (locked out unless you check logs).
     MNEMOSYNE_API_KEY = secrets.token_hex(32)
-    print(f"\n[Memory] ⚠️ SECURITY WARNING: MNEMOSYNE_API_KEY not set. Generated key: {MNEMOSYNE_API_KEY}\n")
+    logger.warning(f"[Memory] MNEMOSYNE_API_KEY not set. Generated new key (truncated): ...{MNEMOSYNE_API_KEY[-6:]}")
+    logger.warning("[Memory] Store this key securely! It will not be shown again.")
 
 def verify_api_key(credentials: HTTPAuthorizationCredentials = Security(security)):
     """
@@ -154,6 +157,9 @@ async def consolidate_memory(event: EventInput, background_tasks: BackgroundTask
 
 @app.get("/health")
 def health():
+    """
+    Health check endpoint - intentionally unauthenticated for load balancer checks.
+    """
     return {"status": "hippocampus_active", "mode": "graph_v1"}
 
 if __name__ == "__main__":
