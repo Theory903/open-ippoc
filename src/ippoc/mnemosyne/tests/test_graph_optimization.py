@@ -88,3 +88,37 @@ async def test_cycle_handling(graph_manager):
     # Search A to B should find it immediately
     paths = await gm.find_relationship_path("A", "B", max_depth=2)
     assert len(paths) >= 1
+
+@pytest.mark.asyncio
+async def test_find_similar_entities(graph_manager):
+    gm = graph_manager
+    # Ref Entity: A
+    # A -> B (r1)
+    # A -> C (r2)
+    await gm.add_triple("A", "r1", "B")
+    await gm.add_triple("A", "r2", "C")
+
+    # Similar Entity: D
+    # D -> B (r1)  <-- Match
+    # D -> E (r3)
+    await gm.add_triple("D", "r1", "B")
+    await gm.add_triple("D", "r3", "E")
+
+    # Dissimilar Entity: F
+    # F -> G (r4)
+    await gm.add_triple("F", "r4", "G")
+
+    # Find similar to A
+    # Intersection(A, D) = 1 (r1->B)
+    # Union(A, D) = 2 (A) + 2 (D) - 1 = 3
+    # Sim = 1/3 = 0.333...
+
+    similar = await gm.find_similar_entities("A", similarity_threshold=0.1)
+
+    # F should not be in results because intersection is 0
+    # D should be in results
+
+    assert len(similar) == 1
+    assert similar[0]["entity"] == "D"
+    assert abs(similar[0]["similarity"] - (1/3)) < 0.01
+    assert similar[0]["shared_relations"] == 1
