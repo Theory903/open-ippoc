@@ -166,6 +166,7 @@ async def lifespan(app: FastAPI):
     
     # Shutdown
     print("[Server] Shutting down...")
+    get_orchestrator().shutdown()
     chat_persistence.save(chat_rooms)
     if worker_task:
         worker_task.cancel()

@@ -5,6 +5,8 @@ import json
 import logging
 import os
 import time
+import queue
+import threading
 from contextvars import ContextVar
 from typing import Dict, Optional, Tuple, Any
 from cortex.core.exceptions import ToolExecutionError, SecurityViolation, BudgetExceeded
@@ -24,6 +26,57 @@ def require_spine() -> None:
     """
     if not _SPINE_ACTIVE.get():
         raise SecurityViolation("Tool execution bypassed ToolOrchestrator")
+
+
+class AsyncAuditLogger:
+    def __init__(self, path: str):
+        self.path = path
+        self.queue = queue.Queue()
+        self.running = True
+        self.thread = threading.Thread(target=self._writer_loop, daemon=True)
+        self.thread.start()
+
+    def log(self, payload: Dict[str, Any]) -> None:
+        self.queue.put(payload)
+
+    def _writer_loop(self) -> None:
+        try:
+            os.makedirs(os.path.dirname(self.path), exist_ok=True)
+        except Exception:
+            pass
+
+        while self.running or not self.queue.empty():
+            try:
+                # Wait for an item, but wake up periodically to check running status
+                try:
+                    payload = self.queue.get(timeout=1.0)
+                except queue.Empty:
+                    continue
+
+                # Open file and process batch
+                with open(self.path, "a", encoding="utf-8") as f:
+                    f.write(json.dumps(payload) + "\n")
+                    self.queue.task_done()
+
+                    # Drain queue up to a limit while file is open
+                    for _ in range(100):
+                        if self.queue.empty():
+                            break
+                        try:
+                            item = self.queue.get_nowait()
+                            f.write(json.dumps(item) + "\n")
+                            self.queue.task_done()
+                        except queue.Empty:
+                            break
+                    f.flush()
+            except Exception as e:
+                # Log to stderr or just retry
+                time.sleep(1.0)
+
+    def shutdown(self) -> None:
+        self.running = False
+        if self.thread.is_alive():
+            self.thread.join(timeout=2.0)
 
 
 class CircuitBreaker:
@@ -79,8 +132,19 @@ class ToolOrchestrator:
         self.idempotency_cache: Dict[str, Tuple[float, ToolResult]] = {}
         self.policy_engine = PolicyEngine(os.getenv("ORCHESTRATOR_POLICY_PATH"))
         self._load_budget_overrides()
+
+        audit_path = os.getenv("ORCHESTRATOR_AUDIT_PATH", "data/action_log.jsonl")
+        self.audit_logger = AsyncAuditLogger(audit_path)
+
         self.initialized = True
         logger.info("ToolOrchestrator initialized.")
+
+    def shutdown(self) -> None:
+        """
+        Gracefully shut down the orchestrator (stop audit logger).
+        """
+        if hasattr(self, "audit_logger"):
+            self.audit_logger.shutdown()
 
     def register(self, tool: IPPOC_Tool) -> None:
         """
@@ -299,9 +363,7 @@ class ToolOrchestrator:
         self.idempotency_cache[key] = (time.time(), result)
 
     def _audit_action(self, envelope: ToolInvocationEnvelope, result: Optional[ToolResult], cost: float, error: Optional[str]) -> None:
-        path = os.getenv("ORCHESTRATOR_AUDIT_PATH", "data/action_log.jsonl")
         try:
-            os.makedirs(os.path.dirname(path), exist_ok=True)
             payload = {
                 "ts": time.time(),
                 "tool": envelope.tool_name,
@@ -317,8 +379,7 @@ class ToolOrchestrator:
                 "error": error,
                 "reason": envelope.context.get("reason") if envelope.context else None,
             }
-            with open(path, "a", encoding="utf-8") as f:
-                f.write(json.dumps(payload) + "\n")
+            self.audit_logger.log(payload)
         except Exception:
             # Never block on audit failure
             pass
