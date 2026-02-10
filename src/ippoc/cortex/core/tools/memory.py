@@ -14,8 +14,9 @@ HIDB_URL = os.getenv("HIDB_URL", os.getenv("BODY_URL", "http://127.0.0.1:8002"))
 MEMORY_BACKEND = os.getenv("MEMORY_BACKEND", "api")  # api|hidb|auto
 MEMORY_TIMEOUT_S = int(os.getenv("MEMORY_TIMEOUT_S", "30")) # 30 seconds
 MEMORY_MAX_RETRIES = int(os.getenv("MEMORY_MAX_RETRIES", "1"))
-IDENTITY_PATH = os.getenv("IDENTITY_MEMORY_PATH", "data/identity_memory.json")
-SKILL_PATH = os.getenv("SKILL_MEMORY_PATH", "data/skill_memory.json")
+IDENTITY_PATH = os.getenv("IDENTITY_MEMORY_PATH", "~/.ippoc/instances/main/data/identity_memory.json")
+SKILL_PATH = os.getenv("SKILL_MEMORY_PATH", "~/.ippoc/instances/main/data/skill_memory.json")
+EPISODIC_PATH = os.getenv("EPISODIC_MEMORY_PATH", "~/.ippoc/instances/main/data/episodic_memory.json")
 
 class MemoryAdapter(IPPOC_Tool):
     """
@@ -67,12 +68,21 @@ class MemoryAdapter(IPPOC_Tool):
             backend = "api"
 
         if backend == "api":
-            return self._post_with_retries(
-                f"{MEMORY_URL}/v1/memory/consolidate",
-                payload,
-                envelope,
-                success_message="consolidated"
-            )
+            # Try external service first, fallback to local
+            try:
+                result = self._post_with_retries(
+                    f"{MEMORY_URL}/v1/memory/consolidate",
+                    payload,
+                    envelope,
+                    success_message="consolidated"
+                )
+                if result.success:
+                    return result
+            except Exception as e:
+                logger.warning(f"External memory service unavailable, using local fallback: {e}")
+            
+            # Local fallback - store in JSON
+            return self._store_memory_local(payload)
 
         if backend == "hidb":
             vector = envelope.context.get("vector")
@@ -88,6 +98,38 @@ class MemoryAdapter(IPPOC_Tool):
 
         return ToolResult(success=False, output=f"Unknown memory backend: {MEMORY_BACKEND}")
 
+    def _store_memory_local(self, payload: dict) -> ToolResult:
+        """Local JSON-based storage fallback"""
+        import uuid
+        from datetime import datetime
+        
+        memory = {
+            "id": str(uuid.uuid4()),
+            "content": payload.get("content"),
+            "source": payload.get("source", "unknown"),
+            "confidence": payload.get("confidence", 1.0),
+            "metadata": payload.get("metadata", {}),
+            "created_at": datetime.utcnow().isoformat()
+        }
+        
+        # Load existing memories
+        memories = self._load_json(EPISODIC_PATH, {"memories": []})
+        memories["memories"].append(memory)
+        
+        # Keep only last 1000 memories
+        if len(memories["memories"]) > 1000:
+            memories["memories"] = memories["memories"][-1000:]
+        
+        self._save_json(EPISODIC_PATH, memories)
+        logger.info(f"Stored memory locally: {memory['id']}")
+        
+        return ToolResult(
+            success=True,
+            output={"status": "stored", "id": memory['id']},
+            memory_written=True,
+            cost_spent=0.0
+        )
+
     def _retrieve_memory(self, envelope: ToolInvocationEnvelope) -> ToolResult:
         query = envelope.context.get("query")
         if not query:
@@ -101,12 +143,21 @@ class MemoryAdapter(IPPOC_Tool):
             backend = "api"
 
         if backend == "api":
-            return self._post_with_retries(
-                f"{MEMORY_URL}/v1/memory/search",
-                payload,
-                envelope,
-                success_message="search"
-            )
+            # Try external service first, fallback to local
+            try:
+                result = self._post_with_retries(
+                    f"{MEMORY_URL}/v1/memory/search",
+                    payload,
+                    envelope,
+                    success_message="search"
+                )
+                if result.success:
+                    return result
+            except Exception as e:
+                logger.warning(f"External memory service unavailable, using local fallback: {e}")
+            
+            # Local fallback - search in JSON
+            return self._retrieve_memory_local(query, limit)
 
         if backend == "hidb":
             vector = envelope.context.get("vector")
@@ -121,6 +172,50 @@ class MemoryAdapter(IPPOC_Tool):
             )
 
         return ToolResult(success=False, output=f"Unknown memory backend: {MEMORY_BACKEND}")
+
+    def _retrieve_memory_local(self, query: str, limit: int) -> ToolResult:
+        """Local JSON-based retrieval fallback (simple substring matching)"""
+        import re
+        from datetime import datetime
+        
+        memories = self._load_json(EPISODIC_PATH, {"memories": []})
+        
+        # Simple keyword/regex matching
+        query_lower = query.lower()
+        query_words = re.findall(r'\w+', query_lower)
+        
+        scored = []
+        for mem in memories.get("memories", []):
+            content_lower = mem.get("content", "").lower()
+            
+            # Score based on word overlap
+            mem_words = set(re.findall(r'\w+', content_lower))
+            overlap = len(query_words & mem_words)
+            
+            if overlap > 0:
+                scored.append((overlap, mem))
+        
+        # Sort by score descending
+        scored.sort(reverse=True, key=lambda x: x[0])
+        
+        results = [
+            {
+                "content": mem["content"],
+                "metadata": mem.get("metadata", {}),
+                "score": score,
+                "source": mem.get("source", "unknown"),
+                "created_at": mem.get("created_at", "")
+            }
+            for score, mem in scored[:limit]
+        ]
+        
+        logger.info(f"Local memory search for '{query}': found {len(results)} results")
+        
+        return ToolResult(
+            success=True,
+            output=results,
+            cost_spent=0.0
+        )
 
     def _post_with_retries(self, url: str, payload: dict, envelope: ToolInvocationEnvelope, success_message: str) -> ToolResult:
         timeout_s = (envelope.deadline_ms / 1000) if envelope.deadline_ms else (envelope.context.get("timeout_ms", 30000) / 1000)
@@ -157,6 +252,8 @@ class MemoryAdapter(IPPOC_Tool):
         return ToolResult(success=False, output=f"{success_message} failed after retries")
 
     def _load_json(self, path: str, default: dict) -> dict:
+        # Expand user home directory
+        path = os.path.expanduser(path)
         if os.path.exists(path):
             try:
                 with open(path, "r", encoding="utf-8") as f:
@@ -166,6 +263,8 @@ class MemoryAdapter(IPPOC_Tool):
         return default
 
     def _save_json(self, path: str, data: dict) -> None:
+        # Expand user home directory
+        path = os.path.expanduser(path)
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)

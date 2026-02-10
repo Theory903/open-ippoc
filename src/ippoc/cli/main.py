@@ -7,20 +7,27 @@ import requests
 from pathlib import Path
 from typing import Optional, Dict, Any
 
-# --- Configuration ---
-# --- Configuration ---
-from ippoc.runtime.bootstrap.auth import get_api_key
-
-CORTEX_URL = os.getenv("CORTEX_URL", "http://localhost:8001")
-SOMA_URL = os.getenv("SOMA_URL", "http://localhost:8002")
-API_KEY = get_api_key()
+CORTEX_URL = os.getenv("CORTEX_URL", "http://localhost:8000")
+SOMA_URL = os.getenv("SOMA_URL", "http://localhost:8081")
 
 class IppocClient:
     def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or API_KEY
-        self.session = requests.Session()
-        if self.api_key:
-            self.session.headers.update({"Authorization": f"Bearer {self.api_key}"})
+        # Lazy initialization - don't connect to anything on import
+        self.api_key = api_key
+        self.session = None
+
+    def _init_session(self):
+        if self.session is None:
+            self.session = requests.Session()
+            if self.api_key is None:
+                try:
+                    from ippoc.runtime.bootstrap.auth import get_api_key
+                    self.api_key = get_api_key()
+                except Exception as e:
+                    print(f"⚠️ Failed to get API key: {e}")
+                    # Continue without API key for read-only operations
+            if self.api_key:
+                self.session.headers.update({"Authorization": f"Bearer {self.api_key}"})
 
     def _handle_response(self, response: requests.Response):
         if response.status_code >= 400:
@@ -28,7 +35,33 @@ class IppocClient:
             return None
         return response.json()
 
+    def _is_service_running(self, url: str, timeout: float = 2.0) -> bool:
+        """Check if a service is running and responding to HTTP requests"""
+        try:
+            resp = requests.get(url, timeout=timeout)
+            return resp.status_code == 200
+        except Exception:
+            return False
+
+    def ensure_services_ready(self, timeout: int = 30) -> bool:
+        """Ensure both Soma and Cortex services are running and ready"""
+        # Check both services are running
+        soma_ready = self._is_service_running(f"{SOMA_URL}/v1/system/diagnostics")
+        cortex_ready = self._is_service_running(f"{CORTEX_URL}/healthz")
+        
+        if not soma_ready or not cortex_ready:
+            print("❌ IPPOC core services not running. Start with: ippoc run")
+            return False
+        
+        return True
+
     def ingest_signal(self, signal_type: str, content: str, source: str = "cli"):
+        if not self.ensure_services_ready():
+            return None
+        
+        if self.session is None:
+            self._init_session()
+        
         payload = {
             "type": signal_type.upper(),
             "content": content,
@@ -36,26 +69,79 @@ class IppocClient:
             "timestamp": time.time(),
             "confidence": 1.0
         }
-        resp = self.session.post(f"{CORTEX_URL}/v1/signals/ingest", json=payload)
-        return self._handle_response(resp)
+        
+        try:
+            resp = self.session.post(f"{CORTEX_URL}/v1/signals/ingest", json=payload, timeout=10)
+            return self._handle_response(resp)
+        except requests.exceptions.ConnectionError:
+            print("❌ Connection failed. Services may be down.")
+            return None
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            return None
 
     def get_status(self):
+        if self.session is None:
+            self._init_session()
+        
         try:
-            resp = self.session.get(f"{CORTEX_URL}/health", timeout=1)
+            resp = self.session.get(f"{CORTEX_URL}/health", timeout=2)
             return self._handle_response(resp)
         except requests.exceptions.ConnectionError:
             print("❌ IPPOC core not running. Try: ippoc run")
             return None
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            return None
 
     def list_intents(self):
-        resp = self.session.get(f"{CORTEX_URL}/v1/intents/list")
-        return self._handle_response(resp)
+        if not self.ensure_services_ready():
+            return {"intents": []}
+        
+        if self.session is None:
+            self._init_session()
+        
+        try:
+            resp = self.session.get(f"{CORTEX_URL}/v1/intents/list", timeout=10)
+            result = self._handle_response(resp) or {"intents": []}
+            
+            # Ensure intents is always an iterable and contains valid entries
+            if "intents" not in result or not isinstance(result["intents"], list):
+                result["intents"] = []
+            
+            # Clean up any invalid intent entries
+            cleaned_intents = []
+            for intent in result["intents"]:
+                if isinstance(intent, dict):
+                    # Ensure required fields exist and are valid
+                    if all(key in intent for key in ["priority", "description", "intent_type"]):
+                        # Handle possible None values
+                        intent["priority"] = intent["priority"] or 0.0
+                        intent["description"] = intent["description"] or "Unknown"
+                        intent["intent_type"] = intent["intent_type"] or "Unknown"
+                        cleaned_intents.append(intent)
+            
+            result["intents"] = cleaned_intents
+            return result
+            
+        except requests.exceptions.ConnectionError:
+            print("❌ Connection failed. Services may be down.")
+            return {"intents": []}
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            return {"intents": []}
 
     def stream_thoughts(self):
+        if not self.ensure_services_ready():
+            return
+        
+        if self.session is None:
+            self._init_session()
+        
         # SSE stream handled via raw requests to keep it simple
         from requests.exceptions import ChunkedEncodingError
         try:
-            with self.session.get(f"{CORTEX_URL}/v1/cognitive/stream", stream=True) as resp:
+            with self.session.get(f"{CORTEX_URL}/v1/cognitive/stream", stream=True, timeout=30) as resp:
                 if resp.status_code != 200:
                     print(f"❌ Failed to connect: {resp.status_code}")
                     return
@@ -74,21 +160,65 @@ class IppocClient:
                                 pass
         except KeyboardInterrupt:
             print("\n👋 Stream stopped.")
+        except requests.exceptions.ConnectionError:
+            print("❌ Connection failed. Services may be down.")
+        except Exception as e:
+            print(f"❌ Error: {e}")
 
     def explain(self, execution_id: str):
+        if not self.ensure_services_ready():
+            return None
+        
+        if self.session is None:
+            self._init_session()
+        
         url = f"{CORTEX_URL}/v1/orchestrator/explain/{execution_id}"
         if execution_id == "latest":
             url = f"{CORTEX_URL}/v1/orchestrator/explain/latest"
-        resp = self.session.get(url)
-        return self._handle_response(resp)
+        
+        try:
+            resp = self.session.get(url, timeout=10)
+            return self._handle_response(resp)
+        except requests.exceptions.ConnectionError:
+            print("❌ Connection failed. Services may be down.")
+            return None
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            return None
 
     def get_violations(self, limit: int = 10):
-        resp = self.session.get(f"{CORTEX_URL}/v1/system/violations", params={"limit": limit})
-        return self._handle_response(resp)
+        if not self.ensure_services_ready():
+            return {"security_violations": [], "canon_violations": []}
+        
+        if self.session is None:
+            self._init_session()
+        
+        try:
+            resp = self.session.get(f"{CORTEX_URL}/v1/system/violations", params={"limit": limit}, timeout=10)
+            return self._handle_response(resp) or {"security_violations": [], "canon_violations": []}
+        except requests.exceptions.ConnectionError:
+            print("❌ Connection failed. Services may be down.")
+            return {"security_violations": [], "canon_violations": []}
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            return {"security_violations": [], "canon_violations": []}
 
     def control_autonomy(self, action: str):
-        resp = self.session.post(f"{CORTEX_URL}/v1/system/autonomy/control", params={"action": action})
-        return self._handle_response(resp)
+        if not self.ensure_services_ready():
+            return None
+        
+        if self.session is None:
+            self._init_session()
+        
+        try:
+            resp = self.session.post(f"{CORTEX_URL}/v1/system/autonomy/control", params={"action": action}, timeout=10)
+            return self._handle_response(resp)
+        except requests.exceptions.ConnectionError:
+            print("❌ Connection failed. Services may be down.")
+            return None
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            return None
 
 def main():
     parser = argparse.ArgumentParser(description="IPPOC Universal Platform CLI")
@@ -150,12 +280,11 @@ def main():
 
     elif args.command == "intents":
         result = client.list_intents()
-        if result:
-            intents = result.get("intents", [])
-            if not intents:
-                print("∅ No active intents.")
-            for i in intents:
-                print(f"- [{i.get('priority'):.2f}] {i.get('description')} ({i.get('intent_type')})")
+        intents = result.get("intents", [])
+        if not intents:
+            print("∅ No active intents.")
+        for i in intents:
+            print(f"- [{i.get('priority'):.2f}] {i.get('description')} ({i.get('intent_type')})")
 
     elif args.command == "thoughts":
         client.stream_thoughts()
@@ -202,16 +331,62 @@ def setup_env(instance_name: str):
     print(f"✅ Instance '{instance_name}' verified.")
     return instance_root
 
+def is_port_in_use(port):
+    """Check if a port is already in use."""
+    import socket
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(('localhost', port)) == 0
+
 def run_services(args):
-    # This import is here to avoid heavy dependencies for simple CLI commands
-    # Ensure default key is set for subprocesses if not present
-    if "IPPOC_API_KEY" not in os.environ:
-        os.environ["IPPOC_API_KEY"] = get_api_key()
+    # Check if services are already running
+    if is_port_in_use(8081) and is_port_in_use(8000):
+        print("✅ Services are already running")
+        return
+    
+    # Check individual ports
+    if is_port_in_use(8081):
+        print("❌ Soma is already running on port 8081")
+        return
+    
+    if is_port_in_use(8000):
+        print("❌ Cortex is already running on port 8000")
+        return
         
     from ippoc.runtime.supervisor.watchdog import ServiceManager
     instance_root = setup_env(args.instance)
     manager = ServiceManager(instance_root)
     manager.start_soma(db_type=args.db)
+    
+    # Wait for Soma to start before attempting to get API key
+    import time
+    start_time = time.time()
+    soma_healthy = False
+    while time.time() - start_time < 30:
+        try:
+            import requests
+            resp = requests.get(f"{SOMA_URL}/v1/system/diagnostics", timeout=2)
+            if resp.status_code == 200:
+                soma_healthy = True
+                break
+        except Exception:
+            pass
+        time.sleep(2)
+    
+    if soma_healthy:
+        # Now that Soma is running, ensure API key is available
+        if "IPPOC_API_KEY" not in os.environ:
+            from ippoc.runtime.bootstrap.auth import get_api_key
+            try:
+                os.environ["IPPOC_API_KEY"] = get_api_key()
+            except Exception as e:
+                print(f"❌ Failed to get API key: {e}")
+                manager.shutdown()
+                return
+    else:
+        print("❌ Soma failed to start properly")
+        manager.shutdown()
+        return
+    
     manager.start_cortex(redis_url=args.redis)
     manager.monitor(db_type=args.db, redis_url=args.redis)
 
