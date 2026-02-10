@@ -289,13 +289,46 @@ class MemorySystem:
         
         Args:
             criteria: Deletion criteria (implementation-dependent)
+                Expected format:
+                {
+                    "episodic": {"ids": [...], "before": datetime, ...},
+                    "semantic": {"ids": [...]},
+                    "procedural": {"skills": ["skill_name", ...]},
+                    "graph": {"entities": ["entity_name", ...]}
+                }
             
         Returns:
-            Number of memories removed
+            Number of memories removed (approximate count from all subsystems)
         """
-        # TODO: Implement forgetting across subsystems
-        # This would require adding deletion methods to each manager
-        raise NotImplementedError("Forget functionality pending implementation")
+        await self.initialize()
+        count = 0
+
+        # Episodic
+        if "episodic" in criteria:
+            count += await self.episodic.delete(**criteria["episodic"])
+
+        # Semantic
+        if "semantic" in criteria and self.semantic:
+            semantic_ids = criteria["semantic"].get("ids", [])
+            if semantic_ids:
+                if await self.semantic.delete_memories(semantic_ids):
+                    count += len(semantic_ids)
+
+        # Procedural
+        if "procedural" in criteria and self.procedural:
+            skills = criteria["procedural"].get("skills", [])
+            for skill_name in skills:
+                if await self.procedural.delete_skill(skill_name):
+                    count += 1
+
+        # Graph
+        if "graph" in criteria:
+            entities = criteria["graph"].get("entities", [])
+            for entity in entities:
+                if await self.graph.delete_entity(entity):
+                    count += 1
+
+        return count
     
     def health_check(self) -> Dict[str, Any]:
         """Check memory system health"""

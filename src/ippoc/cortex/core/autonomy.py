@@ -8,17 +8,18 @@ import asyncio
 from dataclasses import asdict
 from typing import Any, Dict, Optional
 
-from ippoc.cortex.core.ledger import get_ledger
-from ippoc.cortex.core.orchestrator import get_orchestrator
-from ippoc.cortex.core.tools.base import ToolInvocationEnvelope
-from ippoc.cortex.core.economy import get_economy
-from ippoc.cortex.maintainer.observer import collect_signals
-from ippoc.cortex.core.intents import Intent, IntentStack, IntentType
-from ippoc.cortex.evolution.evolver import get_evolver
-from ippoc.cortex.memory.consolidation import get_hippocampus
-from ippoc.cortex.social.trust import get_trust_model
-from ippoc.cortex.explain import log_decision
-from ippoc.cortex.core.canon import violates_canon
+from cortex.core.ledger import get_ledger
+from cortex.core.orchestrator import get_orchestrator
+from cortex.core.redis_queue import get_planner_queue
+from cortex.core.tools.base import ToolInvocationEnvelope
+from cortex.core.economy import get_economy
+from cortex.maintainer.observer import collect_signals
+from cortex.core.intents import Intent, IntentStack, IntentType
+from cortex.evolution.evolver import get_evolver
+from cortex.memory.consolidation import get_hippocampus
+from cortex.social.trust import get_trust_model
+from cortex.explain import log_decision
+from cortex.core.canon import violates_canon
 
 
 STATE_PATH = os.getenv("AUTONOMY_STATE_PATH", "data/autonomy_state.json")
@@ -143,7 +144,7 @@ class Decider:
         pain_score = observation.get("pain_score", 0.0)
         
         # 1. Simulation: Predict Consequences
-        from ippoc.cortex.core.canon import evaluate_alignment
+        from cortex.core.canon import evaluate_alignment
         
         alignment = evaluate_alignment(intent)
         expected_roi = intent.context.get("expected_roi", 1.5)
@@ -165,7 +166,7 @@ class Decider:
         social_signal = 0.0
         # If intent has advice attached (e.g. from CONSULT result)
         if intent.context and "advice" in intent.context:
-            from ippoc.cortex.social.reputation import get_reputation_engine
+            from cortex.social.reputation import get_reputation_engine
             advice = intent.context["advice"] # {node_id, action, confidence}
             node_id = advice.get("node_id")
             conf = float(advice.get("confidence", 0.0))
@@ -255,7 +256,43 @@ class AutonomyController:
         self.planner = Planner()
         self.decider = Decider()
         self.reflector = Reflector()
+        self.skill_stats: Dict[str, Dict[str, int]] = {}
         self._load_state()
+
+    async def _process_external_requests(self) -> None:
+        """Checks the planner queue for user/api requests."""
+        if not self.planner_queue:
+            return
+
+        try:
+            # Fetch batch of requests
+            items = await self.planner_queue.fetch(count=10)
+            for msg_id, payload in items:
+                try:
+                    envelope_json = payload.get("envelope")
+                    if envelope_json:
+                        data = json.loads(envelope_json)
+                        # Convert string to Enum if needed
+                        if "intent_type" in data:
+                            try:
+                                data["intent_type"] = IntentType(data["intent_type"])
+                            except ValueError:
+                                print(f"[Autonomy] Invalid intent_type: {data['intent_type']}")
+                                await self.planner_queue.ack(msg_id)
+                                continue
+
+                        # data is the Intent dict
+                        intent = Intent(**data)
+                        print(f"[Autonomy] Ingested external intent: {intent.description}")
+                        self.intent_stack.add(intent)
+
+                    await self.planner_queue.ack(msg_id)
+                except Exception as e:
+                    print(f"[Autonomy] Failed to process external request {msg_id}: {e}")
+                    # Still ack to prevent infinite loop of bad message
+                    await self.planner_queue.ack(msg_id)
+        except Exception as e:
+            print(f"[Autonomy] Error checking planner queue: {e}")
 
     def _load_state(self) -> None:
         if os.path.exists(STATE_PATH):
@@ -266,15 +303,30 @@ class AutonomyController:
                 for intent_data in data.get("intents", []):
                     # Convert string enum back to Enum if needed, or rely on compatibility
                     self.intent_stack.add(Intent(**intent_data))
+                self.skill_stats = data.get("skill_stats", {})
             except Exception:
                 pass
 
     def _save_state(self) -> None:
         os.makedirs(os.path.dirname(STATE_PATH), exist_ok=True)
         # Convert dataclasses to dicts
-        data = {"intents": [asdict(i) for i in self.intent_stack.intents]}
+        data = {
+            "intents": [asdict(i) for i in self.intent_stack.intents],
+            "skill_stats": self.skill_stats
+        }
         with open(STATE_PATH, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
+
+    def _is_statistically_significant(self, skill_key: str) -> bool:
+        stats = self.skill_stats.get(skill_key, {"attempts": 0, "successes": 0})
+        attempts = stats.get("attempts", 0)
+        successes = stats.get("successes", 0)
+
+        if attempts < 5:
+            return False
+
+        success_rate = successes / attempts
+        return success_rate > 0.6
 
     def _record_explain(self, explanation: Dict[str, Any]) -> None:
         os.makedirs(os.path.dirname(EXPLAIN_PATH), exist_ok=True)
@@ -349,21 +401,35 @@ class AutonomyController:
 
     async def learn(self, intent: Intent, evaluation: Dict[str, Any]) -> None:
         # Record skill memory using orchestrator
-        # TODO: Only learn if statistically significant
-        pass 
-#         envelope = ToolInvocationEnvelope(
-#             tool_name="memory",
-#             domain="memory",
-#             action="store_skill",
-#             context={"skill": str(intent.intent_type), "success": evaluation.get("success", False)},
-#             risk_level="low",
-#             estimated_cost=0.0,
-#             caller="autonomy",
-#             source="autonomy",
-#         )
-#         await self.orchestrator.invoke_async(envelope)
+        skill_key = str(intent.intent_type)
+
+        if skill_key not in self.skill_stats:
+            self.skill_stats[skill_key] = {"attempts": 0, "successes": 0}
+
+        self.skill_stats[skill_key]["attempts"] += 1
+        if evaluation.get("success", False):
+            self.skill_stats[skill_key]["successes"] += 1
+
+        # Only learn if statistically significant
+        if self._is_statistically_significant(skill_key) and evaluation.get("success", False):
+            envelope = ToolInvocationEnvelope(
+                tool_name="memory",
+                domain="memory",
+                action="store_skill",
+                context={
+                    "skill": skill_key,
+                    "success": True,
+                    "stats": self.skill_stats[skill_key]
+                },
+                risk_level="low",
+                estimated_cost=0.0,
+                caller="autonomy",
+                source="autonomy",
+            )
+            await self.orchestrator.invoke_async(envelope)
 
     async def run_cycle(self) -> Dict[str, Any]:
+        await self._process_external_requests()
         observation = await self.observe()
         
         self.intent_stack.decay()

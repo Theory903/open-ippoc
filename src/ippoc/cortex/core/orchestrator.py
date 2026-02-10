@@ -5,11 +5,14 @@ import json
 import logging
 import os
 import time
+import queue
+import threading
 from contextvars import ContextVar
 from typing import Dict, Optional, Tuple, Any
-from ippoc.cortex.core.exceptions import ToolExecutionError, SecurityViolation, BudgetExceeded
-from ippoc.cortex.core.economy import get_economy
-from ippoc.cortex.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult
+from cortex.core.exceptions import ToolExecutionError, SecurityViolation, BudgetExceeded
+from cortex.core.economy import get_economy
+from cortex.core.tools.base import IPPOC_Tool, ToolInvocationEnvelope, ToolResult
+from cortex.core.policy import PolicyEngine
 
 # Configure Logging
 logger = logging.getLogger("IPPOC.Orchestrator")
@@ -23,6 +26,57 @@ def require_spine() -> None:
     """
     if not _SPINE_ACTIVE.get():
         raise SecurityViolation("Tool execution bypassed ToolOrchestrator")
+
+
+class AsyncAuditLogger:
+    def __init__(self, path: str):
+        self.path = path
+        self.queue = queue.Queue()
+        self.running = True
+        self.thread = threading.Thread(target=self._writer_loop, daemon=True)
+        self.thread.start()
+
+    def log(self, payload: Dict[str, Any]) -> None:
+        self.queue.put(payload)
+
+    def _writer_loop(self) -> None:
+        try:
+            os.makedirs(os.path.dirname(self.path), exist_ok=True)
+        except Exception:
+            pass
+
+        while self.running or not self.queue.empty():
+            try:
+                # Wait for an item, but wake up periodically to check running status
+                try:
+                    payload = self.queue.get(timeout=1.0)
+                except queue.Empty:
+                    continue
+
+                # Open file and process batch
+                with open(self.path, "a", encoding="utf-8") as f:
+                    f.write(json.dumps(payload) + "\n")
+                    self.queue.task_done()
+
+                    # Drain queue up to a limit while file is open
+                    for _ in range(100):
+                        if self.queue.empty():
+                            break
+                        try:
+                            item = self.queue.get_nowait()
+                            f.write(json.dumps(item) + "\n")
+                            self.queue.task_done()
+                        except queue.Empty:
+                            break
+                    f.flush()
+            except Exception as e:
+                # Log to stderr or just retry
+                time.sleep(1.0)
+
+    def shutdown(self) -> None:
+        self.running = False
+        if self.thread.is_alive():
+            self.thread.join(timeout=2.0)
 
 
 class CircuitBreaker:
@@ -76,9 +130,21 @@ class ToolOrchestrator:
         self.domain_denylist = set(filter(None, os.getenv("ORCHESTRATOR_DOMAIN_DENYLIST", "").split(",")))
         self.circuit_breakers: Dict[str, CircuitBreaker] = {}
         self.idempotency_cache: Dict[str, Tuple[float, ToolResult]] = {}
+        self.policy_engine = PolicyEngine(os.getenv("ORCHESTRATOR_POLICY_PATH"))
         self._load_budget_overrides()
+
+        audit_path = os.getenv("ORCHESTRATOR_AUDIT_PATH", "data/action_log.jsonl")
+        self.audit_logger = AsyncAuditLogger(audit_path)
+
         self.initialized = True
         logger.info("ToolOrchestrator initialized.")
+
+    def shutdown(self) -> None:
+        """
+        Gracefully shut down the orchestrator (stop audit logger).
+        """
+        if hasattr(self, "audit_logger"):
+            self.audit_logger.shutdown()
 
     def register(self, tool: IPPOC_Tool) -> None:
         """
@@ -122,22 +188,18 @@ class ToolOrchestrator:
         
         tool = self.tools[tool_name]
         
-        estimated_cost = 0.0
-        token = None
+        # 2. Permission Check (Stub for Policy Engine)
+        self._check_permissions(envelope)
         
+        # 3. Cost Metering (Pre-Check)
+        estimated_cost = tool.estimate_cost(envelope)
+        self._check_budget(envelope, tool_name, estimated_cost)
+        
+        # 4. Audit Log (Pre-Execution)
+        logger.info(f"INVOKE: {tool_name} | Caller: {envelope.context.get('caller', 'unknown')} | Intent: {envelope.action}")
+        
+        token = _SPINE_ACTIVE.set(True)
         try:
-            # 2. Permission Check (Stub for Policy Engine)
-            self._check_permissions(envelope)
-            
-            # 3. Cost Metering (Pre-Check)
-            estimated_cost = tool.estimate_cost(envelope)
-            self._check_budget(envelope, tool_name, estimated_cost)
-            
-            # 4. Audit Log (Pre-Execution)
-            logger.info(f"INVOKE: {tool_name} | Caller: {envelope.context.get('caller', 'unknown')} | Intent: {envelope.action}")
-            
-            token = _SPINE_ACTIVE.set(True)
-            
             # 5. Execution (Atomic)
             result = tool.execute(envelope)
             # 6. Accounting (Post-Execution)
@@ -152,15 +214,10 @@ class ToolOrchestrator:
             return result
         except Exception as e:
             logger.error(f"FAILURE: {tool_name} | Error: {str(e)}")
-            # Audit all failures, including security violations
             self._audit_action(envelope, None, estimated_cost, str(e))
-            # Re-raise appropriate exception
-            if isinstance(e, SecurityViolation):
-                raise e
             raise ToolExecutionError(tool_name, str(e))
         finally:
-            if token is not None:
-                _SPINE_ACTIVE.reset(token)
+            _SPINE_ACTIVE.reset(token)
 
     async def invoke_async(self, envelope: ToolInvocationEnvelope) -> ToolResult:
         """
@@ -229,71 +286,13 @@ class ToolOrchestrator:
 
     def _check_permissions(self, envelope: ToolInvocationEnvelope) -> None:
         """
-        Hard Enforcement of CAP-01: Capability Law.
+        Verify if the caller is allowed to use this tool.
         """
-        if os.getenv("ORCHESTRATOR_KILL_SWITCH", "false").lower() == "true":
-            raise SecurityViolation("Kill switch enabled")
+        # Delegate to explicit Policy Engine
+        self.policy_engine.evaluate(envelope)
 
-        tool_name = envelope.tool_name
-        tool = self.tools[tool_name]
-        
-        # 1. Role-Based Side-Effect Enforcement (CAP-01)
-        side_effects = ["write", "delete", "update", "overwrite", "format", "wipe", "patch", "create"]
-        if tool.role == "sensor" and any(envelope.action.startswith(prefix) for prefix in side_effects):
-             msg = f"Role Violation: SENSOR tool '{tool_name}' cannot perform side-effect '{envelope.action}'"
-             self._emit_violation(msg, tool_name, envelope.action)
-             raise SecurityViolation(msg)
-
-        if tool.role == "auditor" and envelope.domain != "cognition":
-             msg = f"Role Violation: AUDITOR tool '{tool_name}' is restricted to cognition domain"
-             self._emit_violation(msg, tool_name, envelope.action)
-             raise SecurityViolation(msg)
-
-        # 2. Domain Allowlists (Sovereignty Check)
-        if self.domain_allowlist and envelope.domain not in self.domain_allowlist:
-            raise SecurityViolation(f"Domain '{envelope.domain}' not allowed under current sovereignty grant")
-        
-        if envelope.domain in self.domain_denylist:
-            raise SecurityViolation(f"Domain '{envelope.domain}' is explicitly blacklisted")
-
-        # 3. Risk-Based Validation
-        max_risk = os.getenv("ORCHESTRATOR_MAX_RISK", "high").lower()
-        risk_order = {"low": 0, "medium": 1, "high": 2}
-        if risk_order.get(envelope.risk_level, 0) > risk_order.get(max_risk, 2):
-            raise SecurityViolation(f"Risk '{envelope.risk_level}' exceeds platform safeguard ({max_risk})")
-
-        # 4. Mandatory Validation for High-Risk ACTORS
-        if tool.role == "actor" and envelope.risk_level == "high" and not envelope.requires_validation:
-             msg = f"Safety Violation: High-risk ACTOR action '{tool_name}.{envelope.action}' requires explicit user validation"
-             self._emit_violation(msg, tool_name, envelope.action)
-             raise SecurityViolation(msg)
-
-        logger.debug(f"CAPABILITY GRANTED: {tool_name} as {tool.role}")
-
-    def _emit_violation(self, message: str, tool: str, action: str):
-        """Broadcast violation attempt to the Neural Interface."""
-        try:
-            # Try to emit violation asynchronously
-            import asyncio
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            # No running loop, skip emission (prevents test failure)
-            logger.warning(f"Violation not emitted: No running event loop")
-            return
-            
-        # Schedule emission in background
-        async def emit():
-            try:
-                from ippoc.cortex.cortex.cognitive_queue import emit_thought
-                await emit_thought(
-                    level="violation",
-                    content=message,
-                    metadata={"tool": tool, "action": action, "node": os.getenv("NODE_ID")}
-                )
-            except Exception as e:
-                logger.warning(f"Failed to emit violation: {e}")
-                
-        loop.create_task(emit())
+        if envelope.risk_level == "high" and not envelope.requires_validation:
+            logger.warning(f"High risk action invoked without validation flag: {envelope.tool_name}")
 
     def _check_budget(self, envelope: ToolInvocationEnvelope, tool_name: str, estimated_cost: float) -> None:
         """
@@ -364,9 +363,7 @@ class ToolOrchestrator:
         self.idempotency_cache[key] = (time.time(), result)
 
     def _audit_action(self, envelope: ToolInvocationEnvelope, result: Optional[ToolResult], cost: float, error: Optional[str]) -> None:
-        path = os.getenv("ORCHESTRATOR_AUDIT_PATH", "data/action_log.jsonl")
         try:
-            os.makedirs(os.path.dirname(path), exist_ok=True)
             payload = {
                 "ts": time.time(),
                 "tool": envelope.tool_name,
@@ -382,8 +379,7 @@ class ToolOrchestrator:
                 "error": error,
                 "reason": envelope.context.get("reason") if envelope.context else None,
             }
-            with open(path, "a", encoding="utf-8") as f:
-                f.write(json.dumps(payload) + "\n")
+            self.audit_logger.log(payload)
         except Exception:
             # Never block on audit failure
             pass

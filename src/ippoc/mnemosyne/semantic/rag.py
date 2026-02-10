@@ -10,6 +10,7 @@ from collections import defaultdict
 import logging
 import re
 import json
+import asyncio
 from datetime import datetime
 
 # Optional multimodal support
@@ -207,9 +208,40 @@ class SemanticManager:
             Success status
         """
         try:
-            # Note: This depends on vector store implementation
-            # Some stores support delete by ID, others don't
-            logger.warning("Delete operation may not be supported by all vector stores")
+            # Delete from vector store if supported
+            if hasattr(self.vector_store, 'adelete'):
+                 await self.vector_store.adelete(ids)
+            elif hasattr(self.vector_store, 'delete'):
+                 # Check if delete is async
+                 if asyncio.iscoroutinefunction(self.vector_store.delete):
+                     await self.vector_store.delete(ids)
+                 else:
+                     # Run sync delete in thread
+                     await asyncio.to_thread(self.vector_store.delete, ids)
+            else:
+                 logger.warning("Vector store does not support delete operation")
+
+            # Remove from internal indices
+            for obj_id in ids:
+                if obj_id in self.object_index:
+                    obj = self.object_index[obj_id]
+                    # Remove from semantic_objects
+                    if obj in self.semantic_objects:
+                        self.semantic_objects.remove(obj)
+
+                    # Remove from component_index
+                    for component in obj.semantic_components:
+                        if component in self.component_index:
+                            if obj in self.component_index[component]:
+                                self.component_index[component].remove(obj)
+                                # Clean up empty lists
+                                if not self.component_index[component]:
+                                    del self.component_index[component]
+
+                    # Remove from object_index
+                    del self.object_index[obj_id]
+
+            logger.info(f"Deleted {len(ids)} semantic memories")
             return True
         except Exception as e:
             logger.error(f"Delete failed: {e}")

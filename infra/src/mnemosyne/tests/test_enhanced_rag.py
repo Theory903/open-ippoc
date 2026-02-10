@@ -15,7 +15,7 @@ import asyncio
 from pathlib import Path
 
 # Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 async def test_adaptive_router():
     """Test the Adaptive RAG router functionality"""

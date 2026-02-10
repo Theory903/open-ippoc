@@ -9,8 +9,9 @@ import os
 import time
 from typing import Any, Dict, List, Optional
 
-from ippoc.cortex.core.ledger import get_ledger
-from ippoc.cortex.maintainer.types import SignalSummary, PressureSource, Trend
+from cortex.core.ledger import get_ledger
+from cortex.core.economy import get_economy
+from cortex.maintainer.types import SignalSummary, PressureSource, Trend
 
 
 async def collect_signals() -> SignalSummary:
@@ -69,9 +70,21 @@ async def collect_signals() -> SignalSummary:
         pain_score += 0.2
         pressure_sources.append(PressureSource.LATENCY)
         
-    # Rule: Cost Spike (simple heuristic for now)
-    # TODO: Compare against moving average in Economy module
-    if total_cost > 5.0: # Arbitrary heuristic for "expensive burst"
+    # Rule: Cost Spike
+    # Compare against moving average in Economy module
+    economy = get_economy()
+    avg_historical_cost = economy.get_moving_average_cost()
+
+    # Calculate threshold based on historical average
+    # Fallback to 5.0 if no history (avg=0)
+    # Ensure minimum threshold of 1.0 to avoid noise
+    if avg_historical_cost > 0:
+        expected_cost = avg_historical_cost * len(recent_actions)
+        threshold = max(expected_cost * 2.0, 1.0)
+    else:
+        threshold = 5.0
+
+    if total_cost > threshold:
         pain_score += 0.2
         pressure_sources.append(PressureSource.COST)
 

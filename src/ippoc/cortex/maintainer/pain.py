@@ -21,7 +21,8 @@ def score_pain(signals: SignalSummary) -> PainScore:
         domains.append("economy")
         
     # Check 3: Latency Trends (Stub)
-    if signals.latency_trend == "up":
+    # Using general trend for now as latency_trend is deprecated
+    if str(signals.trend) == "degrading":
         pressure += 0.2
         domains.append("performance")
         
