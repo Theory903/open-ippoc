@@ -1,0 +1,4 @@
+[submodule "src/kernel/openclaw"]
+	path = src/kernel/openclaw
+	url = https://github.com/Theory903/openclaw.git
+	branch = master
