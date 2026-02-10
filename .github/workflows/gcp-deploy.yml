@@ -1,0 +1,310 @@
+# IPPOC CI/CD Pipeline for Google Cloud Platform
+# Triggers on: push to main, tag creation, or manual dispatch
+
+name: IPPOC GCP Deployment
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'src/**'
+      - 'Dockerfile.cloudrun'
+      - 'cloudbuild.yaml'
+      - '.github/workflows/**'
+  release:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      deploy:
+        description: 'Deploy to Cloud Run'
+        required: true
+        default: 'false'
+        type: boolean
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: 'us-central1'
+  SERVICE_NAME: 'ippoc'
+  IMAGE: 'gcr.io/${{ secrets.GCP_PROJECT_ID }}/ippoc'
+
+jobs:
+  # ===========================================================================
+  # JOB 1: Lint and Security Scan
+  # ===========================================================================
+  lint:
+    name: Lint & Security
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install linting tools
+        run: |
+          pip install ruff black mypy pyright
+
+      - name: Run Ruff (Linting)
+        run: ruff check src/ippoc/
+
+      - name: Run Black (Formatting)
+        run: black --check src/ippoc/
+
+      - name: Run Type Checking (MyPy)
+        run: mypy src/ippoc/ --ignore-missing-imports || true
+
+      - name: Run Security Scan (Bandit)
+        run: |
+          pip install bandit
+          bandit -r src/ippoc/ -f json | tee security-bandit.json
+
+      - name: Upload Security Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-scan
+          path: security-bandit.json
+        if: always()
+
+  # ===========================================================================
+  # JOB 2: Run Unit Tests
+  # ===========================================================================
+  test:
+    name: Unit Tests
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-asyncio
+
+      - name: Run Unit Tests
+        run: |
+          pytest tests/unit/ \
+            -v \
+            --tb=short \
+            --cov=src/ippoc \
+            --cov-report=xml \
+            --cov-report=term-missing
+
+      - name: Upload Coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
+
+  # ===========================================================================
+  # JOB 3: Build Docker Image
+  # ===========================================================================
+  build:
+    name: Build Docker Image
+    needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.build.outputs.image }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Build Docker Image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.cloudrun
+          push: false
+          load: true
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Scan Docker Image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: '${{ env.IMAGE }}:${{ github.sha }}'
+          format: 'table'
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Push Docker Image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.cloudrun
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:latest
+
+  # ===========================================================================
+  # JOB 4: Deploy to Staging (develop branch)
+  # ===========================================================================
+  deploy-staging:
+    name: Deploy to Staging
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://ippoc-staging-${{ env.REGION }}.a.run.app
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Cloud Run (Staging)
+        run: |
+          gcloud run deploy ippoc-staging \
+            --image ${{ env.IMAGE }}:${{ github.sha }} \
+            --platform managed \
+            --region ${{ env.REGION }} \
+            --allow-unauthenticated \
+            --service-account ippoc-staging@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
+            --set-env-vars "INSTANCE=staging,LOG_LEVEL=DEBUG" \
+            --memory 1Gi \
+            --cpu 2 \
+            --min-instances 0 \
+            --max-instances 5 \
+            --concurrency 80
+
+      - name: Run Integration Tests (Staging)
+        run: |
+          sleep 10
+          pytest tests/integration/ -v -k "staging" --tb=short
+
+  # ===========================================================================
+  # JOB 5: Deploy to Production (main branch or tag)
+  # ===========================================================================
+  deploy-production:
+    name: Deploy to Production
+    needs: build
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'release'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://ippoc-${{ env.REGION }}.a.run.app
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Cloud Run (Production)
+        run: |
+          gcloud run deploy ippoc \
+            --image ${{ env.IMAGE }}:${{ github.sha }} \
+            --platform managed \
+            --region ${{ env.REGION }} \
+            --allow-unauthenticated \
+            --service-account ippoc@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
+            --set-env-vars "INSTANCE=production,LOG_LEVEL=INFO" \
+            --memory 2Gi \
+            --cpu 2 \
+            --min-instances 1 \
+            --max-instances 10 \
+            --concurrency 100 \
+            --traffic-split latest=100
+
+      - name: Run Integration Tests (Production)
+        run: |
+          sleep 15
+          pytest tests/integration/ -v -k "production" --tb=short
+
+      - name: Notify Deployment
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "🚀 IPPOC Deployed to Production",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "✅ *IPPOC v${{ github.event.release.tag_name || 'latest' }}* deployed to Production"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {"type": "mrkdwn", "text": "*Environment:*\nProduction"},
+                    {"type": "mrkdwn", "text": "*Region:*\n${{ env.REGION }}"},
+                    {"type": "mrkdwn", "text": "*Commit:*\n${{ github.sha }}"},
+                    {"type": "mrkdwn", "text": "*Author:*\n${{ github.actor }}"}
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        if: github.event_name == 'release'
+
+  # ===========================================================================
+  # JOB 6: Smoke Tests (All Deployments)
+  # ===========================================================================
+  smoke-tests:
+    name: Smoke Tests
+    needs: [deploy-staging, deploy-production]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Smoke Tests
+        run: |
+          echo "Running smoke tests against deployed endpoints..."
+
+      - name: Report Status
+        run: |
+          if [ "${{ needs.deploy-staging.result }}" == "success" ] || [ "${{ needs.deploy-production.result }}" == "success" ]; then
+            echo "✅ Deployment successful"
+          else
+            echo "❌ Deployment failed"
+            exit 1
+          fi

@@ -1,0 +1,99 @@
+# IPPOC Unified Dockerfile - Google Cloud Run Deployment
+# Multi-stage build for production deployment
+
+# ==============================================================================
+# STAGE 1: Builder - Compile Rust components
+# ==============================================================================
+FROM rust:1.70-alpine AS rust-builder
+
+# Install build dependencies
+RUN apk add --no-cache musl-dev openssl-dev cargo
+
+WORKDIR /app
+
+# Copy Cargo files first for better caching
+COPY src/ippoc/soma/Cargo.toml src/ippoc/soma/Cargo.lock /app/
+
+# Create dummy source files to cache Cargo dependencies
+RUN mkdir -p src/ippoc/soma/src && \
+    echo "fn main() {}" > src/ippoc/soma/src/main.rs && \
+    echo "pub struct Soma;" > src/ippoc/soma/src/lib.rs && \
+    cargo build --release --manifest-path=Cargo.toml 2>/dev/null || true
+
+# Copy actual source and build
+COPY src/ippoc/soma/ /app/
+COPY Cargo.toml /app/
+RUN cargo build --release --manifest-path=Cargo.toml
+
+# ==============================================================================
+# STAGE 2: Python Builder - Install Python dependencies
+# ==============================================================================
+FROM python:3.11-slim AS python-builder
+
+WORKDIR /app
+
+# Install Python dependencies
+COPY pyproject.toml requirements*.txt /app/
+
+# Create virtual environment
+RUN python -m venv /opt/venv && \
+    /opt/venv/bin/pip install --no-cache-dir --upgrade pip && \
+    /opt/venv/bin/pip install --no-cache-dir -r requirements.txt && \
+    /opt/venv/bin/pip install --no-cache-dir -r requirements-dev.txt 2>/dev/null || true
+
+# ==============================================================================
+# STAGE 3: Runtime - Final production image
+# ==============================================================================
+FROM gcr.io/distroless/python311-debian12:nonroot AS runtime
+
+# Install minimal runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set Python path
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Copy virtual environment from builder
+COPY --from=python-builder /opt/venv /opt/venv
+
+# Copy Rust binaries from builder
+COPY --from=rust-builder /app/target/release/ /usr/local/bin/
+
+# Copy application code
+COPY src/ippoc/ /app/src/ippoc/
+COPY --chmod=755 scripts/ /app/scripts/
+
+# Create non-root user
+RUN useradd --create-home --shell /bin/bash appuser && \
+    chown -R appuser:appuser /app && \
+    mkdir -p /home/appuser/.ippoc && \
+    chown -R appuser:appuser /home/appuser/.ippoc
+
+WORKDIR /app
+
+# Environment variables for Cloud Run
+ENV PORT=8080 \
+    INSTANCE=cloud \
+    IPPOC_HOME=/home/appuser/.ippoc \
+    IPPOC_DATA_DIR=/home/appuser/.ippoc/data
+
+# Create data directory
+RUN mkdir -p ${IPPOC_DATA_DIR} && chown appuser:appuser ${IPPOC_DATA_DIR}
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:${PORT}/health', timeout=5)" || exit 1
+
+# Switch to non-root user
+USER appuser
+
+# Entrypoint
+ENTRYPOINT ["/app/scripts/entrypoint.sh"]
+
+# Default command - runs the unified IPPOC service
+CMD ["python", "-m", "ippoc.cli.main", "run"]

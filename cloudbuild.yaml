@@ -1,0 +1,145 @@
+# Cloud Build Configuration for IPPOC
+# Deploys to Google Cloud Run
+
+steps:
+  # ==============================================================================
+  # Stage 1: Build Rust Components
+  # ==============================================================================
+  - name: 'rust:1.70-alpine'
+    id: 'build-rust'
+    entrypoint: 'cargo'
+    args: [
+      'build',
+      '--release',
+      '--manifest-path=src/ippoc/soma/Cargo.toml'
+    ]
+    env:
+      - 'RUSTFLAGS=-C target-feature=+crt-static'
+
+  # ==============================================================================
+  # Stage 2: Build Python Dependencies
+  # ==============================================================================
+  - name: 'python:3.11-slim'
+    id: 'build-python-deps'
+    entrypoint: 'pip'
+    args: [
+      'install',
+      '--no-cache-dir',
+      '--upgrade',
+      '-r', 'requirements.txt'
+    ]
+
+  # ==============================================================================
+  # Stage 3: Run Tests
+  # ==============================================================================
+  - name: 'python:3.11-slim'
+    id: 'run-tests'
+    entrypoint: 'pytest'
+    args: [
+      'tests/',
+      '-v',
+      '--tb=short',
+      '--cov=src/ippoc',
+      '--cov-report=lcov',
+      '-q'
+    ]
+    env:
+      - 'PYTHONPATH=/app'
+    waitFor: ['build-python-deps']
+
+  # ==============================================================================
+  # Stage 4: Build Docker Image
+  # ==============================================================================
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-image'
+    args: [
+      'build',
+      '-t', 'gcr.io/$PROJECT_ID/ippoc:${SHORT_SHA}',
+      '-t', 'gcr.io/$PROJECT_ID/ippoc:latest',
+      '-f', 'Dockerfile.cloudrun',
+      '.'
+    ]
+    waitFor: ['build-rust', 'run-tests']
+
+  # ==============================================================================
+  # Stage 5: Push Docker Image
+  # ==============================================================================
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-image'
+    args: [
+      'push',
+      'gcr.io/$PROJECT_ID/ippoc:${SHORT_SHA}'
+    ]
+    waitFor: ['build-image']
+
+  # ==============================================================================
+  # Stage 6: Deploy to Cloud Run (if branch is main)
+  # ==============================================================================
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-cloudrun'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'ippoc'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/ippoc:${SHORT_SHA}'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--service-account'
+      - '${_SERVICE_ACCOUNT}'
+      - '--set-env-vars'
+      - 'INSTANCE=cloud'
+      - '--memory'
+      - '1Gi'
+      - '--cpu'
+      - '2'
+      - '--min-instances'
+      - '1'
+      - '--max-instances'
+      - '10'
+      - '--concurrency'
+      - '80'
+    waitFor: ['push-image']
+    onlyIf: '$_BRANCH == "main" && $_DEPLOY == "true"'
+
+  # ==============================================================================
+  # Stage 7: Run Integration Tests (Cloud Run URL)
+  # ==============================================================================
+  - name: 'python:3.11-slim'
+    id: 'integration-tests'
+    entrypoint: 'pytest'
+    args: [
+      'tests/integration/',
+      '-v',
+      '--tb=short',
+      '-k', 'cloudrun'
+    ]
+    env:
+      - 'IPPOC_URL=https://ippoc-${_REGION}.a.run.app'
+    waitFor: ['deploy-cloudrun']
+    onlyIf: '$_BRANCH == "main" && $_DEPLOY == "true"'
+
+images:
+  - 'gcr.io/$PROJECT_ID/ippoc:${SHORT_SHA}'
+  - 'gcr.io/$PROJECT_ID/ippoc:latest'
+
+substitutions:
+  _REGION: 'us-central1'
+  _SERVICE_ACCOUNT: 'ippoc@$PROJECT_ID.iam.gserviceaccount.com'
+  _BRANCH: '${BRANCH_NAME}'
+  _DEPLOY: 'false'
+
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: 'CLOUD_LOGGING_ONLY'
+  pool:
+    name: 'projects/$PROJECT_ID/locations/us-central1/workerPools/ippoc-build-pool'
+
+tags:
+  - 'ippoc'
+  - 'cloud-run'
+  - 'ci-cd'
