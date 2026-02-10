@@ -371,6 +371,7 @@ class GraphManager:
                 # 1. Identify candidates (entities sharing >=1 relation) -> O(Neighbors)
                 # 2. Count totals for candidates only
                 # 3. Calculate Jaccard in SQL
+                # Note: This query avoids full table scans of unrelated entities.
                 stmt = text("""
                     WITH ref_rels AS (
                         SELECT target_id, relation
