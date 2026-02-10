@@ -191,7 +191,7 @@ class SemanticManager:
             logger.error(f"Batch addition failed: {e}")
             raise
     
-    async def delete_memories(self, ids: List[str]) -> bool:
+    async def delete_memories(self, ids: List[str]) -> int:
         """
         Delete memories by IDs.
         
@@ -199,16 +199,42 @@ class SemanticManager:
             ids: Document IDs to delete
             
         Returns:
-            Success status
+            Count of deleted memories
         """
         try:
-            # Note: This depends on vector store implementation
-            # Some stores support delete by ID, others don't
-            logger.warning("Delete operation may not be supported by all vector stores")
-            return True
+            # Remove from local index
+            deleted_count = 0
+            ids_set = set(ids)
+
+            # Update local index
+            for obj_id in ids:
+                if obj_id in self.object_index:
+                    del self.object_index[obj_id]
+                    deleted_count += 1
+
+            # Update objects list
+            if deleted_count > 0:
+                self.semantic_objects = [
+                    obj for obj in self.semantic_objects
+                    if obj.id not in ids_set
+                ]
+
+            # Delete from vector store
+            if hasattr(self.vector_store, "adelete"):
+                await self.vector_store.adelete(ids)
+            elif hasattr(self.vector_store, "delete"):
+                # Warning: calling sync method in async context
+                # Ideally should be offloaded if blocking
+                self.vector_store.delete(ids)
+            else:
+                logger.warning("Vector store does not support explicit deletion")
+
+            logger.info(f"Deleted {deleted_count} semantic memories")
+            return deleted_count
+
         except Exception as e:
             logger.error(f"Delete failed: {e}")
-            return False
+            return 0
     
     async def get_stats(self) -> Dict[str, Any]:
         """

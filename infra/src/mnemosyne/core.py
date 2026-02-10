@@ -21,9 +21,12 @@ Usage:
 """
 
 import asyncio
+import logging
 from typing import List, Dict, Any, Optional, Union
 from dataclasses import dataclass
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 # Import all memory managers
 from .episodic.manager import EpisodicManager
@@ -288,14 +291,61 @@ class MemorySystem:
         Remove memories matching criteria.
         
         Args:
-            criteria: Deletion criteria (implementation-dependent)
+            criteria: Deletion criteria keyed by subsystem.
+                      e.g.,
+                      {
+                          "episodic": {"ids": [...], "before": datetime, "source": "...", "content_match": "..."},
+                          "semantic": {"ids": [...]},
+                          "procedural": {"skill_name": "..."},
+                          "graph": {"entity_name": "..."}
+                      }
             
         Returns:
             Number of memories removed
         """
-        # TODO: Implement forgetting across subsystems
-        # This would require adding deletion methods to each manager
-        raise NotImplementedError("Forget functionality pending implementation")
+        await self.initialize()
+        total_deleted = 0
+
+        # Episodic deletion
+        if "episodic" in criteria:
+            try:
+                count = await self.episodic.delete(**criteria["episodic"])
+                total_deleted += count
+            except Exception as e:
+                logger.error(f"Failed to delete episodic memories: {e}")
+
+        # Semantic deletion
+        if "semantic" in criteria and self.semantic:
+            try:
+                semantic_criteria = criteria["semantic"]
+                if "ids" in semantic_criteria:
+                    count = await self.semantic.delete_memories(semantic_criteria["ids"])
+                    total_deleted += count
+            except Exception as e:
+                logger.error(f"Failed to delete semantic memories: {e}")
+
+        # Procedural deletion
+        if "procedural" in criteria and self.procedural:
+            try:
+                proc_criteria = criteria["procedural"]
+                if "skill_name" in proc_criteria:
+                    count = await self.procedural.delete_skill(proc_criteria["skill_name"])
+                    total_deleted += count
+            except Exception as e:
+                logger.error(f"Failed to delete procedural skill: {e}")
+
+        # Graph deletion
+        if "graph" in criteria:
+            try:
+                graph_criteria = criteria["graph"]
+                if "entity_name" in graph_criteria:
+                    count = await self.graph.delete_entity(graph_criteria["entity_name"])
+                    total_deleted += count
+            except Exception as e:
+                logger.error(f"Failed to delete graph entity: {e}")
+
+        logger.info(f"Forget operation completed. Total removed: {total_deleted}")
+        return total_deleted
     
     def health_check(self) -> Dict[str, Any]:
         """Check memory system health"""
