@@ -285,7 +285,7 @@ class MemorySystem:
     
     async def forget(self, criteria: Dict[str, Any]) -> int:
         """
-        Remove memories matching criteria.
+        Remove memories matching criteria from all active subsystems.
         
         Args:
             criteria: Deletion criteria (implementation-dependent)
