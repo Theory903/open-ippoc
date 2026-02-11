@@ -23,8 +23,8 @@ class Relation(Base):
     """An Edge in the Knowledge Graph"""
     __tablename__ = "kg_relations"
     id = Column(Integer, primary_key=True)
-    source_id = Column(Integer, ForeignKey("kg_entities.id"))
-    target_id = Column(Integer, ForeignKey("kg_entities.id"))
+    source_id = Column(Integer, ForeignKey("kg_entities.id"), index=True)
+    target_id = Column(Integer, ForeignKey("kg_entities.id"), index=True)
     relation = Column(String) # e.g. "authored", "is_located_in"
     weight = Column(Float, default=1.0)
 
