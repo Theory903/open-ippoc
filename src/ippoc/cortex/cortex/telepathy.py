@@ -128,20 +128,32 @@ class TelepathySwarm:
         Process incoming messages.
         Filter by reputation, validate signature, then ingest into cortex.
         """
-        print(f"[Telepathy] Received from {message.sender}: {message.content}")
+        # Sanitize sender for logging
+        sender = str(message.sender).replace("\n", "").replace("\r", "")[:64]
+
+        # Truncate content for display to avoid console flooding
+        display_content = (message.content[:100] + "...") if message.content and len(message.content) > 100 else message.content
+        print(f"[Telepathy] Received from {sender}: {display_content}")
         
         # 1. Validation (Signature mock)
         if not message.sender:
             return None
             
-        # 2. Conversion to Signal
+        # 2. Input Validation (DoS Prevention)
+        MAX_CONTENT_SIZE = 64 * 1024  # 64KB limit for thought content
+        content = message.content
+        if content and len(content) > MAX_CONTENT_SIZE:
+            print(f"[Telepathy] ⚠️  Truncating oversized message from {sender} ({len(content)} bytes)")
+            content = content[:MAX_CONTENT_SIZE] + " [TRUNCATED]"
+
+        # 3. Conversion to Signal
         # Even though this class is detached, we prepare the data structure for the Cortex to pick up.
         # This writes to a dedicated signal bus log that the LangGraph Engine monitors.
         
         signal_data = {
             "type": "telepathy",
-            "source": message.sender,
-            "content": message.content,
+            "source": sender,
+            "content": content,
             "confidence": message.confidence,
             "pattern_id": message.pattern,
             "timestamp": "iso-now"
@@ -150,10 +162,27 @@ class TelepathySwarm:
         # Simulating Event Bus Push
         import json
         import asyncio
+        import os
 
         def _write_to_bus():
-            with open("ippoc_event_bus.log", "a") as bus:
-                bus.write(json.dumps(signal_data) + "\n")
+            log_path = "ippoc_event_bus.log"
+            MAX_LOG_SIZE = 10 * 1024 * 1024  # 10MB limit
+
+            try:
+                # Simple Log Rotation
+                if os.path.exists(log_path) and os.path.getsize(log_path) > MAX_LOG_SIZE:
+                    if os.path.exists(log_path + ".bak"):
+                        os.remove(log_path + ".bak")
+                    os.rename(log_path, log_path + ".bak")
+                    print(f"[Telepathy] 🔄 Rotated log file {log_path} to .bak due to size limit")
+            except Exception as e:
+                print(f"[Telepathy] ⚠️  Log rotation failed: {e}")
+
+            try:
+                with open(log_path, "a") as bus:
+                    bus.write(json.dumps(signal_data) + "\n")
+            except Exception as e:
+                print(f"[Telepathy] ⚠️  Failed to write to bus: {e}")
 
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, _write_to_bus)
