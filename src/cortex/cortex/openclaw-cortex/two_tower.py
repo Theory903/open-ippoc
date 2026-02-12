@@ -1,4 +1,7 @@
 import os
+import json
+import asyncio
+from datetime import datetime
 from dotenv import load_dotenv
 from typing import Dict, Any, List, Optional
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -58,6 +61,12 @@ class TwoTowerEngine:
             )
         }
 
+        # Pre-calculate log path
+        # Assuming we are at src/ippoc/cortex/cortex/two_tower.py or similar depth
+        # root is ../../../../
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        self.patterns_file = os.path.join(current_dir, "../../../../data/patterns.jsonl")
+
     async def generate_impulse(self, context: str) -> ActionCandidate:
         """
         Tower A: Generates inner monologue, hypotheses, code drafts.
@@ -80,7 +89,6 @@ class TwoTowerEngine:
             # Simple structured output parsing (JsonOutputParser is better but keeping it raw for speed)
             response = await self.llm_a.ainvoke([HumanMessage(content=prompt)])
             # naive parsing
-            import json
             content = response.content.strip()
             # Handle markdown code blocks
             if "```json" in content:
@@ -110,7 +118,7 @@ class TwoTowerEngine:
         """
         if not self.llm_b:
             # Evolution: Log Pattern even in Mock Mode
-            self._log_pattern(candidate, "MOCK_NO", False)
+            await self._log_pattern(candidate, "MOCK_NO", False)
             return False # Mock deny - fail closed
 
         prompt = f"""
@@ -129,22 +137,20 @@ class TwoTowerEngine:
             approved = content.startswith("YES")
             
             # Evolution: Log Pattern for fine-tuning
-            self._log_pattern(candidate, content, approved)
+            await self._log_pattern(candidate, content, approved)
             
             return approved
         except Exception as e:
             print(f"[Tower B] Error: {e}")
             # Evolution: Log Error Pattern
-            self._log_pattern(candidate, "ERROR", False)
+            await self._log_pattern(candidate, "ERROR", False)
             return False
 
-    def _log_pattern(self, candidate: ActionCandidate, validator_response: str, approved: bool):
+    async def _log_pattern(self, candidate: ActionCandidate, validator_response: str, approved: bool):
         """
         Saves the Impulse -> Validation pair to build the 'Pattern Engine' dataset.
+        Async wrapper to avoid blocking the event loop.
         """
-        import json
-        from datetime import datetime
-        
         entry = {
             "timestamp": datetime.utcnow().isoformat(),
             "impulse": candidate.dict(),
@@ -154,17 +160,15 @@ class TwoTowerEngine:
             "model_b": self.tower_b_model_name
         }
         
+        await asyncio.to_thread(self._write_pattern_entry, entry)
+
+    def _write_pattern_entry(self, entry: Dict[str, Any]):
+        """
+        Synchronous file write operation to be run in a thread.
+        """
         try:
-            # Use proper path based on file location
-            import os
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            patterns_file = os.path.join(current_dir, "../../../data/patterns.jsonl")
-            
-            # Create directory if it doesn't exist
-            import os
-            os.makedirs(os.path.dirname(patterns_file), exist_ok=True)
-            
-            with open(patterns_file, "a") as f:
+            os.makedirs(os.path.dirname(self.patterns_file), exist_ok=True)
+            with open(self.patterns_file, "a") as f:
                 f.write(json.dumps(entry) + "\n")
         except Exception as e:
             print(f"[Evolution] Failed to log pattern: {e}")
