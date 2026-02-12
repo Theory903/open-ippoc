@@ -456,21 +456,40 @@ def get_all_services_status() -> Dict[str, dict]:
 
 def print_services_status():
     """Print status of all services."""
+    # ANSI Color Codes
+    GREEN = "\033[92m"
+    RED = "\033[91m"
+    BOLD = "\033[1m"
+    RESET = "\033[0m"
+
     print("\n" + "="*60)
-    print("📊 IPPOC Services Status")
+    print(f"📊 {BOLD}IPPOC Services Status{RESET}")
     print("="*60)
     
     services = get_all_services_status()
     
     for name, info in services.items():
-        status = "🟢 Running" if info["running"] else "🔴 Stopped"
-        healthy = "✓" if info["healthy"] else "✗"
-        pid = f" (PID: {info['pid']})" if info["pid"] else ""
-        port = f":{info['port']}"
+        if info["running"]:
+            status_text = f"{GREEN}🟢 Running{RESET}"
+            pid_text = f" (PID: {info['pid']})"
+        else:
+            status_text = f"{RED}🔴 Stopped{RESET}"
+            pid_text = ""
+
+        healthy_icon = "✓" if info["healthy"] else "✗"
+        if info["healthy"]:
+            healthy_text = f"{GREEN}{healthy_icon}{RESET}"
+        else:
+            healthy_text = f"{RED}{healthy_icon}{RESET}"
+
+        port_text = f"port:{info['port']}"
         
-        print(f"  {name.upper():8} {status}{pid} port{port} healthy={healthy}")
+        # Format: SERVICE   STATUS   PID   PORT   HEALTHY
+        print(f"  {BOLD}{name.upper():<10}{RESET} {status_text:<20} {pid_text:<15} {port_text:<12} healthy={healthy_text}")
     
-    print("="*60 + "\n")
+    print("="*60)
+    print(f"{BOLD}Tip:{RESET} Run 'ippoc stop' to shutdown or 'ippoc run' to restart.")
+    print("\n")
 
 # ============================================================================
 # MAIN ORCHESTRATION
