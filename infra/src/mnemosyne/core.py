@@ -288,7 +288,9 @@ class MemorySystem:
     
     async def forget(self, criteria: Dict[str, Any]) -> int:
         """
-        Remove memories matching criteria.
+        Remove memories matching criteria across all subsystems.
+
+        This method coordinates deletion across Episodic, Semantic, Procedural, and Graph memories.
         
         Args:
             criteria: Deletion criteria keyed by subsystem.
@@ -296,12 +298,12 @@ class MemorySystem:
                       {
                           "episodic": {"ids": [...], "before": datetime, "source": "...", "content_match": "..."},
                           "semantic": {"ids": [...]},
-                          "procedural": {"skill_name": "..."},
-                          "graph": {"entity_name": "..."}
+                          "procedural": {"skill_name": "..."}, # Deletes skill by name
+                          "graph": {"entity_name": "..."}      # Deletes entity and relations
                       }
             
         Returns:
-            Number of memories removed
+            Number of memories removed (approximate total count)
         """
         await self.initialize()
         total_deleted = 0
