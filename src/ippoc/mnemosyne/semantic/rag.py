@@ -100,6 +100,7 @@ class SemanticManager:
                 # Create document for vector store
                 doc = Document(
                     page_content=obj.content,
+                    id=obj.id,
                     metadata={
                         "object_id": obj.id,
                         "content_type": obj.content_type.value,
