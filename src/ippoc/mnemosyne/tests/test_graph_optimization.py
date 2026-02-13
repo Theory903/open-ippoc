@@ -4,9 +4,24 @@ import pytest_asyncio
 import sys
 import os
 import asyncio
+from unittest.mock import MagicMock
 
 # Ensure src is in path
 sys.path.append(os.path.join(os.getcwd(), "src"))
+
+# Mock dependencies
+sys.modules["langchain"] = MagicMock()
+sys.modules["langchain_core"] = MagicMock()
+sys.modules["langchain_core.documents"] = MagicMock()
+sys.modules["langchain_community"] = MagicMock()
+sys.modules["langchain_community.vectorstores"] = MagicMock()
+sys.modules["pgvector"] = MagicMock()
+sys.modules["pgvector.sqlalchemy"] = MagicMock()
+sys.modules["redis"] = MagicMock()
+sys.modules["redis.asyncio"] = MagicMock()
+sys.modules["ippoc.mnemosyne.semantic"] = MagicMock()
+sys.modules["ippoc.mnemosyne.semantic.rag"] = MagicMock()
+sys.modules["ippoc.mnemosyne.core"] = MagicMock()
 
 from ippoc.mnemosyne.graph.manager import GraphManager
 
