@@ -1,5 +1,5 @@
 from typing import List, Dict, Any, Tuple, Optional
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, text, DateTime, bindparam
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, text, DateTime, bindparam, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
@@ -22,6 +22,7 @@ class Entity(Base):
 class Relation(Base):
     """An Edge in the Knowledge Graph"""
     __tablename__ = "kg_relations"
+    __table_args__ = (Index("idx_target_relation", "target_id", "relation"),)
     id = Column(Integer, primary_key=True)
     source_id = Column(Integer, ForeignKey("kg_entities.id"), index=True)
     target_id = Column(Integer, ForeignKey("kg_entities.id"), index=True)
@@ -344,6 +345,11 @@ class GraphManager:
             
         Returns:
             List of similar entities with similarity scores
+
+        Performance:
+            Uses CTEs and intersection-first optimization to achieve O(1) query complexity
+            (specifically O(Neighbors) rather than O(Entities)).
+            Requires 'idx_target_relation' composite index on kg_relations for optimal performance.
         """
         await self.init_db()
         similar_entities = []
