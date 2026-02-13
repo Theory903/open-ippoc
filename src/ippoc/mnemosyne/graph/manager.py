@@ -1,6 +1,6 @@
 from typing import List, Dict, Any, Tuple, Optional
 from collections import defaultdict
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, text, DateTime, bindparam
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, text, DateTime, bindparam, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
@@ -22,9 +22,17 @@ class Entity(Base):
 class Relation(Base):
     """An Edge in the Knowledge Graph"""
     __tablename__ = "kg_relations"
+    __table_args__ = (
+        # Index on (target_id, relation) speeds up reverse lookups by type (e.g. "who authored X?")
+        # and is critical for optimized similarity search (finding candidates sharing relations).
+        Index("idx_target_relation", "target_id", "relation"),
+        # Index on (source_id, target_id, relation) speeds up existence checks (add_triple)
+        # and enforces uniqueness logically. It also covers simple (source_id) lookups.
+        Index("idx_source_target_relation", "source_id", "target_id", "relation"),
+    )
     id = Column(Integer, primary_key=True)
-    source_id = Column(Integer, ForeignKey("kg_entities.id"), index=True)
-    target_id = Column(Integer, ForeignKey("kg_entities.id"), index=True)
+    source_id = Column(Integer, ForeignKey("kg_entities.id"))
+    target_id = Column(Integer, ForeignKey("kg_entities.id"))
     relation = Column(String) # e.g. "authored", "is_located_in"
     weight = Column(Float, default=1.0)
 
