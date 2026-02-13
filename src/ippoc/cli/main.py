@@ -462,13 +462,50 @@ def print_services_status():
     
     services = get_all_services_status()
     
+    # ANSI Color Codes
+    use_colors = sys.stdout.isatty()
+
+    GREEN = "\033[92m" if use_colors else ""
+    RED = "\033[91m" if use_colors else ""
+    YELLOW = "\033[93m" if use_colors else ""
+    GREY = "\033[90m" if use_colors else ""
+    RESET = "\033[0m" if use_colors else ""
+
     for name, info in services.items():
-        status = "🟢 Running" if info["running"] else "🔴 Stopped"
-        healthy = "✓" if info["healthy"] else "✗"
-        pid = f" (PID: {info['pid']})" if info["pid"] else ""
-        port = f":{info['port']}"
+        if info["running"]:
+            status_base = "🟢 Running"
+            status_color = GREEN
+
+            if info["healthy"]:
+                health_base = "Healthy"
+                health_color = GREEN
+            else:
+                health_base = "Unhealthy"
+                health_color = YELLOW
+        else:
+            status_base = "🔴 Stopped"
+            status_color = RED
+            health_base = "-"
+            health_color = GREY
+
+        # Prepare columns
+        name_col = f"{name.upper():<10}"
+
+        # Status column: Pad content, then wrap with color
+        status_col = f"{status_color}{status_base:<15}{RESET}"
+
+        # PID column
+        pid_val = f"(PID: {info['pid']})" if info["pid"] else ""
+        pid_col = f"{pid_val:<15}"
+
+        # Port column
+        port_col = f"port:{info['port']}"
+        port_col = f"{port_col:<12}"
+
+        # Health column
+        health_col = f"{health_color}{health_base}{RESET}"
         
-        print(f"  {name.upper():8} {status}{pid} port{port} healthy={healthy}")
+        print(f"  {name_col} {status_col} {pid_col} {port_col} {health_col}")
     
     print("="*60 + "\n")
 
