@@ -4,7 +4,7 @@ import sys
 import os
 
 # Add infra/src to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
 from mnemosyne.core import MemorySystem
 
@@ -55,8 +55,8 @@ class TestForgetFunctionality(unittest.IsolatedAsyncioTestCase):
         criteria = {
             "episodic": {"source": "user", "before": "2023-01-01"},
             "semantic": {"ids": ["1", "2"]},
-            "procedural": {"skill_name": "bad_skill"},
-            "graph": {"entity_name": "OldEntity"}
+            "procedural": {"skills": ["bad_skill"]},
+            "graph": {"entities": ["OldEntity"]}
         }
 
         count = await self.memory.forget(criteria)
@@ -67,8 +67,8 @@ class TestForgetFunctionality(unittest.IsolatedAsyncioTestCase):
         self.procedural_instance.delete_skill.assert_called_with("bad_skill")
         self.graph_instance.delete_entity.assert_called_with("OldEntity")
 
-        # Expected total: 5 (episodic) + 3 (semantic) + 1 (procedural) + 2 (graph) = 11
-        self.assertEqual(count, 11)
+        # Expected total: 5 (episodic) + 2 (semantic, len(ids)) + 1 (procedural) + 1 (graph) = 9
+        self.assertEqual(count, 9)
 
     async def test_forget_partial(self):
         """Verify that forget works with partial criteria"""
