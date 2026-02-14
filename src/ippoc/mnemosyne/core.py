@@ -303,6 +303,7 @@ class MemorySystem:
         await self.initialize()
         count = 0
 
+        # Implementation of forget functionality across subsystems
         # Episodic
         if "episodic" in criteria:
             count += await self.episodic.delete(**criteria["episodic"])
