@@ -23,11 +23,14 @@ class Relation(Base):
     """An Edge in the Knowledge Graph"""
     __tablename__ = "kg_relations"
     __table_args__ = (
+        # Composite index to optimize lookups by target_id AND relation
+        # Crucial for find_similar_entities which filters incoming edges by type
         Index("idx_target_relation", "target_id", "relation"),
     )
     id = Column(Integer, primary_key=True)
     source_id = Column(Integer, ForeignKey("kg_entities.id"), index=True)
-    target_id = Column(Integer, ForeignKey("kg_entities.id"), index=True)
+    # index=True removed as it is covered by the composite index idx_target_relation
+    target_id = Column(Integer, ForeignKey("kg_entities.id"))
     relation = Column(String) # e.g. "authored", "is_located_in"
     weight = Column(Float, default=1.0)
 
