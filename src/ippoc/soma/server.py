@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from typing import Dict, Optional
 import uuid
@@ -6,6 +7,7 @@ import os
 from pathlib import Path
 
 app = FastAPI(title="Soma - Identity & Trust Service")
+security = HTTPBearer()
 
 # In-memory storage for demo purposes (replace with database in production)
 registered_nodes: Dict[str, str] = {}  # node_id -> public_key
@@ -56,7 +58,8 @@ def issue_api_key(node_id: str = "ippoc-local"):
     return {"status": "success", "api_key": api_key, "node_id": node_id}
 
 @app.get("/v1/auth/verify")
-def verify_api_key(api_key: str):
+def verify_api_key(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    api_key = credentials.credentials
     if api_key not in api_keys:
         raise HTTPException(status_code=401, detail="Invalid API key")
     return {"status": "valid", "node_id": api_keys[api_key]}
