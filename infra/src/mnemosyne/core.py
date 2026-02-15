@@ -8,7 +8,7 @@ This module provides a single entrypoint for accessing all memory subsystems:
 - Graph Memory (relationships, causality)
 
 Usage:
-    from mnemosyne import memory
+    from ippoc.mnemosyne import memory
     
     # Store an experience
     await memory.store_episodic("User asked about Python", source="chat")
@@ -26,13 +26,13 @@ from typing import List, Dict, Any, Optional, Union
 from dataclasses import dataclass
 from datetime import datetime
 
-logger = logging.getLogger(__name__)
-
 # Import all memory managers
 from .episodic.manager import EpisodicManager
 from .semantic.rag import SemanticManager
 from .procedural.manager import ProceduralManager
 from .graph.manager import GraphManager
+
+logger = logging.getLogger(__name__)
 
 @dataclass
 class MemoryFragment:
@@ -234,7 +234,7 @@ class MemorySystem:
                 type="semantic",
                 content=doc.page_content,
                 metadata=doc.metadata,
-                score=1.0,  # TODO: get actual scores
+                score=doc.metadata.get("retrieval_score", 1.0),
                 id=doc.metadata.get("id", f"semantic:{i}")
             ) for i, doc in enumerate(documents)
         ]
@@ -291,61 +291,73 @@ class MemorySystem:
         Remove memories matching criteria.
         
         Args:
-            criteria: Deletion criteria keyed by subsystem.
-                      e.g.,
-                      {
-                          "episodic": {"ids": [...], "before": datetime, "source": "...", "content_match": "..."},
-                          "semantic": {"ids": [...]},
-                          "procedural": {"skill_name": "..."},
-                          "graph": {"entity_name": "..."}
-                      }
+            criteria: Deletion criteria (implementation-dependent)
+                Expected format:
+                {
+                    "episodic": {"ids": [...], "before": datetime, ...},
+                    "semantic": {"ids": [...]},
+                    "procedural": {"skills": ["skill_name", ...], "skill_name": "name"},
+                    "graph": {"entities": ["entity_name", ...], "entity_name": "name"}
+                }
             
         Returns:
-            Number of memories removed
+            Number of memories removed (approximate count from all subsystems)
         """
         await self.initialize()
-        total_deleted = 0
+        count = 0
 
-        # Episodic deletion
+        # Episodic
         if "episodic" in criteria:
             try:
-                count = await self.episodic.delete(**criteria["episodic"])
-                total_deleted += count
+                count += await self.episodic.delete(**criteria["episodic"])
             except Exception as e:
                 logger.error(f"Failed to delete episodic memories: {e}")
 
-        # Semantic deletion
+        # Semantic
         if "semantic" in criteria and self.semantic:
             try:
-                semantic_criteria = criteria["semantic"]
-                if "ids" in semantic_criteria:
-                    count = await self.semantic.delete_memories(semantic_criteria["ids"])
-                    total_deleted += count
+                semantic_ids = criteria["semantic"].get("ids", [])
+                if semantic_ids:
+                    if await self.semantic.delete_memories(semantic_ids):
+                        count += len(semantic_ids)
             except Exception as e:
                 logger.error(f"Failed to delete semantic memories: {e}")
 
-        # Procedural deletion
+        # Procedural
         if "procedural" in criteria and self.procedural:
             try:
-                proc_criteria = criteria["procedural"]
-                if "skill_name" in proc_criteria:
-                    count = await self.procedural.delete_skill(proc_criteria["skill_name"])
-                    total_deleted += count
-            except Exception as e:
-                logger.error(f"Failed to delete procedural skill: {e}")
+                skills = criteria["procedural"].get("skills", [])
+                # Support single skill_name for backward compatibility
+                if "skill_name" in criteria["procedural"]:
+                    skills.append(criteria["procedural"]["skill_name"])
 
-        # Graph deletion
+                # Deduplicate if needed, though harmless to try deleting twice
+                skills = list(set(skills))
+
+                for skill_name in skills:
+                    if await self.procedural.delete_skill(skill_name):
+                        count += 1
+            except Exception as e:
+                logger.error(f"Failed to delete procedural memories: {e}")
+
+        # Graph
         if "graph" in criteria:
             try:
-                graph_criteria = criteria["graph"]
-                if "entity_name" in graph_criteria:
-                    count = await self.graph.delete_entity(graph_criteria["entity_name"])
-                    total_deleted += count
-            except Exception as e:
-                logger.error(f"Failed to delete graph entity: {e}")
+                entities = criteria["graph"].get("entities", [])
+                # Support single entity_name for backward compatibility
+                if "entity_name" in criteria["graph"]:
+                    entities.append(criteria["graph"]["entity_name"])
 
-        logger.info(f"Forget operation completed. Total removed: {total_deleted}")
-        return total_deleted
+                # Deduplicate
+                entities = list(set(entities))
+
+                for entity in entities:
+                    if await self.graph.delete_entity(entity):
+                        count += 1
+            except Exception as e:
+                logger.error(f"Failed to delete graph entities: {e}")
+
+        return count
     
     def health_check(self) -> Dict[str, Any]:
         """Check memory system health"""

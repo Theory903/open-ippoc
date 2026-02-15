@@ -21,6 +21,7 @@ Usage:
 """
 
 import asyncio
+import logging
 from typing import List, Dict, Any, Optional, Union
 from dataclasses import dataclass
 from datetime import datetime
@@ -30,6 +31,8 @@ from .episodic.manager import EpisodicManager
 from .semantic.rag import SemanticManager
 from .procedural.manager import ProceduralManager
 from .graph.manager import GraphManager
+
+logger = logging.getLogger(__name__)
 
 @dataclass
 class MemoryFragment:
@@ -293,8 +296,8 @@ class MemorySystem:
                 {
                     "episodic": {"ids": [...], "before": datetime, ...},
                     "semantic": {"ids": [...]},
-                    "procedural": {"skills": ["skill_name", ...]},
-                    "graph": {"entities": ["entity_name", ...]}
+                    "procedural": {"skills": ["skill_name", ...], "skill_name": "name"},
+                    "graph": {"entities": ["entity_name", ...], "entity_name": "name"}
                 }
             
         Returns:
@@ -305,28 +308,54 @@ class MemorySystem:
 
         # Episodic
         if "episodic" in criteria:
-            count += await self.episodic.delete(**criteria["episodic"])
+            try:
+                count += await self.episodic.delete(**criteria["episodic"])
+            except Exception as e:
+                logger.error(f"Failed to delete episodic memories: {e}")
 
         # Semantic
         if "semantic" in criteria and self.semantic:
-            semantic_ids = criteria["semantic"].get("ids", [])
-            if semantic_ids:
-                if await self.semantic.delete_memories(semantic_ids):
-                    count += len(semantic_ids)
+            try:
+                semantic_ids = criteria["semantic"].get("ids", [])
+                if semantic_ids:
+                    if await self.semantic.delete_memories(semantic_ids):
+                        count += len(semantic_ids)
+            except Exception as e:
+                logger.error(f"Failed to delete semantic memories: {e}")
 
         # Procedural
         if "procedural" in criteria and self.procedural:
-            skills = criteria["procedural"].get("skills", [])
-            for skill_name in skills:
-                if await self.procedural.delete_skill(skill_name):
-                    count += 1
+            try:
+                skills = criteria["procedural"].get("skills", [])
+                # Support single skill_name for backward compatibility
+                if "skill_name" in criteria["procedural"]:
+                    skills.append(criteria["procedural"]["skill_name"])
+
+                # Deduplicate if needed, though harmless to try deleting twice
+                skills = list(set(skills))
+
+                for skill_name in skills:
+                    if await self.procedural.delete_skill(skill_name):
+                        count += 1
+            except Exception as e:
+                logger.error(f"Failed to delete procedural memories: {e}")
 
         # Graph
         if "graph" in criteria:
-            entities = criteria["graph"].get("entities", [])
-            for entity in entities:
-                if await self.graph.delete_entity(entity):
-                    count += 1
+            try:
+                entities = criteria["graph"].get("entities", [])
+                # Support single entity_name for backward compatibility
+                if "entity_name" in criteria["graph"]:
+                    entities.append(criteria["graph"]["entity_name"])
+
+                # Deduplicate
+                entities = list(set(entities))
+
+                for entity in entities:
+                    if await self.graph.delete_entity(entity):
+                        count += 1
+            except Exception as e:
+                logger.error(f"Failed to delete graph entities: {e}")
 
         return count
     
