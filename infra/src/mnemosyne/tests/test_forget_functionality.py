@@ -10,6 +10,7 @@ from mnemosyne.core import MemorySystem
 
 class TestForgetFunctionality(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
+        # Patch classes where they are imported in mnemosyne.core
         self.patcher1 = patch('mnemosyne.core.EpisodicManager')
         self.patcher2 = patch('mnemosyne.core.SemanticManager')
         self.patcher3 = patch('mnemosyne.core.ProceduralManager')
@@ -27,9 +28,9 @@ class TestForgetFunctionality(unittest.IsolatedAsyncioTestCase):
 
         # Configure delete return values
         self.episodic_instance.delete = AsyncMock(return_value=5)
-        self.semantic_instance.delete_memories = AsyncMock(return_value=3)
-        self.procedural_instance.delete_skill = AsyncMock(return_value=1)
-        self.graph_instance.delete_entity = AsyncMock(return_value=2)
+        self.semantic_instance.delete_memories = AsyncMock(return_value=True) # Returns success boolean
+        self.procedural_instance.delete_skill = AsyncMock(return_value=True) # Returns success boolean
+        self.graph_instance.delete_entity = AsyncMock(return_value=True) # Returns success boolean
 
         # Initialize MemorySystem with mocked managers
         self.memory = MemorySystem(db_url="sqlite:///:memory:", vector_store=MagicMock(), embeddings=MagicMock())
@@ -67,8 +68,13 @@ class TestForgetFunctionality(unittest.IsolatedAsyncioTestCase):
         self.procedural_instance.delete_skill.assert_called_with("bad_skill")
         self.graph_instance.delete_entity.assert_called_with("OldEntity")
 
-        # Expected total: 5 (episodic) + 3 (semantic) + 1 (procedural) + 2 (graph) = 11
-        self.assertEqual(count, 11)
+        # Expected total:
+        # Episodic: 5 (from mock)
+        # Semantic: 2 (len of ids, since delete_memories returned True)
+        # Procedural: 1 (one skill, delete_skill returned True)
+        # Graph: 1 (one entity, delete_entity returned True)
+        # Total = 9
+        self.assertEqual(count, 9)
 
     async def test_forget_partial(self):
         """Verify that forget works with partial criteria"""
