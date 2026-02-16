@@ -350,33 +350,16 @@ class GraphManager:
         
         try:
             async with self.Session() as session:
-                # Get reference entity ID
-                ref_id_stmt = text("SELECT id FROM kg_entities WHERE name = :name")
-                ref_id_res = await session.execute(ref_id_stmt, {"name": entity_name})
-                ref_row = ref_id_res.fetchone()
-                
-                if not ref_row:
-                    return []
-                ref_id = ref_row[0]
-                
-                # Get reference entity relation count
-                ref_count_stmt = text("SELECT COUNT(*) FROM kg_relations WHERE source_id = :ref_id")
-                ref_count_res = await session.execute(ref_count_stmt, {"ref_id": ref_id})
-                ref_total = ref_count_res.scalar()
-                
-                if ref_total == 0:
-                    return []
-
-                # Intersection-first optimization using CTEs
-                # 1. Identify candidates (entities sharing >=1 relation) -> O(Neighbors)
-                # 2. Count totals for candidates only
-                # 3. Calculate Jaccard in SQL
-                # Note: This query avoids full table scans of unrelated entities.
                 stmt = text("""
-                    WITH ref_rels AS (
-                        SELECT target_id, relation
-                        FROM kg_relations
-                        WHERE source_id = :ref_id
+                    WITH ref_info AS (
+                        SELECT id, (SELECT COUNT(*) FROM kg_relations WHERE source_id = kg_entities.id) as total_rels
+                        FROM kg_entities
+                        WHERE name = :name
+                    ),
+                    ref_rels AS (
+                        SELECT r.target_id, r.relation
+                        FROM kg_relations r
+                        JOIN ref_info ri ON r.source_id = ri.id
                     ),
                     candidates AS (
                         SELECT
@@ -384,7 +367,7 @@ class GraphManager:
                             COUNT(r.id) as intersection_cnt
                         FROM kg_relations r
                         JOIN ref_rels rr ON r.target_id = rr.target_id AND r.relation = rr.relation
-                        WHERE r.source_id != :ref_id
+                        WHERE r.source_id != (SELECT id FROM ref_info)
                         GROUP BY r.source_id
                     ),
                     candidate_totals AS (
@@ -399,17 +382,16 @@ class GraphManager:
                         e.name,
                         c.intersection_cnt,
                         t.total_cnt,
-                        (CAST(c.intersection_cnt AS FLOAT) / (t.total_cnt + :ref_total - c.intersection_cnt)) as similarity
+                        (CAST(c.intersection_cnt AS FLOAT) / (t.total_cnt + (SELECT total_rels FROM ref_info) - c.intersection_cnt)) as similarity
                     FROM candidates c
                     JOIN candidate_totals t ON c.source_id = t.source_id
                     JOIN kg_entities e ON c.source_id = e.id
-                    WHERE (CAST(c.intersection_cnt AS FLOAT) / (t.total_cnt + :ref_total - c.intersection_cnt)) >= :threshold
+                    WHERE (CAST(c.intersection_cnt AS FLOAT) / (t.total_cnt + (SELECT total_rels FROM ref_info) - c.intersection_cnt)) >= :threshold
                     ORDER BY similarity DESC
                 """)
 
                 res = await session.execute(stmt, {
-                    "ref_id": ref_id,
-                    "ref_total": ref_total,
+                    "name": entity_name,
                     "threshold": similarity_threshold
                 })
 
