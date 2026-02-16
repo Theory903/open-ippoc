@@ -284,7 +284,7 @@ GET /v1/system/diagnostics
 
 # Authentication
 POST /v1/auth/issue
-GET /v1/auth/verify
+GET /v1/auth/verify  # Requires 'Authorization: Bearer <key>'
 
 # Memory
 GET /v1/memory/recent?limit=20
