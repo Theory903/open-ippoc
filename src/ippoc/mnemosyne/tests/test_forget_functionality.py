@@ -1,115 +1,128 @@
-import asyncio
-import unittest
 import sys
-import os
-
-# Ensure src is in path
-sys.path.append(os.path.join(os.getcwd(), 'src'))
-
+import unittest
 from unittest.mock import MagicMock, AsyncMock, patch
-from mnemosyne.core import MemorySystem
+
+# Mock heavy dependencies at module level
+MOCK_MODULES = [
+    'langchain_core',
+    'langchain_core.documents',
+    'langchain_core.embeddings',
+    'langchain_core.vectorstores',
+    'langchain_core.prompts',
+    'langchain_core.runnables',
+    'langchain_community',
+    'pgvector',
+    'pgvector.sqlalchemy',
+    'redis',
+    'redis.asyncio',
+    'sqlalchemy',
+    'sqlalchemy.ext',
+    'sqlalchemy.ext.asyncio',
+    'sqlalchemy.orm',
+    'sqlalchemy.dialects',
+    'sqlalchemy.dialects.postgresql',
+    'aiosqlite',
+    'greenlet'
+]
+
+for mod_name in MOCK_MODULES:
+    sys.modules[mod_name] = MagicMock()
+
+from ippoc.mnemosyne.core import MemorySystem
 
 class TestForgetFunctionality(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        # Mock dependencies
-        self.mock_db_url = "sqlite+aiosqlite:///:memory:"
-        self.mock_vector_store = AsyncMock()
-        # Mock delete and adelete on vector store
-        self.mock_vector_store.adelete = AsyncMock(return_value=True)
-        self.mock_vector_store.delete = MagicMock(return_value=True)
+        self.episodic_mock = AsyncMock()
+        self.semantic_mock = AsyncMock()
+        self.procedural_mock = AsyncMock()
+        self.graph_mock = AsyncMock()
 
-        self.mock_embeddings = MagicMock()
+        self.patchers = [
+            patch('ippoc.mnemosyne.core.EpisodicManager', return_value=self.episodic_mock),
+            patch('ippoc.mnemosyne.core.GraphManager', return_value=self.graph_mock),
+            patch('ippoc.mnemosyne.core.SemanticManager', return_value=self.semantic_mock),
+            patch('ippoc.mnemosyne.core.ProceduralManager', return_value=self.procedural_mock)
+        ]
 
-        # Instantiate MemorySystem
-        self.memory_system = MemorySystem(
-            db_url=self.mock_db_url,
-            vector_store=self.mock_vector_store,
-            embeddings=self.mock_embeddings
+        for p in self.patchers:
+            p.start()
+
+        self.memory = MemorySystem(
+            db_url="sqlite:///:memory:",
+            vector_store=MagicMock(),
+            embeddings=MagicMock()
         )
 
-        # Mock Episodic Engine and Session
-        self.mock_episodic_engine = AsyncMock()
-        # Ensure begin is MagicMock (sync function returning async context manager)
-        self.mock_episodic_engine.begin = MagicMock()
+        # Ensure mocks are used
+        self.memory.semantic = self.semantic_mock
+        self.memory.procedural = self.procedural_mock
 
-        mock_conn = AsyncMock()
-        mock_cm = MagicMock()
-        mock_cm.__aenter__ = AsyncMock(return_value=mock_conn)
-        mock_cm.__aexit__ = AsyncMock(return_value=None)
-        self.mock_episodic_engine.begin.return_value = mock_cm
+    async def asyncTearDown(self):
+        for p in self.patchers:
+            p.stop()
 
-        self.memory_system.episodic._engine = self.mock_episodic_engine
+    async def test_forget_episodic(self):
+        criteria = {"episodic": {"ids": [1, 2]}}
+        self.episodic_mock.delete.return_value = 2
 
-        self.mock_episodic_session = AsyncMock()
-        # Mock result for delete
-        mock_result = MagicMock()
-        mock_result.rowcount = 5
-        self.mock_episodic_session.execute.return_value = mock_result
-        # sessionmaker is sync, returns session which is async context manager?
-        # self.async_session() call.
-        self.memory_system.episodic._async_session = MagicMock(return_value=self.mock_episodic_session)
-        self.mock_episodic_session.__aenter__.return_value = self.mock_episodic_session
-        self.mock_episodic_session.__aexit__.return_value = None
+        count = await self.memory.forget(criteria)
 
-        # Mock Graph Engine and Session
-        self.mock_graph_engine = AsyncMock()
-        self.mock_graph_engine.begin = MagicMock()
+        self.episodic_mock.delete.assert_called_with(ids=[1, 2])
+        self.assertEqual(count, 2)
 
-        mock_conn_graph = AsyncMock()
-        mock_cm_graph = MagicMock()
-        mock_cm_graph.__aenter__ = AsyncMock(return_value=mock_conn_graph)
-        mock_cm_graph.__aexit__ = AsyncMock(return_value=None)
-        self.mock_graph_engine.begin.return_value = mock_cm_graph
-        self.memory_system.graph.engine = self.mock_graph_engine
+    async def test_forget_semantic(self):
+        criteria = {"semantic": {"ids": ["doc1", "doc2"]}}
+        self.semantic_mock.delete_memories.return_value = True
 
-        self.mock_graph_session = AsyncMock()
-        self.mock_graph_session.__aenter__.return_value = self.mock_graph_session
-        self.mock_graph_session.__aexit__.return_value = None
+        count = await self.memory.forget(criteria)
 
-        # Mock result for select (fetchone) and delete
-        mock_select_result = MagicMock()
-        mock_select_result.fetchone.return_value = [1] # entity id
+        self.semantic_mock.delete_memories.assert_called_with(["doc1", "doc2"])
+        self.assertEqual(count, 2)
 
-        async def graph_execute_side_effect(*args, **kwargs):
-            query = str(args[0])
-            if "SELECT id FROM kg_entities" in query:
-                return mock_select_result
-            else:
-                return MagicMock()
+    async def test_forget_procedural(self):
+        criteria = {"procedural": {"skills": ["python_skill", "rust_skill"]}}
+        self.procedural_mock.delete_skill.side_effect = [True, True]
 
-        self.mock_graph_session.execute.side_effect = graph_execute_side_effect
-        self.memory_system.graph.Session = MagicMock(return_value=self.mock_graph_session)
+        count = await self.memory.forget(criteria)
 
-        # Mock Procedural Registry
-        self.memory_system.procedural.skill_registry = {
-            "test_skill": {"id": "skill_doc_1", "metadata": {}}
-        }
+        self.assertEqual(self.procedural_mock.delete_skill.call_count, 2)
+        self.assertEqual(count, 2)
 
-    async def test_forget_success(self):
+    async def test_forget_graph(self):
+        criteria = {"graph": {"entities": ["EntityA", "EntityB"]}}
+        self.graph_mock.delete_entity.side_effect = [True, False]
+
+        count = await self.memory.forget(criteria)
+
+        self.assertEqual(self.graph_mock.delete_entity.call_count, 2)
+        self.assertEqual(count, 1)
+
+    async def test_forget_error_handling(self):
+        # Simulate exception in episodic, success in semantic
         criteria = {
-            "episodic": {"ids": [1, 2]},
-            "semantic": {"ids": ["doc1", "doc2"]},
-            "procedural": {"skills": ["test_skill"]},
-            "graph": {"entities": ["TestEntity"]}
+            "episodic": {"ids": [1]},
+            "semantic": {"ids": ["doc1"]}
         }
 
-        count = await self.memory_system.forget(criteria)
+        self.episodic_mock.delete.side_effect = Exception("Database error")
+        self.semantic_mock.delete_memories.return_value = True
 
-        # Assertions
-        # Episodic
-        self.assertTrue(self.mock_episodic_session.execute.called)
+        count = await self.memory.forget(criteria)
 
-        # Semantic
-        self.assertTrue(self.mock_vector_store.adelete.called)
+        # Should catch error and continue
+        self.assertEqual(count, 1)
+        self.semantic_mock.delete_memories.assert_called_with(["doc1"])
 
-        # Procedural
-        self.assertNotIn("test_skill", self.memory_system.procedural.skill_registry)
+    async def test_forget_partial_failure_in_loop(self):
+        criteria = {"procedural": {"skills": ["skill1", "skill2", "skill3"]}}
 
-        # Graph
-        self.assertTrue(self.mock_graph_session.execute.call_count >= 2)
+        # First succeeds, second fails, third succeeds
+        self.procedural_mock.delete_skill.side_effect = [True, Exception("Error"), True]
 
-        print(f"Forget returned count: {count}")
-        self.assertEqual(count, 9)
+        count = await self.memory.forget(criteria)
+
+        self.assertEqual(self.procedural_mock.delete_skill.call_count, 3)
+        self.assertEqual(count, 2)
 
 if __name__ == "__main__":
     unittest.main()

@@ -8,7 +8,7 @@ This module provides a single entrypoint for accessing all memory subsystems:
 - Graph Memory (relationships, causality)
 
 Usage:
-    from mnemosyne import memory
+    from ippoc.mnemosyne import memory
     
     # Store an experience
     await memory.store_episodic("User asked about Python", source="chat")
@@ -234,7 +234,7 @@ class MemorySystem:
                 type="semantic",
                 content=doc.page_content,
                 metadata=doc.metadata,
-                score=1.0,  # TODO: get actual scores
+                score=doc.metadata.get("retrieval_score", 1.0),
                 id=doc.metadata.get("id", f"semantic:{i}")
             ) for i, doc in enumerate(documents)
         ]
@@ -291,61 +291,67 @@ class MemorySystem:
         Remove memories matching criteria.
         
         Args:
-            criteria: Deletion criteria keyed by subsystem.
-                      e.g.,
-                      {
-                          "episodic": {"ids": [...], "before": datetime, "source": "...", "content_match": "..."},
-                          "semantic": {"ids": [...]},
-                          "procedural": {"skill_name": "..."},
-                          "graph": {"entity_name": "..."}
-                      }
+            criteria: Deletion criteria (implementation-dependent)
+                Expected format:
+                {
+                    "episodic": {"ids": [...], "before": datetime, ...},
+                    "semantic": {"ids": [...]},
+                    "procedural": {"skills": ["skill_name", ...]},
+                    "graph": {"entities": ["entity_name", ...]}
+                }
             
         Returns:
-            Number of memories removed
+            Number of memories removed (approximate count from all subsystems)
         """
         await self.initialize()
-        total_deleted = 0
+        count = 0
 
-        # Episodic deletion
+        # Episodic
         if "episodic" in criteria:
             try:
-                count = await self.episodic.delete(**criteria["episodic"])
-                total_deleted += count
+                deleted = await self.episodic.delete(**criteria["episodic"])
+                count += deleted
             except Exception as e:
                 logger.error(f"Failed to delete episodic memories: {e}")
 
-        # Semantic deletion
+        # Semantic
         if "semantic" in criteria and self.semantic:
             try:
-                semantic_criteria = criteria["semantic"]
-                if "ids" in semantic_criteria:
-                    count = await self.semantic.delete_memories(semantic_criteria["ids"])
-                    total_deleted += count
+                semantic_ids = criteria["semantic"].get("ids", [])
+                if semantic_ids:
+                    if await self.semantic.delete_memories(semantic_ids):
+                        count += len(semantic_ids)
             except Exception as e:
                 logger.error(f"Failed to delete semantic memories: {e}")
 
-        # Procedural deletion
+        # Procedural
         if "procedural" in criteria and self.procedural:
             try:
-                proc_criteria = criteria["procedural"]
-                if "skill_name" in proc_criteria:
-                    count = await self.procedural.delete_skill(proc_criteria["skill_name"])
-                    total_deleted += count
+                skills = criteria["procedural"].get("skills", [])
+                for skill_name in skills:
+                    try:
+                        if await self.procedural.delete_skill(skill_name):
+                            count += 1
+                    except Exception as e:
+                        logger.error(f"Failed to delete procedural skill '{skill_name}': {e}")
             except Exception as e:
-                logger.error(f"Failed to delete procedural skill: {e}")
+                logger.error(f"Failed to process procedural deletion criteria: {e}")
 
-        # Graph deletion
+        # Graph
         if "graph" in criteria:
             try:
-                graph_criteria = criteria["graph"]
-                if "entity_name" in graph_criteria:
-                    count = await self.graph.delete_entity(graph_criteria["entity_name"])
-                    total_deleted += count
+                entities = criteria["graph"].get("entities", [])
+                for entity in entities:
+                    try:
+                        if await self.graph.delete_entity(entity):
+                            count += 1
+                    except Exception as e:
+                        logger.error(f"Failed to delete graph entity '{entity}': {e}")
             except Exception as e:
-                logger.error(f"Failed to delete graph entity: {e}")
+                logger.error(f"Failed to process graph deletion criteria: {e}")
 
-        logger.info(f"Forget operation completed. Total removed: {total_deleted}")
-        return total_deleted
+        logger.info(f"Forget operation completed. Total removed: {count}")
+        return count
     
     def health_check(self) -> Dict[str, Any]:
         """Check memory system health"""
