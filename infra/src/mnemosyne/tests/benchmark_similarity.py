@@ -4,15 +4,25 @@ import os
 import time
 import random
 from pathlib import Path
+from unittest.mock import MagicMock
+
+# Mock heavy dependencies just in case
+sys.modules["langchain_core"] = MagicMock()
+sys.modules["langchain_community"] = MagicMock()
+sys.modules["pgvector"] = MagicMock()
+sys.modules["redis"] = MagicMock()
+
+# Add infra/src/mnemosyne to python path to bypass package init
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from sqlalchemy import text
 
-# Add infra/src to python path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
 try:
-    from mnemosyne.graph.manager import GraphManager
+    # Try importing directly from graph.manager
+    from graph.manager import GraphManager
 except ImportError:
-    sys.path.insert(0, str(Path(__file__).parent.parent))
+    # Fallback
+    sys.path.insert(0, str(Path(__file__).parent.parent.parent))
     from mnemosyne.graph.manager import GraphManager
 
 async def run_benchmark():
@@ -63,9 +73,6 @@ async def run_benchmark():
                 await session.execute(text(f"INSERT INTO kg_relations (source_id, target_id, relation) VALUES ({s_id}, {u_id}, 'rel')"))
 
         # Create 10,000 Unrelated Entities (N{i})
-        # Each has 5 relations to random unique targets
-        # To speed up, we can generate SQL directly or use bulk insert if possible.
-        # But for 10k it might be okay.
         print("Inserting 10,000 unrelated entities...")
 
         # Optimizing bulk insert
@@ -80,8 +87,6 @@ async def run_benchmark():
             await session.execute(text(f"INSERT INTO kg_entities (name, type) VALUES {values}"))
 
         # Get IDs
-        # This is tricky without returning * in SQLite consistently or assumptions.
-        # Just select all N%
         res = await session.execute(text("SELECT id FROM kg_entities WHERE name LIKE 'N%'"))
         n_ids = [row[0] for row in res.fetchall()]
 
@@ -126,7 +131,6 @@ async def run_benchmark():
     for _ in range(iterations):
         results = await gm.find_similar_entities("A", similarity_threshold=0.1)
         # Basic validation
-        # Should find at least 100 similar entities
         if len(results) < 100:
             print(f"Warning: Found only {len(results)} similar entities")
 
