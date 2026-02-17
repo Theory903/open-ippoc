@@ -2,11 +2,22 @@ import asyncio
 import unittest
 import sys
 import os
+from unittest.mock import MagicMock, AsyncMock, patch
+
+# Mock modules before importing
+sys.modules['pgvector'] = MagicMock()
+sys.modules['pgvector.sqlalchemy'] = MagicMock()
+sys.modules['redis'] = MagicMock()
+sys.modules['redis.asyncio'] = MagicMock()
+sys.modules['langchain_community'] = MagicMock()
+sys.modules['langchain_community.vectorstores'] = MagicMock()
+sys.modules['langchain_google_genai'] = MagicMock()
 
 # Ensure src is in path
 sys.path.append(os.path.join(os.getcwd(), 'src'))
+# Also ensure ippoc is in path for mnemosyne import if needed
+sys.path.append(os.path.join(os.getcwd(), 'src/ippoc'))
 
-from unittest.mock import MagicMock, AsyncMock, patch
 from mnemosyne.core import MemorySystem
 
 class TestForgetFunctionality(unittest.IsolatedAsyncioTestCase):
