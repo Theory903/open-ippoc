@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Header
 from pydantic import BaseModel
 from typing import Dict, Optional
 import uuid
@@ -56,10 +56,22 @@ def issue_api_key(node_id: str = "ippoc-local"):
     return {"status": "success", "api_key": api_key, "node_id": node_id}
 
 @app.get("/v1/auth/verify")
-def verify_api_key(api_key: str):
-    if api_key not in api_keys:
+def verify_api_key(authorization: Optional[str] = Header(None)):
+    """
+    Verifies the API key provided in the Authorization header.
+    Expects format: Authorization: Bearer <api_key>
+    """
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Missing Authorization header")
+
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid authentication scheme")
+
+    token = authorization.split(" ")[1]
+    if token not in api_keys:
         raise HTTPException(status_code=401, detail="Invalid API key")
-    return {"status": "valid", "node_id": api_keys[api_key]}
+
+    return {"status": "valid", "node_id": api_keys[token]}
 
 @app.get("/v1/memory/recent")
 def get_recent_memories(limit: int = 20):
