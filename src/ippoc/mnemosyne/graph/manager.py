@@ -334,13 +334,14 @@ class GraphManager:
             logger.error(f"Entity context retrieval failed: {e}")
             return {"error": str(e)}
     
-    async def find_similar_entities(self, entity_name: str, similarity_threshold: float = 0.7) -> List[Dict[str, Any]]:
+    async def find_similar_entities(self, entity_name: str, similarity_threshold: float = 0.7, limit: int = 50) -> List[Dict[str, Any]]:
         """
         Find entities similar to the given entity based on shared relationships.
         
         Args:
             entity_name: Reference entity
             similarity_threshold: Minimum similarity score (0.0 to 1.0)
+            limit: Maximum number of similar entities to return
             
         Returns:
             List of similar entities with similarity scores
@@ -405,12 +406,14 @@ class GraphManager:
                     JOIN kg_entities e ON c.source_id = e.id
                     WHERE (CAST(c.intersection_cnt AS FLOAT) / (t.total_cnt + :ref_total - c.intersection_cnt)) >= :threshold
                     ORDER BY similarity DESC
+                    LIMIT :limit
                 """)
 
                 res = await session.execute(stmt, {
                     "ref_id": ref_id,
                     "ref_total": ref_total,
-                    "threshold": similarity_threshold
+                    "threshold": similarity_threshold,
+                    "limit": limit
                 })
 
                 for row in res.fetchall():
