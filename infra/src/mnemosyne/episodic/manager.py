@@ -198,47 +198,46 @@ class EpisodicManager:
             logger.error(f"Failed to get episodic stats: {e}")
             return {"error": str(e)}
 
-    async def delete(self, ids: List[int] = None, before: datetime = None,
-                    source: str = None, content_match: str = None) -> int:
+    async def delete(self, ids: List[int] = None, before: datetime = None, source: str = None, content_match: str = None) -> int:
         """
         Delete episodic events matching criteria.
 
         Args:
             ids: List of event IDs to delete
-            before: Delete events before this timestamp
+            before: Delete events older than this timestamp
             source: Delete events from this source
             content_match: Delete events containing this text
 
         Returns:
-            Number of deleted events
+            Number of events deleted
         """
         try:
             async with self.async_session() as session:
                 stmt = delete(EpisodicEvent)
-                filters = []
 
+                conditions = []
                 if ids:
-                    filters.append(EpisodicEvent.id.in_(ids))
-
+                    conditions.append(EpisodicEvent.id.in_(ids))
                 if before:
-                    filters.append(EpisodicEvent.timestamp < before)
-
+                    conditions.append(EpisodicEvent.timestamp < before)
                 if source:
-                    filters.append(EpisodicEvent.source == source)
-
+                    conditions.append(EpisodicEvent.source == source)
                 if content_match:
-                    filters.append(EpisodicEvent.content.ilike(f"%{content_match}%"))
+                    conditions.append(EpisodicEvent.content.ilike(f"%{content_match}%"))
 
-                if not filters:
-                    logger.warning("No criteria provided for episodic deletion")
+                if not conditions:
+                    logger.warning("No criteria provided for deletion")
                     return 0
 
-                stmt = stmt.where(and_(*filters))
+                # Combine conditions with AND
+                stmt = stmt.where(and_(*conditions))
 
                 result = await session.execute(stmt)
                 await session.commit()
 
-                return result.rowcount
+                count = result.rowcount
+                logger.info(f"Deleted {count} episodic events")
+                return count
 
         except Exception as e:
             logger.error(f"Failed to delete episodic events: {e}")

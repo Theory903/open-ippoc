@@ -1,11 +1,11 @@
 from typing import List, Dict, Any, Tuple, Optional
+from collections import defaultdict
 from sqlalchemy import Column, Integer, String, Float, ForeignKey, text, DateTime, bindparam
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 import logging
-import json
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -263,7 +263,7 @@ class GraphManager:
             async with self.Session() as session:
                 # Get entity details
                 entity_stmt = text("""
-                    SELECT id, type, metadata
+                    SELECT id, type, metadata_
                     FROM kg_entities
                     WHERE name = :name
                 """)
@@ -426,42 +426,43 @@ class GraphManager:
             logger.error(f"Similar entity search failed: {e}")
             return []
 
-    async def delete_entity(self, entity_name: str) -> int:
+    async def delete_entity(self, name: str) -> bool:
         """
-        Delete an entity and all its incident edges.
+        Delete an entity and its relationships.
 
         Args:
-            entity_name: Entity name to delete
+            name: Entity name
 
         Returns:
-            Total count of deleted items (1 entity + N relations)
+            Success status
         """
+        await self.init_db()
         try:
-            await self.init_db()
             async with self.Session() as session:
-                # Find entity ID
-                res = await session.execute(text("SELECT id FROM kg_entities WHERE name = :n"), {"n": entity_name})
+                # Find Entity ID
+                res = await session.execute(text("SELECT id FROM kg_entities WHERE name = :n"), {"n": name})
                 row = res.fetchone()
                 if not row:
-                    return 0
-
+                    logger.warning(f"Entity '{name}' not found")
+                    return False
                 eid = row[0]
 
-                # Delete relations where source or target is this entity
-                stmt = text("DELETE FROM kg_relations WHERE source_id = :eid OR target_id = :eid")
-                result = await session.execute(stmt, {"eid": eid})
-                deleted_relations = result.rowcount
+                # Delete relationships involving the entity
+                await session.execute(
+                    text("DELETE FROM kg_relations WHERE source_id = :eid OR target_id = :eid"),
+                    {"eid": eid}
+                )
 
-                # Delete entity
-                stmt_ent = text("DELETE FROM kg_entities WHERE id = :eid")
-                await session.execute(stmt_ent, {"eid": eid})
+                # Delete the entity
+                await session.execute(
+                    text("DELETE FROM kg_entities WHERE id = :eid"),
+                    {"eid": eid}
+                )
 
                 await session.commit()
-
-                total = 1 + deleted_relations
-                logger.info(f"Deleted entity '{entity_name}' and {deleted_relations} relations")
-                return total
+                logger.info(f"Deleted entity '{name}' and its relations")
+                return True
 
         except Exception as e:
-            logger.error(f"Failed to delete entity '{entity_name}': {e}")
-            return 0
+            logger.error(f"Failed to delete entity '{name}': {e}")
+            return False
