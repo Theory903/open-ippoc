@@ -324,9 +324,8 @@ class MemorySystem:
         # Graph
         if "graph" in criteria:
             entities = criteria["graph"].get("entities", [])
-            for entity in entities:
-                if await self.graph.delete_entity(entity):
-                    count += 1
+            if entities:
+                count += await self.graph.delete_entities(entities)
 
         return count
     

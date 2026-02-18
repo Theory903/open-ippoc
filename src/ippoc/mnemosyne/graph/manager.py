@@ -436,33 +436,57 @@ class GraphManager:
         Returns:
             Success status
         """
+        count = await self.delete_entities([name])
+        return count > 0
+
+    async def delete_entities(self, names: List[str]) -> int:
+        """
+        Delete multiple entities and their relationships in a single transaction.
+
+        Args:
+            names: List of entity names to delete
+
+        Returns:
+            Total count of deleted items (entities + relations)
+        """
+        if not names:
+            return 0
+
         await self.init_db()
         try:
             async with self.Session() as session:
-                # Find Entity ID
-                res = await session.execute(text("SELECT id FROM kg_entities WHERE name = :n"), {"n": name})
-                row = res.fetchone()
-                if not row:
-                    logger.warning(f"Entity '{name}' not found")
-                    return False
-                eid = row[0]
+                # Find Entity IDs
+                # Use bindparam for list handling in SQLAlchemy text query
+                stmt = text("SELECT id, name FROM kg_entities WHERE name IN :names")
+                stmt = stmt.bindparams(bindparam("names", expanding=True))
+                res = await session.execute(stmt, {"names": names})
 
-                # Delete relationships involving the entity
-                await session.execute(
-                    text("DELETE FROM kg_relations WHERE source_id = :eid OR target_id = :eid"),
-                    {"eid": eid}
-                )
+                rows = res.fetchall()
+                if not rows:
+                    return 0
 
-                # Delete the entity
-                await session.execute(
-                    text("DELETE FROM kg_entities WHERE id = :eid"),
-                    {"eid": eid}
-                )
+                eids = [row.id for row in rows]
+                found_names = [row.name for row in rows]
+
+                # Delete relationships involving these entities
+                # DELETE FROM kg_relations WHERE source_id IN (...) OR target_id IN (...)
+                rel_stmt = text("DELETE FROM kg_relations WHERE source_id IN :eids OR target_id IN :eids")
+                rel_stmt = rel_stmt.bindparams(bindparam("eids", expanding=True))
+                rel_res = await session.execute(rel_stmt, {"eids": eids})
+                deleted_relations = rel_res.rowcount
+
+                # Delete the entities
+                ent_stmt = text("DELETE FROM kg_entities WHERE id IN :eids")
+                ent_stmt = ent_stmt.bindparams(bindparam("eids", expanding=True))
+                ent_res = await session.execute(ent_stmt, {"eids": eids})
+                deleted_entities = ent_res.rowcount
 
                 await session.commit()
-                logger.info(f"Deleted entity '{name}' and its relations")
-                return True
+
+                total = deleted_entities + deleted_relations
+                logger.info(f"Deleted {deleted_entities} entities ({found_names}) and {deleted_relations} relations")
+                return total
 
         except Exception as e:
-            logger.error(f"Failed to delete entity '{name}': {e}")
-            return False
+            logger.error(f"Failed to batch delete entities {names}: {e}")
+            return 0

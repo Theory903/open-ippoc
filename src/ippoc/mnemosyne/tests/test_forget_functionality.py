@@ -70,9 +70,19 @@ class TestForgetFunctionality(unittest.IsolatedAsyncioTestCase):
         mock_select_result = MagicMock()
         mock_select_result.fetchone.return_value = [1] # entity id
 
+        # Mock row for delete_entities
+        mock_row = MagicMock()
+        mock_row.id = 1
+        mock_row.name = "TestEntity"
+        mock_select_result.fetchall.return_value = [mock_row]
+        # Set rowcount for delete results
+        mock_select_result.rowcount = 1
+
         async def graph_execute_side_effect(*args, **kwargs):
             query = str(args[0])
-            if "SELECT id FROM kg_entities" in query:
+            if "SELECT id" in query and "kg_entities" in query:
+                return mock_select_result
+            elif "DELETE" in query:
                 return mock_select_result
             else:
                 return MagicMock()
@@ -109,7 +119,7 @@ class TestForgetFunctionality(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(self.mock_graph_session.execute.call_count >= 2)
 
         print(f"Forget returned count: {count}")
-        self.assertEqual(count, 9)
+        self.assertEqual(count, 10)
 
 if __name__ == "__main__":
     unittest.main()
