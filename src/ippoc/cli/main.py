@@ -24,6 +24,25 @@ logging.basicConfig(
 logger = logging.getLogger("IPPOC.CLI")
 
 # ============================================================================
+# UTILITIES
+# ============================================================================
+
+def colorize(text: str, color: str) -> str:
+    """Apply ANSI color codes if stdout is a TTY."""
+    if not sys.stdout.isatty():
+        return text
+
+    colors = {
+        "green": "\033[92m",
+        "red": "\033[91m",
+        "yellow": "\033[93m",
+        "blue": "\033[94m",
+        "bold": "\033[1m",
+        "reset": "\033[0m"
+    }
+    return f"{colors.get(color, '')}{text}{colors['reset']}"
+
+# ============================================================================
 # SERVICE CONFIGURATION
 # ============================================================================
 
@@ -463,12 +482,21 @@ def print_services_status():
     services = get_all_services_status()
     
     for name, info in services.items():
-        status = "🟢 Running" if info["running"] else "🔴 Stopped"
-        healthy = "✓" if info["healthy"] else "✗"
+        if info["running"]:
+            status = colorize("🟢 Running", "green")
+        else:
+            status = colorize("🔴 Stopped", "red")
+
+        if info["healthy"]:
+            healthy = colorize("✓", "green")
+        else:
+            healthy = colorize("✗", "red")
+
         pid = f" (PID: {info['pid']})" if info["pid"] else ""
         port = f":{info['port']}"
         
-        print(f"  {name.upper():8} {status}{pid} port{port} healthy={healthy}")
+        name_display = colorize(f"{name.upper():8}", "bold")
+        print(f"  {name_display} {status}{pid} port{port} healthy={healthy}")
     
     print("="*60 + "\n")
 
