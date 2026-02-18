@@ -338,11 +338,17 @@ class MemorySystem:
         if "graph" in criteria:
             try:
                 graph_criteria = criteria["graph"]
+                entities = []
                 if "entity_name" in graph_criteria:
-                    count = await self.graph.delete_entity(graph_criteria["entity_name"])
+                    entities.append(graph_criteria["entity_name"])
+                if "entities" in graph_criteria:
+                    entities.extend(graph_criteria["entities"])
+
+                if entities:
+                    count = await self.graph.delete_entities(entities)
                     total_deleted += count
             except Exception as e:
-                logger.error(f"Failed to delete graph entity: {e}")
+                logger.error(f"Failed to delete graph entities: {e}")
 
         logger.info(f"Forget operation completed. Total removed: {total_deleted}")
         return total_deleted

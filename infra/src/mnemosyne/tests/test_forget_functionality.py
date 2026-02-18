@@ -29,7 +29,7 @@ class TestForgetFunctionality(unittest.IsolatedAsyncioTestCase):
         self.episodic_instance.delete = AsyncMock(return_value=5)
         self.semantic_instance.delete_memories = AsyncMock(return_value=3)
         self.procedural_instance.delete_skill = AsyncMock(return_value=1)
-        self.graph_instance.delete_entity = AsyncMock(return_value=2)
+        self.graph_instance.delete_entities = AsyncMock(return_value=2)
 
         # Initialize MemorySystem with mocked managers
         self.memory = MemorySystem(db_url="sqlite:///:memory:", vector_store=MagicMock(), embeddings=MagicMock())
@@ -65,7 +65,7 @@ class TestForgetFunctionality(unittest.IsolatedAsyncioTestCase):
         self.episodic_instance.delete.assert_called_with(source="user", before="2023-01-01")
         self.semantic_instance.delete_memories.assert_called_with(["1", "2"])
         self.procedural_instance.delete_skill.assert_called_with("bad_skill")
-        self.graph_instance.delete_entity.assert_called_with("OldEntity")
+        self.graph_instance.delete_entities.assert_called_with(["OldEntity"])
 
         # Expected total: 5 (episodic) + 3 (semantic) + 1 (procedural) + 2 (graph) = 11
         self.assertEqual(count, 11)
