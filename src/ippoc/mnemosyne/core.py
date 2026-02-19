@@ -21,9 +21,12 @@ Usage:
 """
 
 import asyncio
+import logging
 from typing import List, Dict, Any, Optional, Union
 from dataclasses import dataclass
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 # Import all memory managers
 from .episodic.manager import EpisodicManager
@@ -305,7 +308,10 @@ class MemorySystem:
 
         # Episodic
         if "episodic" in criteria:
-            count += await self.episodic.delete(**criteria["episodic"])
+            try:
+                count += await self.episodic.delete(**criteria["episodic"])
+            except Exception as e:
+                logger.error(f"Failed to delete episodic memories: {e}")
 
         # Semantic
         if "semantic" in criteria and self.semantic:
