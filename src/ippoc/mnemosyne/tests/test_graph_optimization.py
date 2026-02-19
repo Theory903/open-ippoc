@@ -1,4 +1,3 @@
-
 import pytest
 import pytest_asyncio
 import sys
@@ -122,3 +121,37 @@ async def test_find_similar_entities(graph_manager):
     assert similar[0]["entity"] == "D"
     assert abs(similar[0]["similarity"] - (1/3)) < 0.01
     assert similar[0]["shared_relations"] == 1
+
+@pytest.mark.asyncio
+async def test_get_entity_context(graph_manager):
+    gm = graph_manager
+    # Populate data
+    # EntityA -> EntityB (rel1)
+    # EntityC -> EntityA (rel2)
+    # EntityA -> Attr1 (has_attribute)
+    await gm.add_triple("EntityA", "rel1", "EntityB")
+    await gm.add_triple("EntityC", "rel2", "EntityA")
+    await gm.add_triple("EntityA", "has_attribute", "Attr1")
+
+    # Get context
+    context = await gm.get_entity_context("EntityA", context_types=['relationships', 'attributes'])
+
+    assert context["entity"] == "EntityA"
+    assert "error" not in context
+
+    # Check incoming
+    incoming = [r["from"] for r in context.get("incoming_relations", [])]
+    assert "EntityC" in incoming
+    assert len(incoming) == 1
+
+    # Check outgoing
+    outgoing = [r["to"] for r in context.get("outgoing_relations", [])]
+    # Outgoing includes relations and attributes in the context logic
+    assert "EntityB" in outgoing
+    assert "Attr1" in outgoing
+    assert len(outgoing) == 2
+
+    # Check attributes
+    attrs = [r["attribute"] for r in context.get("attributes", [])]
+    assert "Attr1" in attrs
+    assert len(attrs) == 1
