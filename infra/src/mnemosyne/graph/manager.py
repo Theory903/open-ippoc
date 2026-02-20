@@ -282,49 +282,51 @@ class GraphManager:
                 except:
                     context["metadata"] = {}
                 
-                # Get relationships if requested
-                if 'relationships' in context_types:
-                    # Incoming relationships
-                    incoming_stmt = text("""
-                        SELECT e.name, r.relation
-                        FROM kg_relations r
-                        JOIN kg_entities e ON r.source_id = e.id
-                        WHERE r.target_id = :entity_id
-                    """)
-                    incoming_res = await session.execute(incoming_stmt, {"entity_id": entity_id})
-                    context["incoming_relations"] = [
-                        {"from": row[0], "relation": row[1]} 
-                        for row in incoming_res.fetchall()
-                    ]
+                # Optimize: Get all relationships in one query
+                if 'relationships' in context_types or 'attributes' in context_types:
+                    # We fetch both incoming and outgoing edges involving this entity
+                    # and categorize them in Python.
+                    # Join with kg_entities twice to get names of both source and target (though we know one is entity_id)
+                    # Actually, we can use CASE to select the *other* entity's name.
                     
-                    # Outgoing relationships
-                    outgoing_stmt = text("""
-                        SELECT e.name, r.relation
+                    stmt = text("""
+                        SELECT
+                            r.relation,
+                            CASE WHEN r.source_id = :eid THEN t.name ELSE s.name END as other_name,
+                            CASE WHEN r.source_id = :eid THEN 'out' ELSE 'in' END as direction
                         FROM kg_relations r
-                        JOIN kg_entities e ON r.target_id = e.id
-                        WHERE r.source_id = :entity_id
+                        JOIN kg_entities s ON r.source_id = s.id
+                        JOIN kg_entities t ON r.target_id = t.id
+                        WHERE r.source_id = :eid OR r.target_id = :eid
                     """)
-                    outgoing_res = await session.execute(outgoing_stmt, {"entity_id": entity_id})
-                    context["outgoing_relations"] = [
-                        {"to": row[0], "relation": row[1]} 
-                        for row in outgoing_res.fetchall()
-                    ]
-                
-                # Get attributes if requested
-                if 'attributes' in context_types:
-                    # This would query attribute nodes connected to the entity
-                    attr_stmt = text("""
-                        SELECT e.name, r.relation
-                        FROM kg_relations r
-                        JOIN kg_entities e ON e.id = r.target_id
-                        WHERE r.source_id = :entity_id
-                        AND r.relation IN ('has_attribute', 'described_as', 'characterized_by')
-                    """)
-                    attr_res = await session.execute(attr_stmt, {"entity_id": entity_id})
-                    context["attributes"] = [
-                        {"attribute": row[0], "type": row[1]}
-                        for row in attr_res.fetchall()
-                    ]
+
+                    res = await session.execute(stmt, {"eid": entity_id})
+                    rows = res.fetchall()
+
+                    incoming = []
+                    outgoing = []
+                    attributes = []
+                    attr_relations = {'has_attribute', 'described_as', 'characterized_by'}
+
+                    for row in rows:
+                        relation, other_name, direction = row[0], row[1], row[2]
+
+                        if direction == 'in':
+                            if 'relationships' in context_types:
+                                incoming.append({"from": other_name, "relation": relation})
+                        else: # direction == 'out'
+                            if 'relationships' in context_types:
+                                outgoing.append({"to": other_name, "relation": relation})
+
+                            if 'attributes' in context_types and relation in attr_relations:
+                                attributes.append({"attribute": other_name, "type": relation})
+
+                    if 'relationships' in context_types:
+                        context["incoming_relations"] = incoming
+                        context["outgoing_relations"] = outgoing
+
+                    if 'attributes' in context_types:
+                        context["attributes"] = attributes
                 
                 context["timestamp"] = datetime.now().isoformat()
                 
