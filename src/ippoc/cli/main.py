@@ -47,6 +47,17 @@ PID_DIR = os.path.join(INSTANCE_ROOT, "pids")
 # SERVICE MANAGEMENT
 # ============================================================================
 
+def colorize(text: str, color: str) -> str:
+    """Apply ANSI color codes to text if stdout is a TTY."""
+    colors = {
+        "green": "\033[92m",
+        "red": "\033[91m",
+        "reset": "\033[0m"
+    }
+    if sys.stdout.isatty():
+        return f"{colors.get(color, '')}{text}{colors['reset']}"
+    return text
+
 def ensure_instance_dirs():
     """Create instance directories if they don't exist."""
     for d in [INSTANCE_ROOT, INSTANCE_DATA, INSTANCE_STATE, PID_DIR]:
@@ -463,8 +474,8 @@ def print_services_status():
     services = get_all_services_status()
     
     for name, info in services.items():
-        status = "🟢 Running" if info["running"] else "🔴 Stopped"
-        healthy = "✓" if info["healthy"] else "✗"
+        status = f"🟢 {colorize('Running', 'green')}" if info["running"] else f"🔴 {colorize('Stopped', 'red')}"
+        healthy = colorize("✓", "green") if info["healthy"] else colorize("✗", "red")
         pid = f" (PID: {info['pid']})" if info["pid"] else ""
         port = f":{info['port']}"
         
