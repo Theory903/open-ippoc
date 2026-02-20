@@ -1,5 +1,5 @@
 from typing import List, Dict, Any, Tuple, Optional
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, text, DateTime, bindparam
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, text, DateTime, bindparam, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
@@ -27,6 +27,11 @@ class Relation(Base):
     target_id = Column(Integer, ForeignKey("kg_entities.id"), index=True)
     relation = Column(String) # e.g. "authored", "is_located_in"
     weight = Column(Float, default=1.0)
+
+    __table_args__ = (
+        Index("idx_source_relation", "source_id", "relation"),
+        Index("idx_target_relation", "target_id", "relation"),
+    )
 
 class GraphManager:
     def __init__(self, db_url: str = None):
@@ -359,14 +364,6 @@ class GraphManager:
                     return []
                 ref_id = ref_row[0]
                 
-                # Get reference entity relation count
-                ref_count_stmt = text("SELECT COUNT(*) FROM kg_relations WHERE source_id = :ref_id")
-                ref_count_res = await session.execute(ref_count_stmt, {"ref_id": ref_id})
-                ref_total = ref_count_res.scalar()
-                
-                if ref_total == 0:
-                    return []
-
                 # Intersection-first optimization using CTEs
                 # 1. Identify candidates (entities sharing >=1 relation) -> O(Neighbors)
                 # 2. Count totals for candidates only
@@ -377,6 +374,9 @@ class GraphManager:
                         SELECT target_id, relation
                         FROM kg_relations
                         WHERE source_id = :ref_id
+                    ),
+                    ref_total_cte AS (
+                        SELECT COUNT(*) as cnt FROM kg_relations WHERE source_id = :ref_id
                     ),
                     candidates AS (
                         SELECT
@@ -399,17 +399,16 @@ class GraphManager:
                         e.name,
                         c.intersection_cnt,
                         t.total_cnt,
-                        (CAST(c.intersection_cnt AS FLOAT) / (t.total_cnt + :ref_total - c.intersection_cnt)) as similarity
+                        (CAST(c.intersection_cnt AS FLOAT) / (t.total_cnt + (SELECT cnt FROM ref_total_cte) - c.intersection_cnt)) as similarity
                     FROM candidates c
                     JOIN candidate_totals t ON c.source_id = t.source_id
                     JOIN kg_entities e ON c.source_id = e.id
-                    WHERE (CAST(c.intersection_cnt AS FLOAT) / (t.total_cnt + :ref_total - c.intersection_cnt)) >= :threshold
+                    WHERE (CAST(c.intersection_cnt AS FLOAT) / (t.total_cnt + (SELECT cnt FROM ref_total_cte) - c.intersection_cnt)) >= :threshold
                     ORDER BY similarity DESC
                 """)
 
                 res = await session.execute(stmt, {
                     "ref_id": ref_id,
-                    "ref_total": ref_total,
                     "threshold": similarity_threshold
                 })
 

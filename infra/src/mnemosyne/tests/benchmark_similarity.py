@@ -5,15 +5,15 @@ import time
 import random
 from pathlib import Path
 from sqlalchemy import text
+import importlib.util
 
-# Add infra/src to python path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
-try:
-    from mnemosyne.graph.manager import GraphManager
-except ImportError:
-    sys.path.insert(0, str(Path(__file__).parent.parent))
-    from mnemosyne.graph.manager import GraphManager
+# Load GraphManager directly from file to avoid package dependencies
+graph_manager_path = Path(__file__).parent.parent / "graph" / "manager.py"
+spec = importlib.util.spec_from_file_location("mnemosyne.graph.manager", str(graph_manager_path))
+manager_module = importlib.util.module_from_spec(spec)
+sys.modules["mnemosyne.graph.manager"] = manager_module
+spec.loader.exec_module(manager_module)
+GraphManager = manager_module.GraphManager
 
 async def run_benchmark():
     # Use in-memory SQLite for speed and isolation

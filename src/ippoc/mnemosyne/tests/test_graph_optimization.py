@@ -4,11 +4,23 @@ import pytest_asyncio
 import sys
 import os
 import asyncio
+from pathlib import Path
+import importlib.util
 
 # Ensure src is in path
 sys.path.append(os.path.join(os.getcwd(), "src"))
 
-from ippoc.mnemosyne.graph.manager import GraphManager
+# Load GraphManager directly from file to avoid package dependencies (like langchain)
+# which are triggered by importing ippoc.mnemosyne.__init__
+graph_manager_path = Path(os.getcwd()) / "src/ippoc/mnemosyne/graph/manager.py"
+spec = importlib.util.spec_from_file_location("ippoc.mnemosyne.graph.manager", str(graph_manager_path))
+manager_module = importlib.util.module_from_spec(spec)
+# We mock the module in sys.modules so imports work, but we name it differently to avoid conflict
+# with potential existing imports if any
+sys.modules["ippoc.mnemosyne.graph.manager_direct"] = manager_module
+spec.loader.exec_module(manager_module)
+GraphManager = manager_module.GraphManager
+
 
 @pytest_asyncio.fixture
 async def graph_manager():
