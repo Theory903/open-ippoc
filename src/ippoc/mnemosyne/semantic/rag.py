@@ -197,7 +197,7 @@ class SemanticManager:
             logger.error(f"Batch addition failed: {e}")
             raise
     
-    async def delete_memories(self, ids: List[str]) -> bool:
+    async def delete_memories(self, ids: List[str]) -> int:
         """
         Delete memories by IDs.
         
@@ -205,7 +205,7 @@ class SemanticManager:
             ids: Document IDs to delete
             
         Returns:
-            Success status
+            Count of deleted memories
         """
         try:
             # Delete from vector store if supported
@@ -222,6 +222,7 @@ class SemanticManager:
                  logger.warning("Vector store does not support delete operation")
 
             # Remove from internal indices
+            deleted_count = 0
             for obj_id in ids:
                 if obj_id in self.object_index:
                     obj = self.object_index[obj_id]
@@ -240,12 +241,13 @@ class SemanticManager:
 
                     # Remove from object_index
                     del self.object_index[obj_id]
+                    deleted_count += 1
 
-            logger.info(f"Deleted {len(ids)} semantic memories")
-            return True
+            logger.info(f"Deleted {deleted_count} semantic memories")
+            return deleted_count
         except Exception as e:
             logger.error(f"Delete failed: {e}")
-            return False
+            return 0
     
     async def get_stats(self) -> Dict[str, Any]:
         """
