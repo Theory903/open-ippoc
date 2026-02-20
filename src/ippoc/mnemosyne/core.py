@@ -311,8 +311,7 @@ class MemorySystem:
         if "semantic" in criteria and self.semantic:
             semantic_ids = criteria["semantic"].get("ids", [])
             if semantic_ids:
-                if await self.semantic.delete_memories(semantic_ids):
-                    count += len(semantic_ids)
+                count += await self.semantic.delete_memories(semantic_ids)
 
         # Procedural
         if "procedural" in criteria and self.procedural:

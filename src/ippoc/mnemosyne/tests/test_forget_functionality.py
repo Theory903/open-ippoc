@@ -85,6 +85,14 @@ class TestForgetFunctionality(unittest.IsolatedAsyncioTestCase):
             "test_skill": {"id": "skill_doc_1", "metadata": {}}
         }
 
+        # Mock Semantic Index
+        # Populate object_index so delete_memories can count them
+        self.memory_system.semantic.object_index = {
+            "doc1": MagicMock(),
+            "doc2": MagicMock()
+        }
+        self.memory_system.semantic.semantic_objects = list(self.memory_system.semantic.object_index.values())
+
     async def test_forget_success(self):
         criteria = {
             "episodic": {"ids": [1, 2]},
