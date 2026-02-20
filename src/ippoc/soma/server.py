@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Security
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from typing import Dict, Optional
 import uuid
@@ -55,8 +56,15 @@ def issue_api_key(node_id: str = "ippoc-local"):
     api_keys[api_key] = node_id
     return {"status": "success", "api_key": api_key, "node_id": node_id}
 
+security = HTTPBearer()
+
 @app.get("/v1/auth/verify")
-def verify_api_key(api_key: str):
+def verify_api_key(credentials: HTTPAuthorizationCredentials = Security(security)):
+    """
+    Verify API key provided via Bearer token.
+    Query parameters are no longer accepted for security reasons.
+    """
+    api_key = credentials.credentials
     if api_key not in api_keys:
         raise HTTPException(status_code=401, detail="Invalid API key")
     return {"status": "valid", "node_id": api_keys[api_key]}
