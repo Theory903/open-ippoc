@@ -291,17 +291,17 @@ class MemorySystem:
         Remove memories matching criteria.
         
         Args:
-            criteria: Deletion criteria keyed by subsystem.
-                      e.g.,
-                      {
-                          "episodic": {"ids": [...], "before": datetime, "source": "...", "content_match": "..."},
-                          "semantic": {"ids": [...]},
-                          "procedural": {"skill_name": "..."},
-                          "graph": {"entity_name": "..."}
-                      }
+            criteria: Deletion criteria (implementation-dependent)
+                Expected format:
+                {
+                    "episodic": {"ids": [...], "before": datetime, ...},
+                    "semantic": {"ids": [...]},
+                    "procedural": {"skills": ["skill_name", ...]},
+                    "graph": {"entities": ["entity_name", ...]}
+                }
             
         Returns:
-            Number of memories removed
+            Number of memories removed (approximate count from all subsystems)
         """
         await self.initialize()
         total_deleted = 0
@@ -318,8 +318,9 @@ class MemorySystem:
         if "semantic" in criteria and self.semantic:
             try:
                 semantic_criteria = criteria["semantic"]
-                if "ids" in semantic_criteria:
-                    count = await self.semantic.delete_memories(semantic_criteria["ids"])
+                semantic_ids = semantic_criteria.get("ids", [])
+                if semantic_ids:
+                    count = await self.semantic.delete_memories(semantic_ids)
                     total_deleted += count
             except Exception as e:
                 logger.error(f"Failed to delete semantic memories: {e}")
@@ -328,21 +329,29 @@ class MemorySystem:
         if "procedural" in criteria and self.procedural:
             try:
                 proc_criteria = criteria["procedural"]
-                if "skill_name" in proc_criteria:
-                    count = await self.procedural.delete_skill(proc_criteria["skill_name"])
-                    total_deleted += count
+                skills = proc_criteria.get("skills", [])
+                for skill_name in skills:
+                    result = await self.procedural.delete_skill(skill_name)
+                    if isinstance(result, int):
+                        total_deleted += result
+                    elif result:
+                        total_deleted += 1
             except Exception as e:
-                logger.error(f"Failed to delete procedural skill: {e}")
+                logger.error(f"Failed to delete procedural skills: {e}")
 
         # Graph deletion
         if "graph" in criteria:
             try:
                 graph_criteria = criteria["graph"]
-                if "entity_name" in graph_criteria:
-                    count = await self.graph.delete_entity(graph_criteria["entity_name"])
-                    total_deleted += count
+                entities = graph_criteria.get("entities", [])
+                for entity in entities:
+                    result = await self.graph.delete_entity(entity)
+                    if isinstance(result, int):
+                        total_deleted += result
+                    elif result:
+                        total_deleted += 1
             except Exception as e:
-                logger.error(f"Failed to delete graph entity: {e}")
+                logger.error(f"Failed to delete graph entities: {e}")
 
         logger.info(f"Forget operation completed. Total removed: {total_deleted}")
         return total_deleted

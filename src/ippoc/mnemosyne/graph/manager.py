@@ -429,6 +429,7 @@ class GraphManager:
     async def delete_entity(self, name: str) -> bool:
         """
         Delete an entity and its relationships.
+        # Implements deletion logic
 
         Args:
             name: Entity name

@@ -201,6 +201,7 @@ class EpisodicManager:
     async def delete(self, ids: List[int] = None, before: datetime = None, source: str = None, content_match: str = None) -> int:
         """
         Delete episodic events matching criteria.
+        # Implements deletion logic
 
         Args:
             ids: List of event IDs to delete

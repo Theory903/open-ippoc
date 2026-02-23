@@ -6,9 +6,11 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import Runnable
 from dataclasses import dataclass, asdict
 from enum import Enum
+from collections import defaultdict
 import logging
 import re
 import json
+import asyncio
 from datetime import datetime
 
 # Optional multimodal support
@@ -62,6 +64,7 @@ class SemanticManager:
         self.llm = llm
         self.semantic_objects: List[SemanticObject] = []
         self.object_index: Dict[str, SemanticObject] = {}
+        self.component_index: Dict[str, List[SemanticObject]] = defaultdict(list)
         self.default_k = 5
         self.min_score_threshold = 0.8
         self.chunk_size = 1000
@@ -90,6 +93,8 @@ class SemanticManager:
             for obj in objects:
                 self.semantic_objects.append(obj)
                 self.object_index[obj.id] = obj
+                for component in obj.semantic_components:
+                    self.component_index[component].append(obj)
                 object_ids.append(obj.id)
                 
                 # Create document for vector store
@@ -145,10 +150,11 @@ class SemanticManager:
                 results_with_scores = await self.vector_store.asimilarity_search_with_score(
                     query, k=k, filter=filter_metadata
                 )
-                results = [
-                    doc for doc, score in results_with_scores 
-                    if score >= min_score
-                ]
+                results = []
+                for doc, score in results_with_scores:
+                    if score >= min_score:
+                        doc.metadata["retrieval_score"] = score
+                        results.append(doc)
             
             logger.debug(f"Retrieved {len(results)} semantic memories for query: {query}")
             return results
@@ -202,36 +208,46 @@ class SemanticManager:
             Count of deleted memories
         """
         try:
-            # Remove from local index
+            # Remove from internal indices first to calculate count
             deleted_count = 0
-            ids_set = set(ids)
 
-            # Update local index
+            # Update local indices
             for obj_id in ids:
                 if obj_id in self.object_index:
+                    obj = self.object_index[obj_id]
+
+                    # Remove from semantic_objects
+                    if obj in self.semantic_objects:
+                        self.semantic_objects.remove(obj)
+
+                    # Remove from component_index
+                    for component in obj.semantic_components:
+                        if component in self.component_index:
+                            if obj in self.component_index[component]:
+                                self.component_index[component].remove(obj)
+                                # Clean up empty lists
+                                if not self.component_index[component]:
+                                    del self.component_index[component]
+
+                    # Remove from object_index
                     del self.object_index[obj_id]
                     deleted_count += 1
 
-            # Update objects list
-            if deleted_count > 0:
-                self.semantic_objects = [
-                    obj for obj in self.semantic_objects
-                    if obj.id not in ids_set
-                ]
-
-            # Delete from vector store
-            if hasattr(self.vector_store, "adelete"):
-                await self.vector_store.adelete(ids)
-            elif hasattr(self.vector_store, "delete"):
-                # Warning: calling sync method in async context
-                # Ideally should be offloaded if blocking
-                self.vector_store.delete(ids)
+            # Delete from vector store if supported
+            if hasattr(self.vector_store, 'adelete'):
+                 await self.vector_store.adelete(ids)
+            elif hasattr(self.vector_store, 'delete'):
+                 # Check if delete is async
+                 if asyncio.iscoroutinefunction(self.vector_store.delete):
+                     await self.vector_store.delete(ids)
+                 else:
+                     # Run sync delete in thread
+                     await asyncio.to_thread(self.vector_store.delete, ids)
             else:
-                logger.warning("Vector store does not support explicit deletion")
+                 logger.warning("Vector store does not support delete operation")
 
             logger.info(f"Deleted {deleted_count} semantic memories")
             return deleted_count
-
         except Exception as e:
             logger.error(f"Delete failed: {e}")
             return 0
@@ -464,11 +480,28 @@ class SemanticManager:
     
     async def _advanced_retrieve(self, query: str, k: int, min_score: float, filter_metadata: Dict) -> List[Document]:
         """Advanced retrieval using semantic object matching"""
+        if not self.semantic_objects:
+            return []
+
         query_components = self._extract_semantic_components(query)
         matched_objects = []
         
+        # Identify candidate objects to scan
+        if not query_components:
+            # Fallback to scanning everything if no query components
+            candidates = self.semantic_objects
+        else:
+            # Use index to find objects containing at least one query component
+            candidate_ids = set()
+            candidates = []
+            for component in query_components:
+                for obj in self.component_index[component]:
+                    if obj.id not in candidate_ids:
+                        candidates.append(obj)
+                        candidate_ids.add(obj.id)
+
         # Match against semantic components
-        for obj in self.semantic_objects:
+        for obj in candidates:
             if filter_metadata and not self._matches_filter(obj.metadata, filter_metadata):
                 continue
                 
