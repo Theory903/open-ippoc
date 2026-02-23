@@ -64,6 +64,7 @@ class SemanticManager:
         self.llm = llm
         self.semantic_objects: List[SemanticObject] = []
         self.object_index: Dict[str, SemanticObject] = {}
+        # Component index for semantic components (e.g. keywords)
         self.component_index: Dict[str, List[SemanticObject]] = defaultdict(list)
         self.default_k = 5
         self.min_score_threshold = 0.8
@@ -197,7 +198,7 @@ class SemanticManager:
             logger.error(f"Batch addition failed: {e}")
             raise
     
-    async def delete_memories(self, ids: List[str]) -> bool:
+    async def delete_memories(self, ids: List[str]) -> int:
         """
         Delete memories by IDs.
         
@@ -205,26 +206,17 @@ class SemanticManager:
             ids: Document IDs to delete
             
         Returns:
-            Success status
+            Count of deleted memories
         """
         try:
-            # Delete from vector store if supported
-            if hasattr(self.vector_store, 'adelete'):
-                 await self.vector_store.adelete(ids)
-            elif hasattr(self.vector_store, 'delete'):
-                 # Check if delete is async
-                 if asyncio.iscoroutinefunction(self.vector_store.delete):
-                     await self.vector_store.delete(ids)
-                 else:
-                     # Run sync delete in thread
-                     await asyncio.to_thread(self.vector_store.delete, ids)
-            else:
-                 logger.warning("Vector store does not support delete operation")
+            # Remove from internal indices first to calculate count
+            deleted_count = 0
 
-            # Remove from internal indices
+            # Update local indices
             for obj_id in ids:
                 if obj_id in self.object_index:
                     obj = self.object_index[obj_id]
+
                     # Remove from semantic_objects
                     if obj in self.semantic_objects:
                         self.semantic_objects.remove(obj)
@@ -240,12 +232,26 @@ class SemanticManager:
 
                     # Remove from object_index
                     del self.object_index[obj_id]
+                    deleted_count += 1
 
-            logger.info(f"Deleted {len(ids)} semantic memories")
-            return True
+            # Delete from vector store if supported
+            if hasattr(self.vector_store, 'adelete'):
+                 await self.vector_store.adelete(ids)
+            elif hasattr(self.vector_store, 'delete'):
+                 # Check if delete is async
+                 if asyncio.iscoroutinefunction(self.vector_store.delete):
+                     await self.vector_store.delete(ids)
+                 else:
+                     # Run sync delete in thread
+                     await asyncio.to_thread(self.vector_store.delete, ids)
+            else:
+                 logger.warning("Vector store does not support delete operation")
+
+            logger.info(f"Deleted {deleted_count} semantic memories")
+            return deleted_count
         except Exception as e:
             logger.error(f"Delete failed: {e}")
-            return False
+            return 0
     
     async def get_stats(self) -> Dict[str, Any]:
         """

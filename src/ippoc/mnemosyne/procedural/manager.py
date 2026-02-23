@@ -186,6 +186,7 @@ IMPLEMENTATION:
     async def delete_skill(self, name: str) -> bool:
         """
         Delete a skill by name.
+        # Implements deletion logic
 
         Args:
             name: Skill name

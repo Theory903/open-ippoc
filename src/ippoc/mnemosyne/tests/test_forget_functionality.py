@@ -85,6 +85,35 @@ class TestForgetFunctionality(unittest.IsolatedAsyncioTestCase):
             "test_skill": {"id": "skill_doc_1", "metadata": {}}
         }
 
+        # Mock Semantic Objects and Index
+        from mnemosyne.semantic.rag import SemanticObject, ContentType
+        doc1 = SemanticObject(
+            id="doc1",
+            content="c1",
+            content_type=ContentType.TEXT,
+            semantic_components=["comp1"],
+            context_window="",
+            metadata={}
+        )
+        doc2 = SemanticObject(
+            id="doc2",
+            content="c2",
+            content_type=ContentType.TEXT,
+            semantic_components=["comp2"],
+            context_window="",
+            metadata={}
+        )
+        self.memory_system.semantic.object_index = {"doc1": doc1, "doc2": doc2}
+        self.memory_system.semantic.semantic_objects = [doc1, doc2]
+
+        # Ensure component_index is initialized (testing __init__)
+        from collections import defaultdict
+        self.assertIsInstance(self.memory_system.semantic.component_index, defaultdict)
+
+        # Populate component_index
+        self.memory_system.semantic.component_index["comp1"].append(doc1)
+        self.memory_system.semantic.component_index["comp2"].append(doc2)
+
     async def test_forget_success(self):
         criteria = {
             "episodic": {"ids": [1, 2]},
