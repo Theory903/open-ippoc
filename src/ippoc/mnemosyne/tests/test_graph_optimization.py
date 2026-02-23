@@ -8,6 +8,51 @@ import asyncio
 # Ensure src is in path
 sys.path.append(os.path.join(os.getcwd(), "src"))
 
+# Mock heavy dependencies to avoid import errors
+from unittest.mock import MagicMock
+import types
+
+m = types.ModuleType("langchain_core")
+sys.modules["langchain_core"] = m
+m.documents = types.ModuleType("langchain_core.documents")
+m.documents.Document = MagicMock()
+sys.modules["langchain_core.documents"] = m.documents
+m.embeddings = types.ModuleType("langchain_core.embeddings")
+m.embeddings.Embeddings = MagicMock()
+sys.modules["langchain_core.embeddings"] = m.embeddings
+m.vectorstores = types.ModuleType("langchain_core.vectorstores")
+m.vectorstores.VectorStore = MagicMock()
+sys.modules["langchain_core.vectorstores"] = m.vectorstores
+m.prompts = types.ModuleType("langchain_core.prompts")
+m.prompts.PromptTemplate = MagicMock()
+sys.modules["langchain_core.prompts"] = m.prompts
+m.runnables = types.ModuleType("langchain_core.runnables")
+m.runnables.Runnable = MagicMock()
+sys.modules["langchain_core.runnables"] = m.runnables
+m.output_parsers = types.ModuleType("langchain_core.output_parsers")
+sys.modules["langchain_core.output_parsers"] = m.output_parsers
+m.language_models = types.ModuleType("langchain_core.language_models")
+sys.modules["langchain_core.language_models"] = m.language_models
+
+m_comm = types.ModuleType("langchain_community")
+sys.modules["langchain_community"] = m_comm
+m_comm.vectorstores = types.ModuleType("langchain_community.vectorstores")
+sys.modules["langchain_community.vectorstores"] = m_comm.vectorstores
+m_comm.embeddings = types.ModuleType("langchain_community.embeddings")
+sys.modules["langchain_community.embeddings"] = m_comm.embeddings
+
+sys.modules["pgvector"] = MagicMock()
+sys.modules["pgvector.sqlalchemy"] = MagicMock()
+
+sys.modules["redis"] = MagicMock()
+sys.modules["redis.asyncio"] = MagicMock()
+
+# We need to import GraphManager directly to bypass package __init__ if possible,
+# or just rely on mocks if we import via package.
+# But importing via package 'from ippoc.mnemosyne.graph.manager' triggers ippoc.mnemosyne.__init__
+# which imports core -> semantic -> rag -> langchain.
+# So mocks must be in place before that import.
+
 from ippoc.mnemosyne.graph.manager import GraphManager
 
 @pytest_asyncio.fixture
