@@ -386,6 +386,7 @@ class GraphManager:
                         JOIN ref_rels rr ON r.target_id = rr.target_id AND r.relation = rr.relation
                         WHERE r.source_id != :ref_id
                         GROUP BY r.source_id
+                        HAVING COUNT(r.id) >= (:ref_total * :threshold)
                     ),
                     candidate_totals AS (
                         SELECT
