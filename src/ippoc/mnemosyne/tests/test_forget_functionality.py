@@ -111,5 +111,32 @@ class TestForgetFunctionality(unittest.IsolatedAsyncioTestCase):
         print(f"Forget returned count: {count}")
         self.assertEqual(count, 9)
 
+    async def test_forget_partial_failure(self):
+        # Configure episodic to fail
+        self.mock_episodic_session.execute.side_effect = Exception("DB Connection Failed")
+
+        criteria = {
+            "episodic": {"ids": [1]},
+            "semantic": {"ids": ["doc1"]},
+            "procedural": {"skills": ["test_skill"]},
+            "graph": {"entities": ["TestEntity"]}
+        }
+
+        count = await self.memory_system.forget(criteria)
+
+        # Verify episodic was attempted but failed
+        self.assertTrue(self.mock_episodic_session.execute.called)
+
+        # Verify others still succeeded
+        self.assertTrue(self.mock_vector_store.adelete.called)
+        self.assertNotIn("test_skill", self.memory_system.procedural.skill_registry)
+
+        # Count should reflect only successful deletions
+        # Semantic: 1
+        # Procedural: 1
+        # Graph: 1 (delete entity) + (delete relations) calls -> graph delete returns True -> increments by 1
+        # Episodic: 0 (failed)
+        self.assertEqual(count, 3)
+
 if __name__ == "__main__":
     unittest.main()
