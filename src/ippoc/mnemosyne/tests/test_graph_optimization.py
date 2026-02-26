@@ -1,8 +1,29 @@
 
 import pytest
-import pytest_asyncio
 import sys
 import os
+from unittest.mock import MagicMock
+
+# Mock langchain and its submodules
+sys.modules["langchain"] = MagicMock()
+sys.modules["langchain_core"] = MagicMock()
+sys.modules["langchain_core.documents"] = MagicMock()
+sys.modules["langchain_core.embeddings"] = MagicMock()
+sys.modules["langchain_core.vectorstores"] = MagicMock()
+sys.modules["langchain_core.prompts"] = MagicMock()
+sys.modules["langchain_core.runnables"] = MagicMock()
+sys.modules["langchain_core.output_parsers"] = MagicMock()
+sys.modules["langchain_core.language_models"] = MagicMock()
+sys.modules["pgvector"] = MagicMock()
+sys.modules["pgvector.sqlalchemy"] = MagicMock()
+
+# redis mock needs more structure to avoid async errors if it's used
+redis_mock = MagicMock()
+sys.modules["redis"] = redis_mock
+sys.modules["redis.asyncio"] = redis_mock
+
+# Now we can safely import everything else
+import pytest_asyncio
 import asyncio
 
 # Ensure src is in path
