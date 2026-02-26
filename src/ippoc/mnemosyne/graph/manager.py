@@ -386,6 +386,10 @@ class GraphManager:
                         JOIN ref_rels rr ON r.target_id = rr.target_id AND r.relation = rr.relation
                         WHERE r.source_id != :ref_id
                         GROUP BY r.source_id
+                        -- Prune candidates that can't possibly meet the Jaccard threshold
+                        -- Jaccard = I / (A + B - I) <= I / A
+                        -- So if J >= T, then I / A >= T => I >= T * A
+                        HAVING COUNT(r.id) >= (:ref_total * :threshold)
                     ),
                     candidate_totals AS (
                         SELECT
