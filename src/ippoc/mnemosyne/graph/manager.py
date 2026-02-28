@@ -386,10 +386,6 @@ class GraphManager:
                         JOIN ref_rels rr ON r.target_id = rr.target_id AND r.relation = rr.relation
                         WHERE r.source_id != :ref_id
                         GROUP BY r.source_id
-                        -- Early pruning: max possible similarity occurs if candidate size equals shared size
-                        -- Jaccard = shared / (ref_total + candidate_total - shared)
-                        -- Max Jaccard = shared / ref_total
-                        -- So, shared >= ref_total * threshold is required.
                         HAVING COUNT(r.id) >= :ref_total * :threshold
                     ),
                     candidate_totals AS (
@@ -431,43 +427,42 @@ class GraphManager:
             logger.error(f"Similar entity search failed: {e}")
             return []
 
-    async def delete_entity(self, name: str) -> bool:
+    async def delete_entity(self, entity_name: str) -> int:
         """
-        Delete an entity and its relationships.
+        Delete an entity and all its incident edges.
 
         Args:
-            name: Entity name
+            entity_name: Entity name to delete
 
         Returns:
-            Success status
+            Total count of deleted items (1 entity + N relations)
         """
-        await self.init_db()
         try:
+            await self.init_db()
             async with self.Session() as session:
-                # Find Entity ID
-                res = await session.execute(text("SELECT id FROM kg_entities WHERE name = :n"), {"n": name})
+                # Find entity ID
+                res = await session.execute(text("SELECT id FROM kg_entities WHERE name = :n"), {"n": entity_name})
                 row = res.fetchone()
                 if not row:
-                    logger.warning(f"Entity '{name}' not found")
-                    return False
+                    return 0
+
                 eid = row[0]
 
-                # Delete relationships involving the entity
-                await session.execute(
-                    text("DELETE FROM kg_relations WHERE source_id = :eid OR target_id = :eid"),
-                    {"eid": eid}
-                )
+                # Delete relations where source or target is this entity
+                stmt = text("DELETE FROM kg_relations WHERE source_id = :eid OR target_id = :eid")
+                result = await session.execute(stmt, {"eid": eid})
+                deleted_relations = result.rowcount
 
-                # Delete the entity
-                await session.execute(
-                    text("DELETE FROM kg_entities WHERE id = :eid"),
-                    {"eid": eid}
-                )
+                # Delete entity
+                stmt_ent = text("DELETE FROM kg_entities WHERE id = :eid")
+                await session.execute(stmt_ent, {"eid": eid})
 
                 await session.commit()
-                logger.info(f"Deleted entity '{name}' and its relations")
-                return True
+
+                total = 1 + deleted_relations
+                logger.info(f"Deleted entity '{entity_name}' and {deleted_relations} relations")
+                return total
 
         except Exception as e:
-            logger.error(f"Failed to delete entity '{name}': {e}")
-            return False
+            logger.error(f"Failed to delete entity '{entity_name}': {e}")
+            return 0

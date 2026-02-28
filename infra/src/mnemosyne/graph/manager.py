@@ -386,10 +386,6 @@ class GraphManager:
                         JOIN ref_rels rr ON r.target_id = rr.target_id AND r.relation = rr.relation
                         WHERE r.source_id != :ref_id
                         GROUP BY r.source_id
-                        -- Early pruning: max possible similarity occurs if candidate size equals shared size
-                        -- Jaccard = shared / (ref_total + candidate_total - shared)
-                        -- Max Jaccard = shared / ref_total
-                        -- So, shared >= ref_total * threshold is required.
                         HAVING COUNT(r.id) >= :ref_total * :threshold
                     ),
                     candidate_totals AS (
