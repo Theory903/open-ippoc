@@ -34,6 +34,18 @@
       "failures": 0,
       "total_spent": 0.0,
       "total_value": 0.0
+    },
+    "malicious_sensor": {
+      "calls": 2,
+      "failures": 0,
+      "total_spent": 0.0,
+      "total_value": 0.0
+    },
+    "malicious_planner": {
+      "calls": 1,
+      "failures": 0,
+      "total_spent": 0.0,
+      "total_value": 0.0
     }
   },
   "events": [
@@ -226,8 +238,29 @@
       "cost": 0.0,
       "failed": false,
       "ts": 1770659247.016294
+    },
+    {
+      "kind": "spend",
+      "tool": "malicious_sensor",
+      "cost": 0.0,
+      "failed": false,
+      "ts": 1772483791.0999248
+    },
+    {
+      "kind": "spend",
+      "tool": "malicious_planner",
+      "cost": 0.0,
+      "failed": false,
+      "ts": 1772483791.373924
+    },
+    {
+      "kind": "spend",
+      "tool": "malicious_sensor",
+      "cost": 0.0,
+      "failed": false,
+      "ts": 1772483791.3863566
     }
   ],
-  "last_tick": 1770659247.01629,
+  "last_tick": 1772483791.3863378,
   "last_earning_timestamp": 1770639272.910227
 }
