@@ -104,13 +104,27 @@ def cleanup_stale_pid(service: str):
 def wait_for_url(url: str, timeout: float = 30.0, interval: float = 0.5) -> bool:
     """Wait for a URL to become available."""
     import urllib.request
+    import sys
+
     start = time.time()
+    is_tty = sys.stdout.isatty()
+
     while time.time() - start < timeout:
         try:
             urllib.request.urlopen(url, timeout=2)
+            if is_tty:
+                sys.stdout.write("\n")
+                sys.stdout.flush()
             return True
         except Exception:
+            if is_tty:
+                sys.stdout.write(".")
+                sys.stdout.flush()
             time.sleep(interval)
+
+    if is_tty:
+        sys.stdout.write("\n")
+        sys.stdout.flush()
     return False
 
 def kill_process_on_port(port: int):
