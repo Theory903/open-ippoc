@@ -135,8 +135,7 @@ class ServiceManager:
         """Watcher loop representing the Metabolic Monitor."""
         try:
             while not self.is_shutting_down:
-                for name in list(self.processes.keys()):
-                    proc = self.processes[name]
+                for name, proc in self.processes.items():
                     status = proc.poll()
                     if status is not None:
                         print(f"🔥 [OSC-01] {name} terminated with exit code {status}")
