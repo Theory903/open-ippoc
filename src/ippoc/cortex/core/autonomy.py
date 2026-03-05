@@ -5,6 +5,7 @@ import json
 import os
 import time
 import asyncio
+import copy
 from dataclasses import asdict
 from typing import Any, Dict, Optional
 
@@ -318,7 +319,7 @@ class AutonomyController:
         # Snapshot state on the main thread to avoid concurrent modification during iteration
         data = {
             "intents": [asdict(i) for i in self.intent_stack.intents],
-            "skill_stats": self.skill_stats.copy() if self.skill_stats else {}
+            "skill_stats": copy.deepcopy(self.skill_stats) if self.skill_stats else {}
         }
         await asyncio.to_thread(self._sync_save_state, data)
 
