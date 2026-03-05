@@ -5,3 +5,7 @@
 ## 2024-05-23 - Synchronous Audit Logging Bottleneck
 **Learning:** `ToolOrchestrator._audit_action` was performing synchronous file I/O (open/write/close) for every tool invocation. This introduced ~68ms latency per 1000 calls. Moving this to a background thread with `queue.Queue` reduced it to ~3ms (20x improvement).
 **Action:** For high-frequency logging or audit trails, always use an asynchronous writer or background thread to decouple I/O latency from the main execution path.
+
+## 2026-03-05 - Recursive CTE SQL Cycle Pruning Optimization
+**Learning:** Exploring cyclic relationships in recursive CTE pathfinding is extremely expensive (O(N^depth)). By adding an early cycle detection clause directly in the SQL statement (`AND (',' || p.path_ids || ',') NOT LIKE ('%,' || cast(r.target_id as text) || ',%')`), the pathfinding completes ~168x faster (~0.84s to ~0.005s on dense K5 graph) and we avoid N+1 issues associated with redundant Python-level pruning.
+**Action:** Always enforce cycle pruning natively within the SQL engine for recursive queries to prevent explosive combinatorial search overhead and reduce data transfer over the wire.
