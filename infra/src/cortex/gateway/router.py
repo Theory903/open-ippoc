@@ -754,11 +754,15 @@ Also categorize it into: research, technical, memory, factual, conversational, s
             
             # Rank documents by similarity to hypothetical answer
             doc_scores = []
-            for doc in docs:
-                doc_embedding = await self.embeddings.aembed_documents([doc.page_content])
-                # Simplified similarity calculation
-                similarity = self._cosine_similarity(hyde_embedding[0], doc_embedding[0])
-                doc_scores.append((doc, similarity))
+            if docs:
+                # Optimized: Batch API call instead of N+1 loop
+                all_contents = [doc.page_content for doc in docs]
+                all_embeddings = await self.embeddings.aembed_documents(all_contents)
+
+                for doc, doc_embedding in zip(docs, all_embeddings):
+                    # Simplified similarity calculation
+                    similarity = self._cosine_similarity(hyde_embedding[0], doc_embedding)
+                    doc_scores.append((doc, similarity))
             
             # Sort by similarity and take top results
             doc_scores.sort(key=lambda x: x[1], reverse=True)
