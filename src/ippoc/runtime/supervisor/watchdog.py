@@ -120,9 +120,15 @@ class ServiceManager:
         if "IPPOC_API_KEY" in os.environ:
             env["IPPOC_API_KEY"] = os.environ["IPPOC_API_KEY"]
 
+        if "PYTHONPATH" in env:
+            env["PYTHONPATH"] = str(cortex_dir.parent) + os.pathsep + env["PYTHONPATH"]
+        else:
+            env["PYTHONPATH"] = str(cortex_dir.parent)
+
         proc = subprocess.Popen(
-            [sys.executable, "-m", "ippoc.cortex.cortex.server"],
+            [sys.executable, "-m", "cortex.cortex.server"],
             env=env,
+            cwd=str(cortex_dir.parent),
             stdout=sys.stdout, stderr=sys.stderr, text=True
         )
         self.processes["Cortex"] = proc
