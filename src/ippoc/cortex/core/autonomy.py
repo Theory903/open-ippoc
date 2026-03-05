@@ -307,15 +307,17 @@ class AutonomyController:
             except Exception:
                 pass
 
-    def _save_state(self) -> None:
-        os.makedirs(os.path.dirname(STATE_PATH), exist_ok=True)
-        # Convert dataclasses to dicts
-        data = {
-            "intents": [asdict(i) for i in self.intent_stack.intents],
-            "skill_stats": self.skill_stats
-        }
-        with open(STATE_PATH, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
+    async def _save_state(self) -> None:
+        def _write():
+            os.makedirs(os.path.dirname(STATE_PATH), exist_ok=True)
+            # Convert dataclasses to dicts
+            data = {
+                "intents": [asdict(i) for i in self.intent_stack.intents],
+                "skill_stats": self.skill_stats
+            }
+            with open(STATE_PATH, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+        await asyncio.to_thread(_write)
 
     def _is_statistically_significant(self, skill_key: str) -> bool:
         stats = self.skill_stats.get(skill_key, {"attempts": 0, "successes": 0})
@@ -450,7 +452,7 @@ class AutonomyController:
             print(f"[Autonomy] REFUSING intent from {intent.source}: {decision['reason']}")
             # Ensure we log the refusal
             self._record_explain({**explanation, "result": "refused"})
-            self._save_state()
+            await self._save_state()
             # Remove bad intent from stack to prevent looping
             if intent and intent in self.intent_stack.intents:
                  self.intent_stack.intents.remove(intent)
@@ -458,7 +460,7 @@ class AutonomyController:
 
         if decision["action"] == "idle":
             self._record_explain({**explanation, "result": "idle"})
-            self._save_state()
+            await self._save_state()
             
             # TRIGGER SLEEP / CONSOLIDATION
             # If idle, take the opportunity to consolidate memories
@@ -493,7 +495,7 @@ class AutonomyController:
         await self.learn(decision["intent"], evaluation)
 
         self._record_explain({**explanation, "result": result, "evaluation": evaluation})
-        self._save_state()
+        await self._save_state()
         return {"status": "acted", "result": result, "evaluation": evaluation}
 
 
