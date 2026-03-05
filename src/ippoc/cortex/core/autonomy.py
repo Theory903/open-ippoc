@@ -308,16 +308,20 @@ class AutonomyController:
                 pass
 
     async def _save_state(self) -> None:
-        def _write():
+        import copy
+        # Extract data synchronously on main thread to prevent
+        # concurrent modification errors while background thread serializes
+        data_to_save = {
+            "intents": [asdict(i) for i in self.intent_stack.intents],
+            "skill_stats": copy.deepcopy(self.skill_stats)
+        }
+
+        def _write(data):
             os.makedirs(os.path.dirname(STATE_PATH), exist_ok=True)
-            # Convert dataclasses to dicts
-            data = {
-                "intents": [asdict(i) for i in self.intent_stack.intents],
-                "skill_stats": self.skill_stats
-            }
             with open(STATE_PATH, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2)
-        await asyncio.to_thread(_write)
+
+        await asyncio.to_thread(_write, data_to_save)
 
     def _is_statistically_significant(self, skill_key: str) -> bool:
         stats = self.skill_stats.get(skill_key, {"attempts": 0, "successes": 0})
