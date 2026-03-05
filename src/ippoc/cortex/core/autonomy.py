@@ -257,6 +257,7 @@ class AutonomyController:
         self.decider = Decider()
         self.reflector = Reflector()
         self.skill_stats: Dict[str, Dict[str, int]] = {}
+        self._explain_lock = asyncio.Lock()
         self._load_state()
 
     async def _process_external_requests(self) -> None:
@@ -328,10 +329,14 @@ class AutonomyController:
         success_rate = successes / attempts
         return success_rate > 0.6
 
-    def _record_explain(self, explanation: Dict[str, Any]) -> None:
-        os.makedirs(os.path.dirname(EXPLAIN_PATH), exist_ok=True)
-        with open(EXPLAIN_PATH, "w", encoding="utf-8") as f:
-            json.dump(explanation, f, indent=2)
+    async def _record_explain(self, explanation: Dict[str, Any]) -> None:
+        def write_file():
+            os.makedirs(os.path.dirname(EXPLAIN_PATH), exist_ok=True)
+            with open(EXPLAIN_PATH, "w", encoding="utf-8") as f:
+                json.dump(explanation, f, indent=2)
+
+        async with self._explain_lock:
+            await asyncio.to_thread(write_file)
 
     async def observe(self) -> Dict[str, Any]:
         # Delegate observation to the Maintainer/Observer
@@ -449,7 +454,7 @@ class AutonomyController:
             # Sovereignty Violation Refusal
             print(f"[Autonomy] REFUSING intent from {intent.source}: {decision['reason']}")
             # Ensure we log the refusal
-            self._record_explain({**explanation, "result": "refused"})
+            await self._record_explain({**explanation, "result": "refused"})
             self._save_state()
             # Remove bad intent from stack to prevent looping
             if intent and intent in self.intent_stack.intents:
@@ -457,7 +462,7 @@ class AutonomyController:
             return {"status": "rejected", "reason": decision["reason"]}
 
         if decision["action"] == "idle":
-            self._record_explain({**explanation, "result": "idle"})
+            await self._record_explain({**explanation, "result": "idle"})
             self._save_state()
             
             # TRIGGER SLEEP / CONSOLIDATION
@@ -475,7 +480,7 @@ class AutonomyController:
             result = await self.act(decision["intent"])
         except Exception as e:
             # Log the crash so we know what we tried to do
-            self._record_explain({**explanation, "result": {"error": str(e), "status": "crashed"}})
+            await self._record_explain({**explanation, "result": {"error": str(e), "status": "crashed"}})
             # Re-raise so the caller (orchestrator/test) knows
             raise e
         
@@ -492,7 +497,7 @@ class AutonomyController:
         evaluation = self.reflector.evaluate(result)
         await self.learn(decision["intent"], evaluation)
 
-        self._record_explain({**explanation, "result": result, "evaluation": evaluation})
+        await self._record_explain({**explanation, "result": result, "evaluation": evaluation})
         self._save_state()
         return {"status": "acted", "result": result, "evaluation": evaluation}
 
