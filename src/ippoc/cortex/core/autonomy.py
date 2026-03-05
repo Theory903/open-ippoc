@@ -307,20 +307,20 @@ class AutonomyController:
             except Exception:
                 pass
 
-    def _sync_save_state(self) -> None:
-        """Synchronous part of state saving."""
+    def _sync_save_state(self, data: Dict[str, Any]) -> None:
+        """Synchronous part of state saving (I/O only)."""
         os.makedirs(os.path.dirname(STATE_PATH), exist_ok=True)
-        # Convert dataclasses to dicts
-        data = {
-            "intents": [asdict(i) for i in self.intent_stack.intents],
-            "skill_stats": self.skill_stats
-        }
         with open(STATE_PATH, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
 
     async def _save_state(self) -> None:
         """Asynchronously save autonomy state without blocking the event loop."""
-        await asyncio.to_thread(self._sync_save_state)
+        # Snapshot state on the main thread to avoid concurrent modification during iteration
+        data = {
+            "intents": [asdict(i) for i in self.intent_stack.intents],
+            "skill_stats": self.skill_stats.copy() if self.skill_stats else {}
+        }
+        await asyncio.to_thread(self._sync_save_state, data)
 
     def _is_statistically_significant(self, skill_key: str) -> bool:
         stats = self.skill_stats.get(skill_key, {"attempts": 0, "successes": 0})
