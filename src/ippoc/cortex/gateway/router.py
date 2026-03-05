@@ -753,11 +753,14 @@ Also categorize it into: research, technical, memory, factual, conversational, s
             docs = await self.vectorstore.asimilarity_search(query, k=10)
             
             # Rank documents by similarity to hypothetical answer
+            # Performance Optimization: Batch document embeddings to prevent N+1 API calls
+            doc_contents = [doc.page_content for doc in docs]
+            doc_embeddings = await self.embeddings.aembed_documents(doc_contents)
+
             doc_scores = []
-            for doc in docs:
-                doc_embedding = await self.embeddings.aembed_documents([doc.page_content])
+            for doc, doc_embedding in zip(docs, doc_embeddings):
                 # Simplified similarity calculation
-                similarity = self._cosine_similarity(hyde_embedding[0], doc_embedding[0])
+                similarity = self._cosine_similarity(hyde_embedding[0], doc_embedding)
                 doc_scores.append((doc, similarity))
             
             # Sort by similarity and take top results
