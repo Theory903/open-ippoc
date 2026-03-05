@@ -257,7 +257,7 @@ class AutonomyController:
         self.decider = Decider()
         self.reflector = Reflector()
         self.skill_stats: Dict[str, Dict[str, int]] = {}
-        self._explain_lock = asyncio.Lock()
+        self._explain_lock: Optional[asyncio.Lock] = None
         self._load_state()
 
     async def _process_external_requests(self) -> None:
@@ -330,6 +330,9 @@ class AutonomyController:
         return success_rate > 0.6
 
     async def _record_explain(self, explanation: Dict[str, Any]) -> None:
+        if self._explain_lock is None:
+            self._explain_lock = asyncio.Lock()
+
         def write_file():
             os.makedirs(os.path.dirname(EXPLAIN_PATH), exist_ok=True)
             with open(EXPLAIN_PATH, "w", encoding="utf-8") as f:
