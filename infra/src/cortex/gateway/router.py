@@ -889,9 +889,15 @@ Also categorize it into: research, technical, memory, factual, conversational, s
         all_docs = await self._get_all_documents()
         scored_docs = []
         
+        # ⚡ Bolt: Hoist invariant split outside document loop
         query_terms = query.lower().split()
+        if not query_terms:
+            return []
+
         for doc in all_docs:
-            score = sum(1 for term in query_terms if term in doc.page_content.lower())
+            # ⚡ Bolt: Hoist invariant lower() outside generator expression to prevent O(N*M) allocations
+            content_lower = doc.page_content.lower()
+            score = sum(1 for term in query_terms if term in content_lower)
             if score > 0:
                 scored_docs.append((doc, score))
         
@@ -903,10 +909,15 @@ Also categorize it into: research, technical, memory, factual, conversational, s
         # In production, this would use a cross-encoder model
         # For demonstration, we'll use a simple relevance scoring
         scored_docs = []
+
+        # ⚡ Bolt: Hoist invariant query splitting outside document loop
+        query_terms = query.lower().split()
+        if not query_terms:
+            return docs
+
         for doc in docs:
             # Calculate relevance score (simplified)
             content = doc.page_content.lower()
-            query_terms = query.lower().split()
             score = sum(1 for term in query_terms if term in content) / len(query_terms)
             scored_docs.append((doc, score))
         
