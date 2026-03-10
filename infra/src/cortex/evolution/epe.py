@@ -48,27 +48,31 @@ class MutationAttempt:
     harm_detected: bool = False
     debt_accumulated: float = 0.0
 
+import re
+
 class CanonScanner:
     """Scans code for violations of core principles"""
     
+    _FORBIDDEN_PATTERNS = [
+        # Identity violations
+        re.compile(r"(?i)modify.*identity"),
+        re.compile(r"(?i)bypass.*authentication"),
+        re.compile(r"(?i)override.*sovereignty"),
+
+        # Economy violations
+        re.compile(r"(?i)unlimited.*spending"),
+        re.compile(r"(?i)budget.*bypass"),
+        re.compile(r"(?i)free.*resources"),
+
+        # Canon violations
+        re.compile(r"(?i)disable.*safety"),
+        re.compile(r"(?i)remove.*constraints"),
+        re.compile(r"(?i)circumvent.*policy"),
+    ]
+
     def __init__(self):
-        import re
-        self.forbidden_patterns = [
-            # Identity violations
-            re.compile(r"(?i)modify.*identity"),
-            re.compile(r"(?i)bypass.*authentication"),
-            re.compile(r"(?i)override.*sovereignty"),
-            
-            # Economy violations  
-            re.compile(r"(?i)unlimited.*spending"),
-            re.compile(r"(?i)budget.*bypass"),
-            re.compile(r"(?i)free.*resources"),
-            
-            # Canon violations
-            re.compile(r"(?i)disable.*safety"),
-            re.compile(r"(?i)remove.*constraints"),
-            re.compile(r"(?i)circumvent.*policy"),
-        ]
+        # We keep this for backwards compatibility if anyone expects self.forbidden_patterns
+        self.forbidden_patterns = self._FORBIDDEN_PATTERNS
     
     def scan_file(self, filepath: str) -> List[Dict[str, Any]]:
         """Scan file for canonical violations"""
