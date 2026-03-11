@@ -306,7 +306,7 @@ class MemorySystem:
         await self.initialize()
         total_deleted = 0
 
-        # Episodic deletion
+        # Episodic deletion (events and experiences)
         if "episodic" in criteria:
             try:
                 count = await self.episodic.delete(**criteria["episodic"])
@@ -314,7 +314,7 @@ class MemorySystem:
             except Exception as e:
                 logger.error(f"Failed to delete episodic memories: {e}")
 
-        # Semantic deletion
+        # Semantic deletion (facts and concepts)
         if "semantic" in criteria and self.semantic:
             try:
                 semantic_criteria = criteria["semantic"]
@@ -326,7 +326,7 @@ class MemorySystem:
             except Exception as e:
                 logger.error(f"Failed to delete semantic memories: {e}")
 
-        # Procedural deletion
+        # Procedural deletion (skills and procedures)
         if "procedural" in criteria and self.procedural:
             try:
                 proc_criteria = criteria["procedural"]
@@ -338,7 +338,7 @@ class MemorySystem:
             except Exception as e:
                 logger.error(f"Failed to delete procedural skills: {e}")
 
-        # Graph deletion
+        # Graph deletion (relationships and causality)
         if "graph" in criteria:
             try:
                 graph_criteria = criteria["graph"]
