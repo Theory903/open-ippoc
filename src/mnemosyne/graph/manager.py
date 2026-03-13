@@ -1,4 +1,5 @@
 from typing import List, Dict, Any, Tuple, Optional
+from collections import defaultdict
 from sqlalchemy import Column, Integer, String, Float, ForeignKey, text, DateTime, bindparam
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
@@ -61,7 +62,7 @@ class GraphManager:
 
             s_id = await get_or_create(source, source_type)
             t_id = await get_or_create(target, target_type)
-            
+
             # Add relation
             # Check if exists
             res = await session.execute(
@@ -91,30 +92,30 @@ class GraphManager:
 
             # 2. Find outgoing edges
             stmt = text("""
-                SELECT e.name, r.relation 
-                FROM kg_relations r 
-                JOIN kg_entities e ON r.target_id = e.id 
+                SELECT e.name, r.relation
+                FROM kg_relations r
+                JOIN kg_entities e ON r.target_id = e.id
                 WHERE r.source_id = :eid
             """)
             out = await session.execute(stmt, {"eid": eid})
-            
+
             return [f"-[{row[1]}]-> {row[0]}" for row in out.fetchall()]
-    
+
     async def find_relationship_path(self, source_entity: str, target_entity: str, max_depth: int = 3) -> List[Dict[str, Any]]:
         """
         Find paths between two entities in the knowledge graph.
-        
+
         Args:
             source_entity: Starting entity name
             target_entity: Target entity name
             max_depth: Maximum path depth to search
-            
+
         Returns:
             List of relationship paths with metadata
         """
         await self.init_db()
         paths = []
-        
+
         try:
             async with self.Session() as session:
                 # Get entity IDs
@@ -130,20 +131,20 @@ class GraphManager:
                 id_map = {row.name: row.id for row in rows}
                 source_id = id_map.get(source_entity)
                 target_id = id_map.get(target_entity)
-                
+
                 if source_id is None or target_id is None:
                     return []
-                
+
                 # Removed the O(N) bottleneck BFS loop (e.g. `if depth >= max_depth: continue... SELECT r.target_id...`)
                 # in favor of an optimized recursive CTE approach.
                 paths = await self._find_paths_cte(session, source_id, target_id, max_depth)
-                
+
             return paths
-            
+
         except Exception as e:
             logger.error(f"Path finding failed: {e}")
             return []
-    
+
     async def _find_paths_cte(self, session: AsyncSession, source_id: int, target_id: int, max_depth: int) -> List[Dict[str, Any]]:
         """Recursive CTE based path finding - Faster than BFS and avoids N+1 queries"""
         # Recursive CTE query replaces the inefficient BFS loop completely.
@@ -192,7 +193,7 @@ class GraphManager:
         # Collect all unique node IDs to fetch names in bulk
         all_node_ids = set()
         parsed_rows = []
-        
+
         for row in rows:
             # Parse path IDs and relations
             # path_ids is "id1,id2,id3"
@@ -206,7 +207,7 @@ class GraphManager:
 
             all_node_ids.update(ids)
             parsed_rows.append((ids, rels))
-            
+
         if not parsed_rows:
             return []
 
@@ -216,7 +217,7 @@ class GraphManager:
         name_res = await session.execute(name_stmt, {"ids": list(all_node_ids)})
 
         id_to_name = {row.id: row.name for row in name_res}
-        
+
         paths = []
         # Construct result objects
         for ids, rels in parsed_rows:
@@ -240,47 +241,47 @@ class GraphManager:
                 })
 
         return paths
-    
+
     async def get_entity_context(self, entity_name: str, context_types: List[str] = None) -> Dict[str, Any]:
         """
         Get comprehensive context for an entity including relationships and metadata.
-        
+
         Args:
             entity_name: Entity to get context for
             context_types: Types of context to include ['relationships', 'attributes', 'history']
-            
+
         Returns:
             Dictionary with entity context information
         """
         if context_types is None:
             context_types = ['relationships', 'attributes']
-            
+
         await self.init_db()
         context = {"entity": entity_name}
-        
+
         try:
             async with self.Session() as session:
                 # Get entity details
                 entity_stmt = text("""
-                    SELECT id, type, metadata
+                    SELECT id, type, metadata_
                     FROM kg_entities
                     WHERE name = :name
                 """)
                 entity_res = await session.execute(entity_stmt, {"name": entity_name})
                 entity_row = entity_res.fetchone()
-                
+
                 if not entity_row:
                     return {"error": f"Entity '{entity_name}' not found"}
-                
+
                 entity_id, entity_type, metadata_str = entity_row
                 context["type"] = entity_type
-                
+
                 # Parse metadata
                 try:
                     context["metadata"] = json.loads(metadata_str) if metadata_str else {}
                 except:
                     context["metadata"] = {}
-                
+
                 # Get relationships if requested
                 if 'relationships' in context_types:
                     # Incoming relationships
@@ -292,10 +293,10 @@ class GraphManager:
                     """)
                     incoming_res = await session.execute(incoming_stmt, {"entity_id": entity_id})
                     context["incoming_relations"] = [
-                        {"from": row[0], "relation": row[1]} 
+                        {"from": row[0], "relation": row[1]}
                         for row in incoming_res.fetchall()
                     ]
-                    
+
                     # Outgoing relationships
                     outgoing_stmt = text("""
                         SELECT e.name, r.relation
@@ -305,10 +306,10 @@ class GraphManager:
                     """)
                     outgoing_res = await session.execute(outgoing_stmt, {"entity_id": entity_id})
                     context["outgoing_relations"] = [
-                        {"to": row[0], "relation": row[1]} 
+                        {"to": row[0], "relation": row[1]}
                         for row in outgoing_res.fetchall()
                     ]
-                
+
                 # Get attributes if requested
                 if 'attributes' in context_types:
                     # This would query attribute nodes connected to the entity
@@ -324,45 +325,45 @@ class GraphManager:
                         {"attribute": row[0], "type": row[1]}
                         for row in attr_res.fetchall()
                     ]
-                
+
                 context["timestamp"] = datetime.now().isoformat()
-                
+
             return context
-            
+
         except Exception as e:
             logger.error(f"Entity context retrieval failed: {e}")
             return {"error": str(e)}
-    
+
     async def find_similar_entities(self, entity_name: str, similarity_threshold: float = 0.7) -> List[Dict[str, Any]]:
         """
         Find entities similar to the given entity based on shared relationships.
-        
+
         Args:
             entity_name: Reference entity
             similarity_threshold: Minimum similarity score (0.0 to 1.0)
-            
+
         Returns:
             List of similar entities with similarity scores
         """
         await self.init_db()
         similar_entities = []
-        
+
         try:
             async with self.Session() as session:
                 # Get reference entity ID
                 ref_id_stmt = text("SELECT id FROM kg_entities WHERE name = :name")
                 ref_id_res = await session.execute(ref_id_stmt, {"name": entity_name})
                 ref_row = ref_id_res.fetchone()
-                
+
                 if not ref_row:
                     return []
                 ref_id = ref_row[0]
-                
+
                 # Get reference entity relation count
                 ref_count_stmt = text("SELECT COUNT(*) FROM kg_relations WHERE source_id = :ref_id")
                 ref_count_res = await session.execute(ref_count_stmt, {"ref_id": ref_id})
                 ref_total = ref_count_res.scalar()
-                
+
                 if ref_total == 0:
                     return []
 
@@ -419,9 +420,9 @@ class GraphManager:
                         "similarity": row[3],
                         "shared_relations": row[1]
                     })
-                
+
             return similar_entities
-            
+
         except Exception as e:
             logger.error(f"Similar entity search failed: {e}")
             return []
