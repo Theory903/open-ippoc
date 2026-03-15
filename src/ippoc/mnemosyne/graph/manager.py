@@ -149,12 +149,13 @@ class GraphManager:
         """Recursive CTE based path finding - Faster than BFS and avoids N+1 queries"""
         # Recursive CTE query
         # We use simple string concatenation for path tracking which is portable between Postgres and SQLite
+        # Added cycle detection to prevent exponential blowup on dense graphs
         cte_query = text("""
             WITH RECURSIVE path_search(last_id, path_ids, path_rels, depth) AS (
                 -- Base case
                 SELECT
                     target_id,
-                    cast(source_id as text) || ',' || cast(target_id as text),
+                    ',' || cast(source_id as text) || ',' || cast(target_id as text) || ',',
                     cast(relation as text),
                     1
                 FROM kg_relations
@@ -165,12 +166,13 @@ class GraphManager:
                 -- Recursive step
                 SELECT
                     r.target_id,
-                    p.path_ids || ',' || cast(r.target_id as text),
+                    p.path_ids || cast(r.target_id as text) || ',',
                     p.path_rels || ',' || cast(r.relation as text),
                     p.depth + 1
                 FROM kg_relations r
                 JOIN path_search p ON r.source_id = p.last_id
                 WHERE p.depth < :max_depth
+                AND p.path_ids NOT LIKE '%,' || cast(r.target_id as text) || ',%'
             )
             SELECT path_ids, path_rels, depth
             FROM path_search
@@ -196,8 +198,8 @@ class GraphManager:
         
         for row in rows:
             # Parse path IDs and relations
-            # path_ids is "id1,id2,id3"
-            ids = [int(x) for x in row[0].split(',')]
+            # path_ids is ",id1,id2,id3,"
+            ids = [int(x) for x in row[0].strip(',').split(',')]
             # path_rels is "rel1,rel2"
             rels = row[1].split(',')
 
