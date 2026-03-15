@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Request
 from pydantic import BaseModel
 from typing import Dict, Optional
 import uuid
@@ -50,7 +50,11 @@ def get_tokens(request: TokenRequest):
     return {"status": "success", "tokens": {}}
 
 @app.post("/v1/auth/issue")
-def issue_api_key(node_id: str = "ippoc-local"):
+def issue_api_key(request: Request, node_id: str = "ippoc-local"):
+    allowed_hosts = ['127.0.0.1', '::1', 'localhost', 'testclient']
+    if request.client and request.client.host not in allowed_hosts:
+        raise HTTPException(status_code=403, detail="Remote token generation not permitted")
+
     api_key = str(uuid.uuid4())
     api_keys[api_key] = node_id
     return {"status": "success", "api_key": api_key, "node_id": node_id}
