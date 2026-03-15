@@ -1,15 +1,13 @@
-from typing import List, Optional, Dict, Union, Tuple, Any
+from typing import List, Optional, Dict, Tuple, Any
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import Runnable
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from enum import Enum
 import logging
 import re
-import json
-from datetime import datetime
 
 # Optional multimodal support
 try:
@@ -56,6 +54,14 @@ class SemanticManager:
     - Structured data support
     - Context-aware chunking
     """
+    # Performance Optimization: Hoist and pre-compile invariant regular expressions
+    # to avoid recompilation overhead during heavy text processing loops.
+    _SENTENCE_SPLIT_RE = re.compile(r'[.!?]+')
+    _TERMS_RE = re.compile(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b|\b\d+(?:\.\d+)?\b')
+    _NUMBERS_RE = re.compile(r'\b\d+(?:\.\d+)?%?\b')
+    _TABLE_TERMS_RE = re.compile(r'[A-Za-z][a-z]+(?:\s+[A-Za-z][a-z]+)*|\d+(?:\.\d+)?%?')
+    _TABLE_SPLIT_RE = re.compile(r'\s{2,}')
+
     def __init__(self, vector_store: VectorStore, embeddings: Embeddings, llm: Optional[Runnable] = None):
         self.vector_store = vector_store
         self.embeddings = embeddings
@@ -364,7 +370,7 @@ class SemanticManager:
         # Create figure metadata object
         metadata_obj = SemanticObject(
             id=f"figure_meta_{hash(content)}",
-            content=f"Figure from document",
+            content="Figure from document",
             content_type=ContentType.FIGURE,
             semantic_components=["figure", "chart", "diagram"],
             context_window="",
@@ -403,12 +409,12 @@ class SemanticManager:
     def _extract_semantic_components(self, text: str) -> List[str]:
         """Extract key semantic components/phrases from text"""
         components = []
-        sentences = re.split(r'[.!?]+', text)
+        sentences = self._SENTENCE_SPLIT_RE.split(text)
         for sentence in sentences:
-            terms = re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b|\b\d+(?:\.\d+)?\b', sentence)
+            terms = self._TERMS_RE.findall(sentence)
             components.extend(terms)
         
-        numbers = re.findall(r'\b\d+(?:\.\d+)?%?\b', text)
+        numbers = self._NUMBERS_RE.findall(text)
         components.extend(numbers)
         
         components = list(set(comp for comp in components if len(comp) > 2))
@@ -419,7 +425,7 @@ class SemanticManager:
         components = []
         for cell in row:
             if cell and cell.strip():
-                terms = re.findall(r'[A-Za-z][a-z]+(?:\s+[A-Za-z][a-z]+)*|\d+(?:\.\d+)?%?', cell)
+                terms = self._TABLE_TERMS_RE.findall(cell)
                 components.extend([term for term in terms if len(term) > 2])
         return list(set(components))[:5]
     
@@ -433,7 +439,7 @@ class SemanticManager:
             elif '\t' in line:
                 cells = [cell.strip() for cell in line.split('\t')]
             else:
-                cells = re.split(r'\s{2,}', line.strip())
+                cells = self._TABLE_SPLIT_RE.split(line.strip())
             
             if cells and any(cells):
                 rows.append(cells)
