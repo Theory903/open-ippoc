@@ -5,3 +5,7 @@
 ## 2024-05-23 - Synchronous Audit Logging Bottleneck
 **Learning:** `ToolOrchestrator._audit_action` was performing synchronous file I/O (open/write/close) for every tool invocation. This introduced ~68ms latency per 1000 calls. Moving this to a background thread with `queue.Queue` reduced it to ~3ms (20x improvement).
 **Action:** For high-frequency logging or audit trails, always use an asynchronous writer or background thread to decouple I/O latency from the main execution path.
+
+## 2024-05-19 - Removed unnecessary BFS loop causing N+1 queries in GraphManager
+**Learning:** Found dead code containing an N+1 query loop `while queue:` in `GraphManager.find_relationship_path`. The code was doing work but ultimately ignoring the result in favor of a `_find_paths_cte` call below it.
+**Action:** Removed the dead code block entirely since the CTE provides the necessary functionality much more efficiently without causing excessive N+1 database queries.
