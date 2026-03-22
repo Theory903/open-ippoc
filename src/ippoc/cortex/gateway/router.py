@@ -891,7 +891,8 @@ Also categorize it into: research, technical, memory, factual, conversational, s
         
         query_terms = query.lower().split()
         for doc in all_docs:
-            score = sum(1 for term in query_terms if term in doc.page_content.lower())
+            content = doc.page_content.lower()
+            score = sum(1 for term in query_terms if term in content)
             if score > 0:
                 scored_docs.append((doc, score))
         
@@ -903,11 +904,16 @@ Also categorize it into: research, technical, memory, factual, conversational, s
         # In production, this would use a cross-encoder model
         # For demonstration, we'll use a simple relevance scoring
         scored_docs = []
+        query_terms = query.lower().split()
+        num_terms = len(query_terms)
+
+        if num_terms == 0:
+            return docs
+
         for doc in docs:
             # Calculate relevance score (simplified)
             content = doc.page_content.lower()
-            query_terms = query.lower().split()
-            score = sum(1 for term in query_terms if term in content) / len(query_terms)
+            score = sum(1 for term in query_terms if term in content) / num_terms
             scored_docs.append((doc, score))
         
         scored_docs.sort(key=lambda x: x[1], reverse=True)
