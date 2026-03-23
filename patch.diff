@@ -1,0 +1,191 @@
+diff --git a/infra/src/mnemosyne/graph/manager.py b/infra/src/mnemosyne/graph/manager.py
+index b1f2aef..3acdca2 100644
+--- a/infra/src/mnemosyne/graph/manager.py
++++ b/infra/src/mnemosyne/graph/manager.py
+@@ -367,38 +367,59 @@ class GraphManager:
+                 if ref_total == 0:
+                     return []
+
+-                # Get this entity's relationships
+-                ref_rels_stmt = text("SELECT target_id, relation FROM kg_relations WHERE source_id = :ref_id")
+-                ref_rels_res = await session.execute(ref_rels_stmt, {"ref_id": ref_id})
+-                ref_rels = {(r[0], r[1]) for r in ref_rels_res.fetchall()}
+-
+-                # Compare with all other entities
+-                all_entities_stmt = text("SELECT id, name FROM kg_entities WHERE name != :name")
+-                all_entities_res = await session.execute(all_entities_stmt, {"name": entity_name})
+-
+-                for entity_id, entity_name_cmp in all_entities_res.fetchall():
+-                    # Get this entity's relationships
+-                    cmp_stmt = text("SELECT target_id, relation FROM kg_relations WHERE source_id = :cmp_id")
+-                    cmp_res = await session.execute(cmp_stmt, {"cmp_id": entity_id})
+-                    cmp_rels = {(r[0], r[1]) for r in cmp_res.fetchall()}
+-
+-                    if not cmp_rels:
+-                        continue
+-
+-                    # Calculate Jaccard similarity
+-                    intersection = len(ref_rels.intersection(cmp_rels))
+-                    union = len(ref_rels.union(cmp_rels))
+-                    similarity = intersection / union if union > 0 else 0
+-
+-                    if similarity >= similarity_threshold:
+-                        similar_entities.append({
+-                            "entity": entity_name_cmp,
+-                            "similarity": similarity,
+-                            "shared_relations": intersection
+-                        })
+-
+-                # Sort by similarity
+-                similar_entities.sort(key=lambda x: x["similarity"], reverse=True)
++                # Intersection-first optimization using CTEs
++                # 1. Identify candidates (entities sharing >=1 relation) -> O(Neighbors)
++                # 2. Count totals for candidates only
++                # 3. Calculate Jaccard in SQL
++                # Note: This query avoids full table scans of unrelated entities.
++                stmt = text("""
++                    WITH ref_rels AS (
++                        SELECT target_id, relation
++                        FROM kg_relations
++                        WHERE source_id = :ref_id
++                    ),
++                    candidates AS (
++                        SELECT
++                            r.source_id,
++                            COUNT(r.id) as intersection_cnt
++                        FROM kg_relations r
++                        JOIN ref_rels rr ON r.target_id = rr.target_id AND r.relation = rr.relation
++                        WHERE r.source_id != :ref_id
++                        GROUP BY r.source_id
++                        HAVING COUNT(r.id) >= :ref_total * :threshold
++                    ),
++                    candidate_totals AS (
++                        SELECT
++                            r.source_id,
++                            COUNT(r.id) as total_cnt
++                        FROM kg_relations r
++                        JOIN candidates c ON r.source_id = c.source_id
++                        GROUP BY r.source_id
++                    )
++                    SELECT
++                        e.name,
++                        c.intersection_cnt,
++                        t.total_cnt,
++                        (CAST(c.intersection_cnt AS FLOAT) / (t.total_cnt + :ref_total - c.intersection_cnt)) as similarity
++                    FROM candidates c
++                    JOIN candidate_totals t ON c.source_id = t.source_id
++                    JOIN kg_entities e ON c.source_id = e.id
++                    WHERE (CAST(c.intersection_cnt AS FLOAT) / (t.total_cnt + :ref_total - c.intersection_cnt)) >= :threshold
++                    ORDER BY similarity DESC
++                """)
++
++                res = await session.execute(stmt, {
++                    "ref_id": ref_id,
++                    "ref_total": ref_total,
++                    "threshold": similarity_threshold
++                })
++
++                for row in res.fetchall():
++                    similar_entities.append({
++                        "entity": row[0],
++                        "similarity": row[3],
++                        "shared_relations": row[1]
++                    })
+
+             return similar_entities
+
+diff --git a/src/ippoc/mnemosyne/graph/manager.py b/src/ippoc/mnemosyne/graph/manager.py
+index ba67a8a..b80121c 100644
+--- a/src/ippoc/mnemosyne/graph/manager.py
++++ b/src/ippoc/mnemosyne/graph/manager.py
+@@ -367,38 +367,59 @@ class GraphManager:
+                 if ref_total == 0:
+                     return []
+
+-                # Get this entity's relationships
+-                ref_rels_stmt = text("SELECT target_id, relation FROM kg_relations WHERE source_id = :ref_id")
+-                ref_rels_res = await session.execute(ref_rels_stmt, {"ref_id": ref_id})
+-                ref_rels = {(r[0], r[1]) for r in ref_rels_res.fetchall()}
+-
+-                # Compare with all other entities
+-                all_entities_stmt = text("SELECT id, name FROM kg_entities WHERE name != :name")
+-                all_entities_res = await session.execute(all_entities_stmt, {"name": entity_name})
+-
+-                for entity_id, entity_name_cmp in all_entities_res.fetchall():
+-                    # Get this entity's relationships
+-                    cmp_stmt = text("SELECT target_id, relation FROM kg_relations WHERE source_id = :cmp_id")
+-                    cmp_res = await session.execute(cmp_stmt, {"cmp_id": entity_id})
+-                    cmp_rels = {(r[0], r[1]) for r in cmp_res.fetchall()}
+-
+-                    if not cmp_rels:
+-                        continue
+-
+-                    # Calculate Jaccard similarity
+-                    intersection = len(ref_rels.intersection(cmp_rels))
+-                    union = len(ref_rels.union(cmp_rels))
+-                    similarity = intersection / union if union > 0 else 0
+-
+-                    if similarity >= similarity_threshold:
+-                        similar_entities.append({
+-                            "entity": entity_name_cmp,
+-                            "similarity": similarity,
+-                            "shared_relations": intersection
+-                        })
+-
+-                # Sort by similarity
+-                similar_entities.sort(key=lambda x: x["similarity"], reverse=True)
++                # Intersection-first optimization using CTEs
++                # 1. Identify candidates (entities sharing >=1 relation) -> O(Neighbors)
++                # 2. Count totals for candidates only
++                # 3. Calculate Jaccard in SQL
++                # Note: This query avoids full table scans of unrelated entities.
++                stmt = text("""
++                    WITH ref_rels AS (
++                        SELECT target_id, relation
++                        FROM kg_relations
++                        WHERE source_id = :ref_id
++                    ),
++                    candidates AS (
++                        SELECT
++                            r.source_id,
++                            COUNT(r.id) as intersection_cnt
++                        FROM kg_relations r
++                        JOIN ref_rels rr ON r.target_id = rr.target_id AND r.relation = rr.relation
++                        WHERE r.source_id != :ref_id
++                        GROUP BY r.source_id
++                        HAVING COUNT(r.id) >= :ref_total * :threshold
++                    ),
++                    candidate_totals AS (
++                        SELECT
++                            r.source_id,
++                            COUNT(r.id) as total_cnt
++                        FROM kg_relations r
++                        JOIN candidates c ON r.source_id = c.source_id
++                        GROUP BY r.source_id
++                    )
++                    SELECT
++                        e.name,
++                        c.intersection_cnt,
++                        t.total_cnt,
++                        (CAST(c.intersection_cnt AS FLOAT) / (t.total_cnt + :ref_total - c.intersection_cnt)) as similarity
++                    FROM candidates c
++                    JOIN candidate_totals t ON c.source_id = t.source_id
++                    JOIN kg_entities e ON c.source_id = e.id
++                    WHERE (CAST(c.intersection_cnt AS FLOAT) / (t.total_cnt + :ref_total - c.intersection_cnt)) >= :threshold
++                    ORDER BY similarity DESC
++                """)
++
++                res = await session.execute(stmt, {
++                    "ref_id": ref_id,
++                    "ref_total": ref_total,
++                    "threshold": similarity_threshold
++                })
++
++                for row in res.fetchall():
++                    similar_entities.append({
++                        "entity": row[0],
++                        "similarity": row[3],
++                        "shared_relations": row[1]
++                    })
+
+             return similar_entities
