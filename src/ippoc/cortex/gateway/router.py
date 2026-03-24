@@ -88,6 +88,18 @@ class AdaptiveRAGRouter:
     
     Follows first principles logic for each RAG type with proper LangChain integration.
     """
+
+    # --- Pre-compiled constants for performance ---
+    COMPLEX_INDICATORS = ('research', 'analyze', 'implement', 'compare', 'evaluate', 'strategy', 'architecture', 'design', 'optimize', 'debug')
+    QUESTION_INDICATORS = ('how', 'why', 'explain', 'compare')
+    VIOLATION_KEYWORDS = ('delete', 'destroy', 'harm', 'illegal', 'bypass', 'hack', 'override', 'ignore', 'disable', 'remove')
+    SELF_REFERENCE_WORDS = ('you', 'your', 'identity', 'memory')
+    INTERACTIVE_INDICATORS = ('chat', 'conversation', 'discuss', 'talk')
+    REALTIME_INDICATORS = ('now', 'immediately', 'quick', 'fast')
+    INTENT_RESEARCH = ('research', 'study', 'analyze', 'investigate')
+    INTENT_TECHNICAL = ('code', 'implement', 'program', 'script', 'function')
+    INTENT_MEMORY = ('remember', 'recall', 'who', 'what', 'when', 'relationship')
+    INTENT_FACTUAL = ('what is', 'how to', 'define', 'explain')
     
     def __init__(self, llm: Runnable = None, embeddings: Embeddings = None, vectorstore: VectorStore = None):
         # Core components
@@ -166,31 +178,25 @@ Also categorize it into: research, technical, memory, factual, conversational, s
         # Length-based complexity
         length_score = min(1.0, len(query) / 200)
         
+        query_lower = query.lower()
+
         # Keyword complexity indicators
-        complex_indicators = [
-            'research', 'analyze', 'implement', 'compare', 'evaluate',
-            'strategy', 'architecture', 'design', 'optimize', 'debug'
-        ]
-        keyword_score = sum(1 for word in complex_indicators if word in query.lower()) / len(complex_indicators)
+        keyword_score = sum(1 for word in self.COMPLEX_INDICATORS if word in query_lower) / len(self.COMPLEX_INDICATORS)
         
         # Question type complexity
-        question_indicators = ['how', 'why', 'explain', 'compare']
-        question_score = 0.3 if any(q in query.lower() for q in question_indicators) else 0.1
+        question_score = 0.3 if any(q in query_lower for q in self.QUESTION_INDICATORS) else 0.1
         
         return (length_score * 0.4) + (keyword_score * 0.4) + (question_score * 0.2)
     
     def _assess_safety_risk(self, query: str) -> float:
         """Assess safety/canon violation risk"""
-        # Canon violation keywords
-        violation_keywords = [
-            'delete', 'destroy', 'harm', 'illegal', 'bypass', 'hack',
-            'override', 'ignore', 'disable', 'remove'
-        ]
+        query_lower = query.lower()
         
-        risk_score = sum(1 for word in violation_keywords if word in query.lower()) / len(violation_keywords)
+        # Canon violation keywords
+        risk_score = sum(1 for word in self.VIOLATION_KEYWORDS if word in query_lower) / len(self.VIOLATION_KEYWORDS)
         
         # Self-reference queries (potentially sensitive)
-        if any(word in query.lower() for word in ['you', 'your', 'identity', 'memory']):
+        if any(word in query_lower for word in self.SELF_REFERENCE_WORDS):
             risk_score += 0.3
             
         return min(1.0, risk_score)
@@ -198,15 +204,15 @@ Also categorize it into: research, technical, memory, factual, conversational, s
     def _assess_speed_need(self, query: str, context: Dict) -> float:
         """Assess speed/latency requirements"""
         # Interactive context indicators
-        interactive_indicators = ['chat', 'conversation', 'discuss', 'talk']
-        interactive_score = 0.8 if any(word in str(context.get('mode', '')).lower() for word in interactive_indicators) else 0.3
+        context_mode = str(context.get('mode', '')).lower()
+        interactive_score = 0.8 if any(word in context_mode for word in self.INTERACTIVE_INDICATORS) else 0.3
         
         # Short query preference
         length_score = 1.0 if len(query) < 50 else 0.5
         
         # Real-time context
-        realtime_indicators = ['now', 'immediately', 'quick', 'fast']
-        realtime_score = 0.9 if any(word in query.lower() for word in realtime_indicators) else 0.4
+        query_lower = query.lower()
+        realtime_score = 0.9 if any(word in query_lower for word in self.REALTIME_INDICATORS) else 0.4
         
         return max(interactive_score, length_score, realtime_score)
     
