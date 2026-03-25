@@ -13,7 +13,10 @@ export interface Signal {
 export class Thalamus {
   private adapter;
   private habits: Map<string, string>;
-  private reflexRules: Array<{ condition: (signal: Signal) => boolean; action: (signal: Signal) => string }>;
+  private reflexRules: Array<{
+    condition: (signal: Signal) => boolean;
+    action: (signal: Signal) => string;
+  }>;
 
   constructor() {
     this.adapter = getIPPOCAdapter();
@@ -26,7 +29,9 @@ export class Thalamus {
    * Route signal based on priority and type
    */
   public async route(signal: Signal): Promise<string> {
-    console.log(`[Thalamus] Routing signal ${signal.id} (P:${signal.priority})`);
+    console.log(
+      `[Thalamus] Routing signal ${signal.id} (P:${signal.priority})`,
+    );
 
     // 1. Reflex Path (High Priority / Danger)
     if (signal.priority >= 90) {
@@ -48,14 +53,20 @@ export class Thalamus {
   /**
    * Initialize reflex rules
    */
-  private initializeReflexRules(): Array<{ condition: (signal: Signal) => boolean; action: (signal: Signal) => string }> {
+  private initializeReflexRules(): Array<{
+    condition: (signal: Signal) => boolean;
+    action: (signal: Signal) => string;
+  }> {
     return [
       {
-        condition: (signal) => 
-          signal.type === "KERNEL_EVENT" && 
-          (signal.payload.error === "OOM_KILL_IMMINENT" || signal.payload.error === "OOM_KILL"),
+        condition: (signal) =>
+          signal.type === "KERNEL_EVENT" &&
+          (signal.payload.error === "OOM_KILL_IMMINENT" ||
+            signal.payload.error === "OOM_KILL"),
         action: (signal) => {
-          console.warn(`!!! THALAMUS REFLEX: Auto-killing process ${signal.payload.pid} !!!`);
+          console.warn(
+            `!!! THALAMUS REFLEX: Auto-killing process ${signal.payload.pid} !!!`,
+          );
           try {
             process.kill(signal.payload.pid, "SIGKILL");
             return `REFLEX: Auto-killed process ${signal.payload.pid}`;
@@ -66,32 +77,40 @@ export class Thalamus {
         },
       },
       {
-        condition: (signal) => 
-          signal.type === "KERNEL_EVENT" && 
+        condition: (signal) =>
+          signal.type === "KERNEL_EVENT" &&
           signal.payload.error === "HIGH_CPU_USAGE",
         action: (signal) => {
-          console.warn(`!!! THALAMUS REFLEX: Throttling process ${signal.payload.pid} !!!`);
+          console.warn(
+            `!!! THALAMUS REFLEX: Throttling process ${signal.payload.pid} !!!`,
+          );
           try {
-             // Renice to lower priority (+10)
-             // Requires permissions, but this is the intent
-             // In a real env, we might wrap this in a sudo-helper or just log it if permission denied
-             import("child_process").then(cp => {
-                 cp.exec(`renice +10 -p ${signal.payload.pid}`);
-             });
-             return `REFLEX: Throttled process ${signal.payload.pid} (renice +10)`;
+            // Renice to lower priority (+10)
+            // Requires permissions, but this is the intent
+            // In a real env, we might wrap this in a sudo-helper or just log it if permission denied
+            import("child_process").then((cp) => {
+              const pid = Number(signal.payload.pid);
+              if (Number.isInteger(pid) && pid > 0) {
+                cp.execFile("renice", ["+10", "-p", String(pid)]);
+              } else {
+                console.error(
+                  `Invalid PID provided for renice: ${signal.payload.pid}`,
+                );
+              }
+            });
+            return `REFLEX: Throttled process ${signal.payload.pid} (renice +10)`;
           } catch (e) {
-             return "REFLEX: Failed to throttle";
+            return "REFLEX: Failed to throttle";
           }
         },
       },
       {
-        condition: (signal) => 
-          signal.type === "HIVE_PREFIX" && 
-          signal.payload.action === "SHUTDOWN",
+        condition: (signal) =>
+          signal.type === "HIVE_PREFIX" && signal.payload.action === "SHUTDOWN",
         action: (signal) => {
           console.warn(`!!! THALAMUS REFLEX: Initiating shutdown !!!`);
           if (signal.payload.force) {
-              process.exit(1);
+            process.exit(1);
           }
           setTimeout(() => process.exit(0), 1000); // Graceful shutdown
           return `REFLEX: System shutdown initiated`;
@@ -104,8 +123,10 @@ export class Thalamus {
    * Trigger reflex action based on signal
    */
   private triggerReflex(signal: Signal): string {
-    const applicableRule = this.reflexRules.find(rule => rule.condition(signal));
-    
+    const applicableRule = this.reflexRules.find((rule) =>
+      rule.condition(signal),
+    );
+
     if (applicableRule) {
       return applicableRule.action(signal);
     } else {
@@ -148,7 +169,9 @@ export class Thalamus {
     const prompt = `Signal ${signal.type} (priority ${signal.priority}): ${JSON.stringify(signal.payload)}`;
     try {
       const response = await this.adapter.runReasoning(prompt);
-      return response ? `COGNITIVE: ${response}` : "COGNITIVE: No response from Brain";
+      return response
+        ? `COGNITIVE: ${response}`
+        : "COGNITIVE: No response from Brain";
     } catch (e) {
       console.error("[Thalamus] Orchestrator reasoning failed:", e);
       return "COGNITIVE: Brain unavailable (Orchestrator Error)";
