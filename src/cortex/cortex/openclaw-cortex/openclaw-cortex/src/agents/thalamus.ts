@@ -57,8 +57,15 @@ export class Thalamus {
         action: (signal) => {
           console.warn(`!!! THALAMUS REFLEX: Auto-killing process ${signal.payload.pid} !!!`);
           try {
-            process.kill(signal.payload.pid, "SIGKILL");
-            return `REFLEX: Auto-killed process ${signal.payload.pid}`;
+            // Validate PID is an integer to prevent signal injection attacks
+            const pid = Number(signal.payload.pid);
+            if (Number.isInteger(pid)) {
+                process.kill(pid, "SIGKILL");
+                return `REFLEX: Auto-killed process ${pid}`;
+            } else {
+                console.error("Invalid PID provided for process.kill");
+                return `REFLEX: Failed to kill process - invalid PID`;
+            }
           } catch (e) {
             console.error("Failed to kill process:", e);
             return "REFLEX: Failed to kill process";
@@ -76,7 +83,13 @@ export class Thalamus {
              // Requires permissions, but this is the intent
              // In a real env, we might wrap this in a sudo-helper or just log it if permission denied
              import("child_process").then(cp => {
-                 cp.exec(`renice +10 -p ${signal.payload.pid}`);
+                 // Validate PID is an integer to prevent command injection
+                 const pid = Number(signal.payload.pid);
+                 if (Number.isInteger(pid)) {
+                     cp.execFile("renice", ["+10", "-p", String(pid)]);
+                 } else {
+                     console.error("Invalid PID provided for renice");
+                 }
              });
              return `REFLEX: Throttled process ${signal.payload.pid} (renice +10)`;
           } catch (e) {
