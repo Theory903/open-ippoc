@@ -13,6 +13,11 @@ import json
 import asyncio
 from datetime import datetime
 
+_SENTENCE_SPLIT_PATTERN = re.compile(r'[.!?]+')
+_TERM_PATTERN = re.compile(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b|\b\d+(?:\.\d+)?\b')
+_NUMBER_PATTERN = re.compile(r'\b\d+(?:\.\d+)?%?\b')
+_IMAGE_EXT_TUPLE = ('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff')
+
 # Optional multimodal support
 try:
     import pytesseract
@@ -414,12 +419,12 @@ class SemanticManager:
     def _extract_semantic_components(self, text: str) -> List[str]:
         """Extract key semantic components/phrases from text"""
         components = []
-        sentences = re.split(r'[.!?]+', text)
+        sentences = _SENTENCE_SPLIT_PATTERN.split(text)
         for sentence in sentences:
-            terms = re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b|\b\d+(?:\.\d+)?\b', sentence)
+            terms = _TERM_PATTERN.findall(sentence)
             components.extend(terms)
         
-        numbers = re.findall(r'\b\d+(?:\.\d+)?%?\b', text)
+        numbers = _NUMBER_PATTERN.findall(text)
         components.extend(numbers)
         
         components = list(set(comp for comp in components if len(comp) > 2))
@@ -470,8 +475,7 @@ class SemanticManager:
     
     def _is_image_path(self, content: str) -> bool:
         """Check if content represents an image file path"""
-        image_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff'}
-        return any(content.lower().endswith(ext) for ext in image_extensions)
+        return content.lower().endswith(_IMAGE_EXT_TUPLE)
     
     async def _advanced_retrieve(self, query: str, k: int, min_score: float, filter_metadata: Dict) -> List[Document]:
         """Advanced retrieval using semantic object matching"""
