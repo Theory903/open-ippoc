@@ -400,15 +400,20 @@ class SemanticManager:
         
         return chunks
     
+    _SENTENCE_SPLIT_PATTERN = re.compile(r'[.!?]+')
+    _TERMS_PATTERN = re.compile(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b|\b\d+(?:\.\d+)?\b')
+    _NUMBERS_PATTERN = re.compile(r'\b\d+(?:\.\d+)?%?\b')
+    _TABLE_TERMS_PATTERN = re.compile(r'[A-Za-z][a-z]+(?:\s+[A-Za-z][a-z]+)*|\d+(?:\.\d+)?%?')
+
     def _extract_semantic_components(self, text: str) -> List[str]:
         """Extract key semantic components/phrases from text"""
         components = []
-        sentences = re.split(r'[.!?]+', text)
+        sentences = self._SENTENCE_SPLIT_PATTERN.split(text)
         for sentence in sentences:
-            terms = re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b|\b\d+(?:\.\d+)?\b', sentence)
+            terms = self._TERMS_PATTERN.findall(sentence)
             components.extend(terms)
         
-        numbers = re.findall(r'\b\d+(?:\.\d+)?%?\b', text)
+        numbers = self._NUMBERS_PATTERN.findall(text)
         components.extend(numbers)
         
         components = list(set(comp for comp in components if len(comp) > 2))
@@ -419,7 +424,7 @@ class SemanticManager:
         components = []
         for cell in row:
             if cell and cell.strip():
-                terms = re.findall(r'[A-Za-z][a-z]+(?:\s+[A-Za-z][a-z]+)*|\d+(?:\.\d+)?%?', cell)
+                terms = self._TABLE_TERMS_PATTERN.findall(cell)
                 components.extend([term for term in terms if len(term) > 2])
         return list(set(components))[:5]
     
