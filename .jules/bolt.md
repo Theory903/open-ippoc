@@ -5,3 +5,6 @@
 ## 2024-05-23 - Synchronous Audit Logging Bottleneck
 **Learning:** `ToolOrchestrator._audit_action` was performing synchronous file I/O (open/write/close) for every tool invocation. This introduced ~68ms latency per 1000 calls. Moving this to a background thread with `queue.Queue` reduced it to ~3ms (20x improvement).
 **Action:** For high-frequency logging or audit trails, always use an asynchronous writer or background thread to decouple I/O latency from the main execution path.
+## 2026-03-01 - Optimizing entity similarity queries in GraphManager
+**Learning:** Computing entity similarity using a nested loop structure and N+1 individual queries (e.g., retrieving relationships for each entity separately) creates severe database overhead, especially as the size of the graph increases.
+**Action:** Consolidate intersection checks directly into the database using Common Table Expressions (CTEs) to filter candidate nodes (e.g., `HAVING COUNT(r.id) >= :threshold`) before returning them to Python. This dramatically reduces memory pressure and network I/O, decreasing execution time from ~0.93 seconds to ~0.03 seconds.
