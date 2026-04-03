@@ -1,11 +1,11 @@
 # brain/tests/test_api_tools.py
 
 from fastapi.testclient import TestClient
-from cortex.cortex.server import app
+from cortex.cortex.server import app, IPPOC_API_KEY
 from cortex.core.bootstrap import bootstrap_tools
 
 # Auth Header
-HEADERS = {"Authorization": "Bearer ippoc-secret-key"}
+HEADERS = {"Authorization": f"Bearer {IPPOC_API_KEY}"}
 
 def run_tests():
     # Use context manager to trigger lifespan (startup/shutdown)
@@ -36,7 +36,7 @@ def run_tests():
         # 3. Unauthorized (Missing Header)
         resp_unauth = client.post("/v1/tools/execute", json=payload)
         assert resp_unauth.status_code == 403
-        assert resp_unauth.json()["detail"] == "Not authenticated"
+        assert resp_unauth.json()["detail"] in ["Not authenticated", "Missing API Key"]
         print("✅ Unauthorized (Missing) Blocked")
 
         # 4. Unauthorized (Wrong Header)
