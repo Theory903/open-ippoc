@@ -444,7 +444,9 @@ async def join_room(room_id: str, node_id: str):
     return {"status": "joined", "room": room}
 
 @app.post("/v1/admin/model_market/update", dependencies=[Depends(verify_api_key)])
-async def update_model_market(model: str, cost: float):
+async def update_model_market(model: str, cost: float, request: Request):
+    _require_tls(request)
+    _authorize_simple(getattr(request.state, "scopes", []), "orchestrator:admin")
     current = two_tower.model_market.get(model)
     if current:
         current.avg_cost = cost
