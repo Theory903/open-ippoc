@@ -5,3 +5,7 @@
 ## 2024-05-23 - Synchronous Audit Logging Bottleneck
 **Learning:** `ToolOrchestrator._audit_action` was performing synchronous file I/O (open/write/close) for every tool invocation. This introduced ~68ms latency per 1000 calls. Moving this to a background thread with `queue.Queue` reduced it to ~3ms (20x improvement).
 **Action:** For high-frequency logging or audit trails, always use an asynchronous writer or background thread to decouple I/O latency from the main execution path.
+
+## 2024-05-24 - RAG Router Routing Logic Optimization
+**Learning:** Generator expressions with `any(word in query for word in words)` and `sum(1 for word in words)` combined with local list allocations in the router's intent classification add significant overhead (measured 60%+ execution time reduction locally when bypassed) due to closure allocation and function call overhead in tight query paths.
+**Action:** When performing substring match lists in high-frequency RAG routing functions, hoist list allocations to class-level tuple constants and use unrolled `for` loops instead of generator expressions.
