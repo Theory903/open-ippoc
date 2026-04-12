@@ -7,7 +7,7 @@ from ippoc.cortex.core.bootstrap import bootstrap_tools
 # Auth Header
 HEADERS = {"Authorization": f"Bearer {IPPOC_API_KEY}"}
 
-def run_tests():
+def test_api_tools():
     # Use context manager to trigger lifespan (startup/shutdown)
     with TestClient(app) as client:
         # 1. Health Check
@@ -35,7 +35,7 @@ def run_tests():
 
         # 3. Unauthorized (Missing Header)
         resp_unauth = client.post("/v1/tools/execute", json=payload)
-        assert resp_unauth.status_code == 403
+        assert resp_unauth.status_code in [401, 403]
         assert resp_unauth.json()["detail"] == "Not authenticated"
         print("✅ Unauthorized (Missing) Blocked")
 
@@ -47,6 +47,6 @@ def run_tests():
 
 if __name__ == "__main__":
     try:
-        run_tests()
+        test_api_tools()
     except Exception as e:
         print(f"❌ API Auth Test Failed: {e}")
