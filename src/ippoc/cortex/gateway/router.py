@@ -162,9 +162,15 @@ Also categorize it into: research, technical, memory, factual, conversational, s
                 classification.category in ['system', 'factual'])
     
     # Static tuples for fast intent classification and routing
-    _COMPLEX_INDICATORS = ('research', 'analyze', 'implement', 'compare', 'evaluate', 'strategy', 'architecture', 'design', 'optimize', 'debug')
+    _COMPLEX_INDICATORS = (
+        'research', 'analyze', 'implement', 'compare', 'evaluate',
+        'strategy', 'architecture', 'design', 'optimize', 'debug'
+    )
     _QUESTION_INDICATORS = ('how', 'why', 'explain', 'compare')
-    _VIOLATION_KEYWORDS = ('delete', 'destroy', 'harm', 'illegal', 'bypass', 'hack', 'override', 'ignore', 'disable', 'remove')
+    _VIOLATION_KEYWORDS = (
+        'delete', 'destroy', 'harm', 'illegal', 'bypass',
+        'hack', 'override', 'ignore', 'disable', 'remove'
+    )
     _SENSITIVE_KEYWORDS = ('you', 'your', 'identity', 'memory')
     _INTERACTIVE_INDICATORS = ('chat', 'conversation', 'discuss', 'talk')
     _REALTIME_INDICATORS = ('now', 'immediately', 'quick', 'fast')
