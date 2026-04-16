@@ -321,7 +321,10 @@ class MemorySystem:
                 if "ids" in semantic_criteria:
                     semantic_ids = semantic_criteria["ids"]
                     if semantic_ids:
-                        if await self.semantic.delete_memories(semantic_ids):
+                        res = await self.semantic.delete_memories(semantic_ids)
+                        if type(res) is int:
+                            total_deleted += res
+                        elif res:
                             total_deleted += len(semantic_ids)
             except Exception as e:
                 logger.error(f"Failed to delete semantic memories: {e}")
@@ -333,7 +336,10 @@ class MemorySystem:
                 if "skills" in proc_criteria:
                     skills = proc_criteria["skills"]
                     for skill_name in skills:
-                        if await self.procedural.delete_skill(skill_name):
+                        res = await self.procedural.delete_skill(skill_name)
+                        if type(res) is int:
+                            total_deleted += res
+                        elif res:
                             total_deleted += 1
             except Exception as e:
                 logger.error(f"Failed to delete procedural skills: {e}")
@@ -345,8 +351,11 @@ class MemorySystem:
                 if "entities" in graph_criteria:
                     entities = graph_criteria["entities"]
                     for entity in entities:
-                        count = await self.graph.delete_entity(entity)
-                        total_deleted += count if isinstance(count, int) else (1 if count else 0)
+                        res = await self.graph.delete_entity(entity)
+                        if type(res) is int:
+                            total_deleted += res
+                        elif res:
+                            total_deleted += 1
             except Exception as e:
                 logger.error(f"Failed to delete graph entities: {e}")
 
