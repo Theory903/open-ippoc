@@ -161,20 +161,26 @@ Also categorize it into: research, technical, memory, factual, conversational, s
         return (classification.urgency > self.urgency_threshold or
                 classification.category in ['system', 'factual'])
     
-    # Static keywords for routing classification (hoisted for performance)
-    _COMPLEX_INDICATORS = ('research', 'analyze', 'implement', 'compare', 'evaluate', 'strategy', 'architecture', 'design', 'optimize', 'debug')
-    _QUESTION_INDICATORS = ('how', 'why', 'explain', 'compare')
-    _VIOLATION_KEYWORDS = ('delete', 'destroy', 'harm', 'illegal', 'bypass', 'hack', 'override', 'ignore', 'disable', 'remove')
-    _SELF_REF_KEYWORDS = ('you', 'your', 'identity', 'memory')
-    _INTERACTIVE_INDICATORS = ('chat', 'conversation', 'discuss', 'talk')
-    _REALTIME_INDICATORS = ('now', 'immediately', 'quick', 'fast')
+    # Hoisted constant collections to avoid recreation in hot paths
+    _COMPLEX_INDICATORS = (
+        "research", "analyze", "implement", "compare", "evaluate",
+        "strategy", "architecture", "design", "optimize", "debug"
+    )
+    _QUESTION_INDICATORS = ("how", "why", "explain", "compare")
+    _VIOLATION_KEYWORDS = (
+        "delete", "destroy", "harm", "illegal", "bypass", "hack",
+        "override", "ignore", "disable", "remove"
+    )
+    _SELF_REF_KEYWORDS = ("you", "your", "identity", "memory")
+    _INTERACTIVE_INDICATORS = ("chat", "conversation", "discuss", "talk")
+    _REALTIME_INDICATORS = ("now", "immediately", "quick", "fast")
     _INTENT_KEYWORDS = (
-        ('research', ('research', 'study', 'analyze', 'investigate')),
-        ('technical', ('code', 'implement', 'program', 'script', 'function')),
-        ('memory', ('remember', 'recall', 'who', 'what', 'when', 'relationship')),
-        ('factual', ('what is', 'how to', 'define', 'explain')),
-        ('conversational', ('hello', 'hi', 'hey', 'goodbye', 'thanks')),
-        ('system', ('status', 'version', 'ping', 'health', 'running'))
+        ("research", ("research", "study", "analyze", "investigate")),
+        ("technical", ("code", "implement", "program", "script", "function")),
+        ("memory", ("remember", "recall", "who", "what", "when", "relationship")),
+        ("factual", ("what is", "how to", "define", "explain")),
+        ("conversational", ("hello", "hi", "hey", "goodbye", "thanks")),
+        ("system", ("status", "version", "ping", "health", "running")),
     )
 
     def _assess_complexity(self, query: str) -> float:
@@ -183,14 +189,14 @@ Also categorize it into: research, technical, memory, factual, conversational, s
         # Length-based complexity
         length_score = min(1.0, len(query) / 200)
         
-        # Keyword complexity indicators
+        # Keyword complexity indicators (Unrolled loop instead of sum generator)
         complex_count = 0
         for word in self._COMPLEX_INDICATORS:
             if word in query_lower:
                 complex_count += 1
         keyword_score = complex_count / len(self._COMPLEX_INDICATORS)
         
-        # Question type complexity
+        # Question type complexity (Unrolled loop instead of any generator)
         question_score = 0.1
         for q in self._QUESTION_INDICATORS:
             if q in query_lower:
