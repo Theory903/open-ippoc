@@ -7,7 +7,7 @@ from ippoc.cortex.core.bootstrap import bootstrap_tools
 # Auth Header
 HEADERS = {"Authorization": f"Bearer {IPPOC_API_KEY}"}
 
-def run_tests():
+def test_api_tools():
     # Use context manager to trigger lifespan (startup/shutdown)
     with TestClient(app) as client:
         # 1. Health Check
