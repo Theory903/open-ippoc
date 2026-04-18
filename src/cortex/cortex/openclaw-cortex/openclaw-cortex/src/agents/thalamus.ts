@@ -70,18 +70,24 @@ export class Thalamus {
           signal.type === "KERNEL_EVENT" && 
           signal.payload.error === "HIGH_CPU_USAGE",
         action: (signal) => {
-          console.warn(`!!! THALAMUS REFLEX: Throttling process ${signal.payload.pid} !!!`);
           try {
+             const pid = parseInt(String(signal.payload.pid), 10);
+             if (isNaN(pid)) {
+                 console.warn(`!!! THALAMUS REFLEX: Invalid PID for throttling: ${signal.payload.pid} !!!`);
+                 return "REFLEX: Failed to throttle - Invalid PID";
+             }
+             console.warn(`!!! THALAMUS REFLEX: Throttling process ${pid} !!!`);
              // Renice to lower priority (+10)
              // Requires permissions, but this is the intent
              // In a real env, we might wrap this in a sudo-helper or just log it if permission denied
              import("child_process").then(cp => {
-                 const pid = parseInt(signal.payload.pid, 10);
-                 if (!isNaN(pid)) {
-                     cp.execFile("renice", ["+10", "-p", pid.toString()]);
-                 }
+                 cp.execFile("renice", ["+10", "-p", pid.toString()], (error) => {
+                     if (error) {
+                         console.error(`Failed to renice process ${pid}:`, error);
+                     }
+                 });
              });
-             return `REFLEX: Throttled process ${signal.payload.pid} (renice +10)`;
+             return `REFLEX: Throttled process ${pid} (renice +10)`;
           } catch (e) {
              return "REFLEX: Failed to throttle";
           }
