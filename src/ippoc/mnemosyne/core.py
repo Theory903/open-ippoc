@@ -321,7 +321,10 @@ class MemorySystem:
                 if "ids" in semantic_criteria:
                     semantic_ids = semantic_criteria["ids"]
                     if semantic_ids:
-                        if await self.semantic.delete_memories(semantic_ids):
+                        res = await self.semantic.delete_memories(semantic_ids)
+                        if type(res) is int:
+                            total_deleted += res
+                        elif res:
                             total_deleted += len(semantic_ids)
             except Exception as e:
                 logger.error(f"Failed to delete semantic memories: {e}")
