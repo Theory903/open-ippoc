@@ -5,3 +5,6 @@
 ## 2024-05-23 - Synchronous Audit Logging Bottleneck
 **Learning:** `ToolOrchestrator._audit_action` was performing synchronous file I/O (open/write/close) for every tool invocation. This introduced ~68ms latency per 1000 calls. Moving this to a background thread with `queue.Queue` reduced it to ~3ms (20x improvement).
 **Action:** For high-frequency logging or audit trails, always use an asynchronous writer or background thread to decouple I/O latency from the main execution path.
+## 2026-04-23 - Database optimizations for N+1 Query Issue in similar entity search
+**Learning:** Jaccard similarity between graph nodes based on shared edges can be efficiently pushed down into the database via Common Table Expressions (CTEs), utilizing a `HAVING` clause to mathematically enforce the similarity threshold early (`HAVING COUNT(r.id) >= :ref_total * :threshold`). This is massively more performant than executing an N+1 query loop to pull all entities into Python for similarity calculations.
+**Action:** When working on memory and graph systems, always seek to push complex intersection and grouping calculations into SQL using JOINs and CTEs rather than loading full entity spaces into application memory.
