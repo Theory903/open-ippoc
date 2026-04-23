@@ -171,6 +171,7 @@ class GraphManager:
                 FROM kg_relations r
                 JOIN path_search p ON r.source_id = p.last_id
                 WHERE p.depth < :max_depth
+                AND ',' || p.path_ids || ',' NOT LIKE '%,' || cast(r.target_id as text) || ',%'
             )
             SELECT path_ids, path_rels, depth
             FROM path_search
@@ -241,7 +242,7 @@ class GraphManager:
                 })
 
         return paths
-    
+
     async def get_entity_context(self, entity_name: str, context_types: List[str] = None) -> Dict[str, Any]:
         """
         Get comprehensive context for an entity including relationships and metadata.
