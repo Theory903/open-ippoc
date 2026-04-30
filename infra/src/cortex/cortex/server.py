@@ -1,9 +1,11 @@
 import uvicorn
 import os
+import sys
 import time
 import json
 import uuid
 import asyncio
+import secrets
 from fastapi import FastAPI, HTTPException, Depends, Security, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import JSONResponse, PlainTextResponse
@@ -47,7 +49,27 @@ except Exception:  # pragma: no cover
 
 # --- Configuration ---
 NODE_ID = os.getenv("NODE_ID", "ippoc-local")
-IPPOC_API_KEY = os.getenv("IPPOC_API_KEY", "ippoc-secret-key") # Default for dev, warn in prod
+
+IPPOC_PRODUCTION = os.getenv("IPPOC_PRODUCTION", "false").lower() == "true"
+AUTH_ENABLED = os.getenv("IPPOC_AUTH_ENABLED", "true").lower() == "true"
+
+# Enforce Security in Production
+if IPPOC_PRODUCTION:
+    if not os.getenv("IPPOC_API_KEY"):
+        print("[Server] 🚨 FATAL: IPPOC_API_KEY must be set in production!", file=sys.stderr)
+        sys.exit(1)
+    if not AUTH_ENABLED:
+        print("[Server] ⚠️  WARNING: Ignoring IPPOC_AUTH_ENABLED=false in production. Auth is ENFORCED.", file=sys.stderr)
+        AUTH_ENABLED = True
+
+# Security: Generate a random key if not provided (Critical Fix)
+IPPOC_API_KEY = os.getenv("IPPOC_API_KEY")
+if not IPPOC_API_KEY:
+    IPPOC_API_KEY = secrets.token_hex(32)
+    # Only print key in dev mode, and to stderr
+    if not IPPOC_PRODUCTION:
+        print(f"[Server] ⚠️  SECURITY WARNING: IPPOC_API_KEY not set! Generated temporary admin key: {IPPOC_API_KEY}", file=sys.stderr)
+
 PERSISTENCE_PATH = os.getenv("CHAT_DB_PATH", "data/state/chat_rooms.json")
 PEER_NODES = os.getenv("PEER_NODES", "").split(",") # Comma separated URLs
 PEER_NODES = [p for p in PEER_NODES if p] # Filter empty
