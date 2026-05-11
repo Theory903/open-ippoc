@@ -76,7 +76,12 @@ export class Thalamus {
              // Requires permissions, but this is the intent
              // In a real env, we might wrap this in a sudo-helper or just log it if permission denied
              import("child_process").then(cp => {
-                 cp.exec(`renice +10 -p ${signal.payload.pid}`);
+                 const pidStr = String(signal.payload.pid);
+                 if (/^\d+$/.test(pidStr)) {
+                     cp.execFile('renice', ['+10', '-p', pidStr], (error) => {
+                         if (error) console.warn(`Failed to renice ${pidStr}:`, error);
+                     });
+                 }
              });
              return `REFLEX: Throttled process ${signal.payload.pid} (renice +10)`;
           } catch (e) {
