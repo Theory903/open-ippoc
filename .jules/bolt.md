@@ -7,4 +7,4 @@
 **Action:** For high-frequency logging or audit trails, always use an asynchronous writer or background thread to decouple I/O latency from the main execution path.
 ## 2026-03-01 - [Graph CTE optimization]
 **Learning:** SQL engines executing Recursive CTEs can blow up exponentially when cycles aren't actively pruned during path generation. Filtering cyclic paths on the Python side post-fetch is highly inefficient.
-**Action:** Use native SQL string matching methods like `instr()` on concatenated path IDs dynamically within the CTE's `WHERE` clause to achieve massive speedups in dense graphs.
+**Action:** Use native SQL string matching methods like `LIKE` operator on concatenated path IDs dynamically within the CTE's `WHERE` clause to achieve massive speedups in dense graphs.

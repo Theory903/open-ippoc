@@ -212,7 +212,7 @@ class GraphManager:
                   -- Prevent cycles: stop if target_id is already in the path (portable)
                   AND p.path_ids NOT LIKE '%,' || cast(r.target_id as text) || ',%'
             )
-            SELECT trim(path_ids, ','), path_rels, depth
+            SELECT path_ids, path_rels, depth
             FROM path_search
             WHERE last_id = :target_id
             ORDER BY depth ASC
@@ -236,7 +236,7 @@ class GraphManager:
         for row in rows:
             # Parse path IDs and relations
             # path_ids is "id1,id2,id3"
-            ids = [int(x) for x in row[0].split(",")]
+            ids = [int(x) for x in row[0].split(",") if x]
             # path_rels is "rel1,rel2"
             rels = row[1].split(",")
 
