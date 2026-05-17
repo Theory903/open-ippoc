@@ -13,8 +13,13 @@ from contextlib import asynccontextmanager
 # Import new Cognitive Core
 from cortex.cortex.schemas import Signal, ActionCandidate, TelepathyMessage, ChatRoom
 from cortex.cortex.two_tower import TwoTowerEngine
-from cortex.cortex.telepathy import TelepathySwarm, TransportLayer, HttpTransport, MeshTransport
-from cortex.cortex.langgraph_engine import LangGraphEngine    
+from cortex.cortex.telepathy import (
+    TelepathySwarm,
+    TransportLayer,
+    HttpTransport,
+    MeshTransport,
+)
+from cortex.cortex.langgraph_engine import LangGraphEngine
 from cortex.core.bootstrap import bootstrap_tools
 from cortex.core.orchestrator import get_orchestrator
 from cortex.core.tools.base import ToolInvocationEnvelope, ToolResult
@@ -24,10 +29,16 @@ from cortex.core.queue import get_queue
 from cortex.core.autonomy import run_autonomy_loop
 from cortex.cortex.persistence import ChatPersistence
 import nest_asyncio
+
 nest_asyncio.apply()
 
 try:
-    from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+    from prometheus_client import (
+        Counter,
+        Histogram,
+        generate_latest,
+        CONTENT_TYPE_LATEST,
+    )
 except Exception:  # pragma: no cover
     Counter = Histogram = None
     generate_latest = None
@@ -47,16 +58,22 @@ except Exception:  # pragma: no cover
 
 # --- Configuration ---
 NODE_ID = os.getenv("NODE_ID", "ippoc-local")
-IPPOC_API_KEY = os.getenv("IPPOC_API_KEY", "ippoc-secret-key") # Default for dev, warn in prod
+import secrets
+
+IPPOC_API_KEY = os.getenv("IPPOC_API_KEY")
+if not IPPOC_API_KEY:
+    IPPOC_API_KEY = secrets.token_hex(32)
 PERSISTENCE_PATH = os.getenv("CHAT_DB_PATH", "data/state/chat_rooms.json")
-PEER_NODES = os.getenv("PEER_NODES", "").split(",") # Comma separated URLs
-PEER_NODES = [p for p in PEER_NODES if p] # Filter empty
+PEER_NODES = os.getenv("PEER_NODES", "").split(",")  # Comma separated URLs
+PEER_NODES = [p for p in PEER_NODES if p]  # Filter empty
 
 # Optional OpenTelemetry
 if trace and TracerProvider and OTLPSpanExporter:
     otel_endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
     if otel_endpoint:
-        provider = TracerProvider(resource=Resource.create({"service.name": "ippoc-cortex"}))
+        provider = TracerProvider(
+            resource=Resource.create({"service.name": "ippoc-cortex"})
+        )
         processor = BatchSpanProcessor(OTLPSpanExporter(endpoint=otel_endpoint))
         provider.add_span_processor(processor)
         trace.set_tracer_provider(provider)
@@ -67,8 +84,12 @@ queue = get_queue()
 
 # Metrics
 if Counter and Histogram:
-    ORCH_REQUESTS = Counter("ippoc_orchestrator_requests_total", "Orchestrator requests", ["tool", "status"])
-    ORCH_LATENCY = Histogram("ippoc_orchestrator_latency_seconds", "Orchestrator latency", ["tool"])
+    ORCH_REQUESTS = Counter(
+        "ippoc_orchestrator_requests_total", "Orchestrator requests", ["tool", "status"]
+    )
+    ORCH_LATENCY = Histogram(
+        "ippoc_orchestrator_latency_seconds", "Orchestrator latency", ["tool"]
+    )
 else:  # pragma: no cover
     ORCH_REQUESTS = ORCH_LATENCY = None
 
@@ -86,7 +107,10 @@ if scopes_raw:
 if IPPOC_API_KEY:
     TOKEN_SCOPES.setdefault(IPPOC_API_KEY, ["*"])
 
-def verify_api_key(request: Request, credentials: HTTPAuthorizationCredentials = Security(security)):
+
+def verify_api_key(
+    request: Request, credentials: HTTPAuthorizationCredentials = Security(security)
+):
     """
     Enforces Bearer Token Authentication.
     """
@@ -97,13 +121,17 @@ def verify_api_key(request: Request, credentials: HTTPAuthorizationCredentials =
     request.state.token = token
     return token
 
+
 # --- Dependencies Definition ---
 class MockTransport(TransportLayer):
-    async def send(self, message: TelepathyMessage, target_node_id: Optional[str] = None):
+    async def send(
+        self, message: TelepathyMessage, target_node_id: Optional[str] = None
+    ):
         print(f"[Transport] Sending: {message}")
-    
+
     async def receive(self) -> TelepathyMessage:
         return TelepathyMessage(type="THOUGHT", sender="mock", content="ping")
+
 
 # --- State & Persistence ---
 chat_persistence = ChatPersistence(storage_path=PERSISTENCE_PATH)
@@ -129,6 +157,7 @@ swarm = TelepathySwarm(node_id=NODE_ID, transports=transports)
 two_tower = TwoTowerEngine()
 engine = LangGraphEngine(two_tower, swarm)
 
+
 # --- Lifespan ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -149,13 +178,13 @@ async def lifespan(app: FastAPI):
         interval = int(os.getenv("IPPOC_HEARTBEAT_SECONDS", "60"))
         print(f"[Server] Starting autonomy loop (every {interval}s)...")
         autonomy_task = asyncio.create_task(run_autonomy_loop(interval))
-    
+
     # Load State
     global chat_rooms
     chat_rooms.update(chat_persistence.load())
-    
+
     yield
-    
+
     # Shutdown
     print("[Server] Shutting down...")
     chat_persistence.save(chat_rooms)
@@ -166,13 +195,15 @@ async def lifespan(app: FastAPI):
     # Close HTTP clients if any
     for t in swarm.transports:
         if isinstance(t, HttpTransport):
-             await t.client.aclose()
+            await t.client.aclose()
+
 
 app = FastAPI(
-    title="IPPOC Cognitive Core (Two-Tower + Chat)", 
+    title="IPPOC Cognitive Core (Two-Tower + Chat)",
     version="3.2.0-PROD",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
+
 
 # Request ID middleware
 @app.middleware("http")
@@ -182,7 +213,9 @@ async def add_request_id(request: Request, call_next):
     response.headers["x-request-id"] = req_id
     return response
 
+
 # --- Orchestrator Helpers ---
+
 
 def _record_metrics(tool_name: str, status: str, duration: float) -> None:
     if ORCH_REQUESTS:
@@ -191,7 +224,9 @@ def _record_metrics(tool_name: str, status: str, duration: float) -> None:
         ORCH_LATENCY.labels(tool=tool_name).observe(duration)
 
 
-def _tool_error_response(code: str, message: str, retryable: bool = False, details: Any = None) -> ToolResult:
+def _tool_error_response(
+    code: str, message: str, retryable: bool = False, details: Any = None
+) -> ToolResult:
     return ToolResult(
         success=False,
         output=None,
@@ -233,7 +268,9 @@ def _authorize_simple(scopes: List[str], required: str) -> None:
     raise HTTPException(status_code=403, detail="Insufficient scope")
 
 
-def _normalize_envelope(request: Request, envelope: ToolInvocationEnvelope) -> ToolInvocationEnvelope:
+def _normalize_envelope(
+    request: Request, envelope: ToolInvocationEnvelope
+) -> ToolInvocationEnvelope:
     if not envelope.request_id:
         envelope.request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
     if not envelope.trace_id:
@@ -305,10 +342,16 @@ async def _execute_with_ledger(envelope: ToolInvocationEnvelope) -> ToolResult:
     try:
         await ledger.update(
             execution_id,
-            status=ExecutionStatus.completed.value if result.success else ExecutionStatus.failed.value,
+            status=(
+                ExecutionStatus.completed.value
+                if result.success
+                else ExecutionStatus.failed.value
+            ),
             duration_ms=duration_ms,
             cost_spent=result.cost_spent or 0.0,
-            result=result.model_dump() if hasattr(result, "model_dump") else result.dict(),
+            result=(
+                result.model_dump() if hasattr(result, "model_dump") else result.dict()
+            ),
             error_code=result.error_code,
             error_message=result.message,
         )
@@ -327,7 +370,11 @@ async def _queue_handler(execution_id: str, envelope_payload: Dict[str, Any]) ->
     duration_ms = int((time.monotonic() - started) * 1000)
     await ledger.update(
         execution_id,
-        status=ExecutionStatus.completed.value if result.success else ExecutionStatus.failed.value,
+        status=(
+            ExecutionStatus.completed.value
+            if result.success
+            else ExecutionStatus.failed.value
+        ),
         duration_ms=duration_ms,
         cost_spent=result.cost_spent or 0.0,
         result=result.model_dump() if hasattr(result, "model_dump") else result.dict(),
@@ -335,7 +382,9 @@ async def _queue_handler(execution_id: str, envelope_payload: Dict[str, Any]) ->
         error_message=result.message,
     )
 
+
 # --- Endpoints ---
+
 
 @app.post("/v1/signals/ingest", dependencies=[Depends(verify_api_key)])
 async def ingest_signal(signal: Signal):
@@ -345,13 +394,19 @@ async def ingest_signal(signal: Signal):
     state_update = await engine.run_step(signal)
     return {"status": "accepted", "cognitive_state_snapshot": state_update}
 
-@app.post("/v1/telepathy/receive") # Public or Auth? P2P usually needs Mutual TLS or Shared Secret. Using same key for now.
-async def receive_thought(message: TelepathyMessage, token: str = Depends(verify_api_key)):
+
+@app.post(
+    "/v1/telepathy/receive"
+)  # Public or Auth? P2P usually needs Mutual TLS or Shared Secret. Using same key for now.
+async def receive_thought(
+    message: TelepathyMessage, token: str = Depends(verify_api_key)
+):
     """
     Receive a thought from another Node in the Mesh.
     """
     processed = await swarm.handle_incoming(message)
     return {"status": "received", "processed": bool(processed)}
+
 
 @app.post("/v1/telepathy/broadcast", dependencies=[Depends(verify_api_key)])
 async def broadcast_thought(content: str, confidence: float):
@@ -361,40 +416,43 @@ async def broadcast_thought(content: str, confidence: float):
     await swarm.broadcast_thought(content, confidence)
     return {"status": "broadcast_sent"}
 
+
 @app.post("/v1/chat/rooms/create", dependencies=[Depends(verify_api_key)])
-async def create_room(room_id: str, name: str, type: Literal["ephemeral", "persistent", "private"] = "ephemeral"):
+async def create_room(
+    room_id: str,
+    name: str,
+    type: Literal["ephemeral", "persistent", "private"] = "ephemeral",
+):
     """
     Create a new Cognitive Chat Room.
     """
     if room_id in chat_rooms:
         raise HTTPException(status_code=400, detail="Room already exists")
-    
-    room = ChatRoom(
-        id=room_id,
-        name=name or room_id,
-        type=type,
-        min_reputation=0.5
-    )
+
+    room = ChatRoom(id=room_id, name=name or room_id, type=type, min_reputation=0.5)
     chat_rooms[room_id] = room
     # Immediate persist for safety
     chat_persistence.save(chat_rooms)
     return {"status": "created", "room": room}
 
+
 @app.get("/v1/chat/rooms", dependencies=[Depends(verify_api_key)])
 async def list_rooms():
     return {"rooms": list(chat_rooms.values())}
 
+
 @app.post("/v1/chat/rooms/{room_id}/join", dependencies=[Depends(verify_api_key)])
 async def join_room(room_id: str, node_id: str):
     if room_id not in chat_rooms:
-         raise HTTPException(status_code=404, detail="Room not found")
-    
+        raise HTTPException(status_code=404, detail="Room not found")
+
     room = chat_rooms[room_id]
     if node_id not in room.participants:
         room.participants.append(node_id)
         chat_persistence.save(chat_rooms)
-        
+
     return {"status": "joined", "room": room}
+
 
 @app.post("/v1/admin/model_market/update", dependencies=[Depends(verify_api_key)])
 async def update_model_market(model: str, cost: float):
@@ -405,7 +463,12 @@ async def update_model_market(model: str, cost: float):
         return {"status": "updated", "model": current}
     raise HTTPException(status_code=404, detail="Model not found")
 
-@app.post("/v1/tools/execute", response_model=ToolResult, dependencies=[Depends(verify_api_key)])
+
+@app.post(
+    "/v1/tools/execute",
+    response_model=ToolResult,
+    dependencies=[Depends(verify_api_key)],
+)
 async def execute_tool(envelope: ToolInvocationEnvelope, request: Request):
     _require_tls(request)
     scopes = getattr(request.state, "scopes", [])
@@ -426,10 +489,17 @@ async def execute_tool(envelope: ToolInvocationEnvelope, request: Request):
         status = 403
     elif result.error_code == "tool_error":
         status = 400
-    return JSONResponse(status_code=status, content=result.model_dump() if hasattr(result, "model_dump") else result.dict())
+    return JSONResponse(
+        status_code=status,
+        content=result.model_dump() if hasattr(result, "model_dump") else result.dict(),
+    )
 
 
-@app.post("/v1/orchestrator/execute", response_model=ToolResult, dependencies=[Depends(verify_api_key)])
+@app.post(
+    "/v1/orchestrator/execute",
+    response_model=ToolResult,
+    dependencies=[Depends(verify_api_key)],
+)
 async def orchestrator_execute(envelope: ToolInvocationEnvelope, request: Request):
     _require_tls(request)
     scopes = getattr(request.state, "scopes", [])
@@ -445,18 +515,25 @@ async def orchestrator_execute(envelope: ToolInvocationEnvelope, request: Reques
         status = 403
     elif result.error_code == "tool_error":
         status = 400
-    return JSONResponse(status_code=status, content=result.model_dump() if hasattr(result, "model_dump") else result.dict())
+    return JSONResponse(
+        status_code=status,
+        content=result.model_dump() if hasattr(result, "model_dump") else result.dict(),
+    )
 
 
 @app.post("/v1/orchestrator/execute:batch", dependencies=[Depends(verify_api_key)])
-async def orchestrator_execute_batch(envelopes: List[ToolInvocationEnvelope], request: Request):
+async def orchestrator_execute_batch(
+    envelopes: List[ToolInvocationEnvelope], request: Request
+):
     _require_tls(request)
     scopes = getattr(request.state, "scopes", [])
     normalized: List[ToolInvocationEnvelope] = []
     for envelope in envelopes:
         _authorize_scopes(scopes, envelope)
         normalized.append(_normalize_envelope(request, envelope))
-    tasks = [asyncio.create_task(_execute_with_ledger(envelope)) for envelope in normalized]
+    tasks = [
+        asyncio.create_task(_execute_with_ledger(envelope)) for envelope in normalized
+    ]
     raw_results = await asyncio.gather(*tasks, return_exceptions=True)
     results: List[Dict[str, Any]] = []
     for item in raw_results:
@@ -464,12 +541,16 @@ async def orchestrator_execute_batch(envelopes: List[ToolInvocationEnvelope], re
             result = _tool_error_response("internal_error", str(item), retryable=True)
         else:
             result = item
-        results.append(result.model_dump() if hasattr(result, "model_dump") else result.dict())
+        results.append(
+            result.model_dump() if hasattr(result, "model_dump") else result.dict()
+        )
     return {"results": results}
 
 
 @app.post("/v1/orchestrator/execute:async", dependencies=[Depends(verify_api_key)])
-async def orchestrator_execute_async(envelope: ToolInvocationEnvelope, request: Request):
+async def orchestrator_execute_async(
+    envelope: ToolInvocationEnvelope, request: Request
+):
     _require_tls(request)
     scopes = getattr(request.state, "scopes", [])
     _authorize_scopes(scopes, envelope)
@@ -481,7 +562,10 @@ async def orchestrator_execute_async(envelope: ToolInvocationEnvelope, request: 
     if envelope.idempotency_key:
         existing = await ledger.get_by_idempotency(envelope.idempotency_key)
         if existing:
-            return {"execution_id": existing.get("execution_id"), "status": existing.get("status")}
+            return {
+                "execution_id": existing.get("execution_id"),
+                "status": existing.get("status"),
+            }
     try:
         await ledger.create(
             {
@@ -501,11 +585,16 @@ async def orchestrator_execute_async(envelope: ToolInvocationEnvelope, request: 
         )
     except Exception as e:
         print(f"[Server] Ledger create failed: {e}")
-    await queue.enqueue(execution_id, envelope.model_dump() if hasattr(envelope, "model_dump") else envelope.dict())
+    await queue.enqueue(
+        execution_id,
+        envelope.model_dump() if hasattr(envelope, "model_dump") else envelope.dict(),
+    )
     return {"execution_id": execution_id, "status": ExecutionStatus.queued.value}
 
 
-@app.get("/v1/orchestrator/executions/{execution_id}", dependencies=[Depends(verify_api_key)])
+@app.get(
+    "/v1/orchestrator/executions/{execution_id}", dependencies=[Depends(verify_api_key)]
+)
 async def orchestrator_execution_status(execution_id: str, request: Request):
     _require_tls(request)
     _authorize_simple(getattr(request.state, "scopes", []), "orchestrator:read")
@@ -515,14 +604,20 @@ async def orchestrator_execution_status(execution_id: str, request: Request):
     return record
 
 
-@app.post("/v1/orchestrator/executions/{execution_id}/cancel", dependencies=[Depends(verify_api_key)])
+@app.post(
+    "/v1/orchestrator/executions/{execution_id}/cancel",
+    dependencies=[Depends(verify_api_key)],
+)
 async def orchestrator_cancel(execution_id: str, request: Request):
     _require_tls(request)
     _authorize_simple(getattr(request.state, "scopes", []), "orchestrator:write")
     record = await ledger.get(execution_id)
     if not record:
         raise HTTPException(status_code=404, detail="Execution not found")
-    if record.get("status") in [ExecutionStatus.completed.value, ExecutionStatus.failed.value]:
+    if record.get("status") in [
+        ExecutionStatus.completed.value,
+        ExecutionStatus.failed.value,
+    ]:
         return {"execution_id": execution_id, "status": record.get("status")}
     await ledger.update(execution_id, status=ExecutionStatus.cancelled.value)
     return {"execution_id": execution_id, "status": ExecutionStatus.cancelled.value}
@@ -553,7 +648,9 @@ async def orchestrator_explain_latest(request: Request):
         return json.load(f)
 
 
-@app.get("/v1/orchestrator/explain/{execution_id}", dependencies=[Depends(verify_api_key)])
+@app.get(
+    "/v1/orchestrator/explain/{execution_id}", dependencies=[Depends(verify_api_key)]
+)
 async def orchestrator_explain_execution(execution_id: str, request: Request):
     _require_tls(request)
     _authorize_simple(getattr(request.state, "scopes", []), "orchestrator:read")
@@ -571,10 +668,7 @@ def healthz():
 @app.get("/readyz")
 async def readyz():
     # Minimal readiness check: ledger init + orchestrator tools
-    return {
-        "status": "ready",
-        "tools_loaded": list(get_orchestrator().tools.keys())
-    }
+    return {"status": "ready", "tools_loaded": list(get_orchestrator().tools.keys())}
 
 
 @app.get("/metrics")
@@ -583,18 +677,20 @@ def metrics():
         raise HTTPException(status_code=503, detail="Prometheus client not available")
     return PlainTextResponse(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
+
 @app.get("/health")
 def health():
     return {
-        "status": "cognitive_core_active", 
+        "status": "cognitive_core_active",
         "node_id": NODE_ID,
         "auth_enabled": True,
         "rooms_loaded": len(chat_rooms),
         "architecture": "two_tower",
         "tower_a": two_tower.tower_a_model_name,
         "tower_b": two_tower.tower_b_model_name,
-        "tools_loaded": list(get_orchestrator().tools.keys())
+        "tools_loaded": list(get_orchestrator().tools.keys()),
     }
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8001)
