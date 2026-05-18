@@ -5,3 +5,7 @@
 ## 2024-05-23 - Synchronous Audit Logging Bottleneck
 **Learning:** `ToolOrchestrator._audit_action` was performing synchronous file I/O (open/write/close) for every tool invocation. This introduced ~68ms latency per 1000 calls. Moving this to a background thread with `queue.Queue` reduced it to ~3ms (20x improvement).
 **Action:** For high-frequency logging or audit trails, always use an asynchronous writer or background thread to decouple I/O latency from the main execution path.
+
+## 2026-05-18 - Jaccard Similarity Graph Optimization
+**Learning:** Performing iterative fetching and intersection logic in Python for highly connected graph entities causes severe N+1 latency, especially when candidate spaces are large (like full table scans).
+**Action:** When performing subset/intersection checks over relational data, offload the Jaccard similarity directly to the SQL engine using CTEs. Use intersection thresholds natively in `HAVING` clauses to instantly prune invalid candidates.
