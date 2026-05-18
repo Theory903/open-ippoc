@@ -1,15 +1,6 @@
 from typing import List, Dict, Any, Tuple, Optional
 from collections import defaultdict
-from sqlalchemy import (
-    Column,
-    Integer,
-    String,
-    Float,
-    ForeignKey,
-    text,
-    DateTime,
-    bindparam,
-)
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, text, DateTime, bindparam
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
@@ -20,37 +11,28 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 Base = declarative_base()
 
-
 class Entity(Base):
     """A Node in the Knowledge Graph"""
-
     __tablename__ = "kg_entities"
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True, index=True)
-    type = Column(String)  # Person, Location, Concept
-    metadata_ = Column("metadata", String)  # JSON string
-
+    type = Column(String) # Person, Location, Concept
+    metadata_ = Column("metadata", String) # JSON string
 
 class Relation(Base):
     """An Edge in the Knowledge Graph"""
-
     __tablename__ = "kg_relations"
     id = Column(Integer, primary_key=True)
     source_id = Column(Integer, ForeignKey("kg_entities.id"), index=True)
     target_id = Column(Integer, ForeignKey("kg_entities.id"), index=True)
-    relation = Column(String)  # e.g. "authored", "is_located_in"
+    relation = Column(String) # e.g. "authored", "is_located_in"
     weight = Column(Float, default=1.0)
-
 
 class GraphManager:
     def __init__(self, db_url: str = None):
-        self.db_url = db_url or os.getenv(
-            "DATABASE_URL", "postgresql+asyncpg://user:pass@localhost:5432/ippoc"
-        )
+        self.db_url = db_url or os.getenv("DATABASE_URL", "postgresql+asyncpg://user:pass@localhost:5432/ippoc")
         self.engine = create_async_engine(self.db_url, echo=False)
-        self.Session = sessionmaker(
-            self.engine, class_=AsyncSession, expire_on_commit=False
-        )
+        self.Session = sessionmaker(self.engine, class_=AsyncSession, expire_on_commit=False)
         self._initialized = False
 
     async def init_db(self):
@@ -60,14 +42,7 @@ class GraphManager:
             await conn.run_sync(Base.metadata.create_all)
         self._initialized = True
 
-    async def add_triple(
-        self,
-        source: str,
-        relation: str,
-        target: str,
-        source_type="Concept",
-        target_type="Concept",
-    ):
+    async def add_triple(self, source: str, relation: str, target: str, source_type="Concept", target_type="Concept"):
         """
         Adds (Source) -> [Relation] -> (Target) to the graph.
         Idempotent (get_or_create).
@@ -75,10 +50,7 @@ class GraphManager:
         async with self.Session() as session:
             # Helper to get/create entity
             async def get_or_create(name, type_):
-                res = await session.execute(
-                    text("SELECT id FROM kg_entities WHERE name = :name"),
-                    {"name": name},
-                )
+                res = await session.execute(text("SELECT id FROM kg_entities WHERE name = :name"), {"name": name})
                 row = res.fetchone()
                 if row:
                     return row[0]
@@ -93,10 +65,8 @@ class GraphManager:
             # Add relation
             # Check if exists
             res = await session.execute(
-                text(
-                    "SELECT id FROM kg_relations WHERE source_id=:s AND target_id=:t AND relation=:r"
-                ),
-                {"s": s_id, "t": t_id, "r": relation},
+                text("SELECT id FROM kg_relations WHERE source_id=:s AND target_id=:t AND relation=:r"),
+                {"s": s_id, "t": t_id, "r": relation}
             )
             if not res.fetchone():
                 rel = Relation(source_id=s_id, target_id=t_id, relation=relation)
@@ -113,9 +83,7 @@ class GraphManager:
         await self.init_db()
         async with self.Session() as session:
             # 1. Find Entity ID
-            res = await session.execute(
-                text("SELECT id FROM kg_entities WHERE name = :n"), {"n": entity_name}
-            )
+            res = await session.execute(text("SELECT id FROM kg_entities WHERE name = :n"), {"n": entity_name})
             row = res.fetchone()
             if not row:
                 return []
@@ -132,9 +100,7 @@ class GraphManager:
 
             return [f"-[{row[1]}]-> {row[0]}" for row in out.fetchall()]
 
-    async def find_relationship_path(
-        self, source_entity: str, target_entity: str, max_depth: int = 3
-    ) -> List[Dict[str, Any]]:
+    async def find_relationship_path(self, source_entity: str, target_entity: str, max_depth: int = 3) -> List[Dict[str, Any]]:
         """
         Find paths between two entities in the knowledge graph.
 
@@ -154,7 +120,7 @@ class GraphManager:
                 # Get entity IDs
                 source_res = await session.execute(
                     text("SELECT id FROM kg_entities WHERE name = :name"),
-                    {"name": source_entity},
+                    {"name": source_entity}
                 )
                 source_row = source_res.fetchone()
                 if not source_row:
@@ -163,7 +129,7 @@ class GraphManager:
 
                 target_res = await session.execute(
                     text("SELECT id FROM kg_entities WHERE name = :name"),
-                    {"name": target_entity},
+                    {"name": target_entity}
                 )
                 target_row = target_res.fetchone()
                 if not target_row:
@@ -171,9 +137,7 @@ class GraphManager:
                 target_id = target_row[0]
 
                 # Use Recursive CTE for optimized path finding
-                paths = await self._find_paths_cte(
-                    session, source_id, target_id, max_depth
-                )
+                paths = await self._find_paths_cte(session, source_id, target_id, max_depth)
 
             return paths
 
@@ -181,9 +145,7 @@ class GraphManager:
             logger.error(f"Path finding failed: {e}")
             return []
 
-    async def _find_paths_cte(
-        self, session: AsyncSession, source_id: int, target_id: int, max_depth: int
-    ) -> List[Dict[str, Any]]:
+    async def _find_paths_cte(self, session: AsyncSession, source_id: int, target_id: int, max_depth: int) -> List[Dict[str, Any]]:
         """Recursive CTE based path finding - Faster than BFS and avoids N+1 queries"""
         # Recursive CTE query
         # We use simple string concatenation for path tracking which is portable between Postgres and SQLite
@@ -217,10 +179,11 @@ class GraphManager:
             LIMIT 10
         """)
 
-        result = await session.execute(
-            cte_query,
-            {"source_id": source_id, "target_id": target_id, "max_depth": max_depth},
-        )
+        result = await session.execute(cte_query, {
+            "source_id": source_id,
+            "target_id": target_id,
+            "max_depth": max_depth
+        })
 
         rows = result.fetchall()
 
@@ -234,9 +197,9 @@ class GraphManager:
         for row in rows:
             # Parse path IDs and relations
             # path_ids is "id1,id2,id3"
-            ids = [int(x) for x in row[0].split(",")]
+            ids = [int(x) for x in row[0].split(',')]
             # path_rels is "rel1,rel2"
-            rels = row[1].split(",")
+            rels = row[1].split(',')
 
             # Basic cycle check: if IDs are not unique, skip cyclic path
             if len(ids) != len(set(ids)):
@@ -270,20 +233,16 @@ class GraphManager:
                 nodes.append(name)
 
             if valid_path:
-                paths.append(
-                    {
-                        "nodes": nodes,
-                        "relations": rels,
-                        "length": len(rels),
-                        "confidence": 1.0 - (len(rels) * 0.1),
-                    }
-                )
+                paths.append({
+                    "nodes": nodes,
+                    "relations": rels,
+                    "length": len(rels),
+                    "confidence": 1.0 - (len(rels) * 0.1)
+                })
 
         return paths
 
-    async def get_entity_context(
-        self, entity_name: str, context_types: List[str] = None
-    ) -> Dict[str, Any]:
+    async def get_entity_context(self, entity_name: str, context_types: List[str] = None) -> Dict[str, Any]:
         """
         Get comprehensive context for an entity including relationships and metadata.
 
@@ -295,7 +254,7 @@ class GraphManager:
             Dictionary with entity context information
         """
         if context_types is None:
-            context_types = ["relationships", "attributes"]
+            context_types = ['relationships', 'attributes']
 
         await self.init_db()
         context = {"entity": entity_name}
@@ -319,14 +278,12 @@ class GraphManager:
 
                 # Parse metadata
                 try:
-                    context["metadata"] = (
-                        json.loads(metadata_str) if metadata_str else {}
-                    )
+                    context["metadata"] = json.loads(metadata_str) if metadata_str else {}
                 except:
                     context["metadata"] = {}
 
                 # Get relationships if requested
-                if "relationships" in context_types:
+                if 'relationships' in context_types:
                     # Incoming relationships
                     incoming_stmt = text("""
                         SELECT e.name, r.relation
@@ -334,9 +291,7 @@ class GraphManager:
                         JOIN kg_entities e ON r.source_id = e.id
                         WHERE r.target_id = :entity_id
                     """)
-                    incoming_res = await session.execute(
-                        incoming_stmt, {"entity_id": entity_id}
-                    )
+                    incoming_res = await session.execute(incoming_stmt, {"entity_id": entity_id})
                     context["incoming_relations"] = [
                         {"from": row[0], "relation": row[1]}
                         for row in incoming_res.fetchall()
@@ -349,16 +304,14 @@ class GraphManager:
                         JOIN kg_entities e ON r.target_id = e.id
                         WHERE r.source_id = :entity_id
                     """)
-                    outgoing_res = await session.execute(
-                        outgoing_stmt, {"entity_id": entity_id}
-                    )
+                    outgoing_res = await session.execute(outgoing_stmt, {"entity_id": entity_id})
                     context["outgoing_relations"] = [
                         {"to": row[0], "relation": row[1]}
                         for row in outgoing_res.fetchall()
                     ]
 
                 # Get attributes if requested
-                if "attributes" in context_types:
+                if 'attributes' in context_types:
                     # This would query attribute nodes connected to the entity
                     attr_stmt = text("""
                         SELECT e.name, r.relation
@@ -367,9 +320,7 @@ class GraphManager:
                         WHERE r.source_id = :entity_id
                         AND r.relation IN ('has_attribute', 'described_as', 'characterized_by')
                     """)
-                    attr_res = await session.execute(
-                        attr_stmt, {"entity_id": entity_id}
-                    )
+                    attr_res = await session.execute(attr_stmt, {"entity_id": entity_id})
                     context["attributes"] = [
                         {"attribute": row[0], "type": row[1]}
                         for row in attr_res.fetchall()
@@ -383,9 +334,7 @@ class GraphManager:
             logger.error(f"Entity context retrieval failed: {e}")
             return {"error": str(e)}
 
-    async def find_similar_entities(
-        self, entity_name: str, similarity_threshold: float = 0.7
-    ) -> List[Dict[str, Any]]:
+    async def find_similar_entities(self, entity_name: str, similarity_threshold: float = 0.7) -> List[Dict[str, Any]]:
         """
         Find entities similar to the given entity based on shared relationships.
 
@@ -410,76 +359,48 @@ class GraphManager:
                     return []
                 ref_id = ref_row[0]
 
-                # Get reference entity relation count
-                ref_count_stmt = text(
-                    "SELECT COUNT(*) FROM kg_relations WHERE source_id = :ref_id"
-                )
-                ref_count_res = await session.execute(
-                    ref_count_stmt, {"ref_id": ref_id}
-                )
-                ref_total = ref_count_res.scalar()
+                # Get reference entity relationships
+                ref_stmt = text("""
+                    SELECT e.name, r.relation
+                    FROM kg_relations r
+                    JOIN kg_entities e ON e.id = r.target_id
+                    WHERE r.source_id = :ref_id
+                """)
+                ref_res = await session.execute(ref_stmt, {"ref_id": ref_id})
+                ref_relations = set(f"{row[0]}:{row[1]}" for row in ref_res.fetchall())
 
-                if ref_total == 0:
+                if not ref_relations:
                     return []
 
-                # Intersection-first optimization using CTEs
-                # 1. Identify candidates (entities sharing >=1 relation) -> O(Neighbors)
-                # 2. Count totals for candidates only
-                # 3. Calculate Jaccard in SQL
-                # Note: This query avoids full table scans of unrelated entities.
-                stmt = text("""
-                    WITH ref_rels AS (
-                        SELECT target_id, relation
-                        FROM kg_relations
-                        WHERE source_id = :ref_id
-                    ),
-                    candidates AS (
-                        SELECT
-                            r.source_id,
-                            COUNT(r.id) as intersection_cnt
-                        FROM kg_relations r
-                        JOIN ref_rels rr ON r.target_id = rr.target_id AND r.relation = rr.relation
-                        WHERE r.source_id != :ref_id
-                        GROUP BY r.source_id
-                        HAVING COUNT(r.id) >= :ref_total * :threshold
-                    ),
-                    candidate_totals AS (
-                        SELECT
-                            r.source_id,
-                            COUNT(r.id) as total_cnt
-                        FROM kg_relations r
-                        JOIN candidates c ON r.source_id = c.source_id
-                        GROUP BY r.source_id
-                    )
-                    SELECT
-                        e.name,
-                        c.intersection_cnt,
-                        t.total_cnt,
-                        (CAST(c.intersection_cnt AS FLOAT) / (t.total_cnt + :ref_total - c.intersection_cnt)) as similarity
-                    FROM candidates c
-                    JOIN candidate_totals t ON c.source_id = t.source_id
-                    JOIN kg_entities e ON c.source_id = e.id
-                    WHERE (CAST(c.intersection_cnt AS FLOAT) / (t.total_cnt + :ref_total - c.intersection_cnt)) >= :threshold
-                    ORDER BY similarity DESC
-                """)
+                # Compare with all other entities
+                all_entities_stmt = text("SELECT id, name FROM kg_entities WHERE name != :name")
+                all_entities_res = await session.execute(all_entities_stmt, {"name": entity_name})
 
-                res = await session.execute(
-                    stmt,
-                    {
-                        "ref_id": ref_id,
-                        "ref_total": ref_total,
-                        "threshold": similarity_threshold,
-                    },
-                )
+                for entity_id, entity_name_cmp in all_entities_res.fetchall():
+                    # Get this entity's relationships
+                    cmp_stmt = text("""
+                        SELECT e.name, r.relation
+                        FROM kg_relations r
+                        JOIN kg_entities e ON e.id = r.target_id
+                        WHERE r.source_id = :entity_id
+                    """)
+                    cmp_res = await session.execute(cmp_stmt, {"entity_id": entity_id})
+                    cmp_relations = set(f"{row[0]}:{row[1]}" for row in cmp_res.fetchall())
 
-                for row in res.fetchall():
-                    similar_entities.append(
-                        {
-                            "entity": row[0],
-                            "similarity": row[3],
-                            "shared_relations": row[1],
-                        }
-                    )
+                    # Calculate Jaccard similarity
+                    intersection = len(ref_relations & cmp_relations)
+                    union = len(ref_relations | cmp_relations)
+                    similarity = intersection / union if union > 0 else 0
+
+                    if similarity >= similarity_threshold:
+                        similar_entities.append({
+                            "entity": entity_name_cmp,
+                            "similarity": similarity,
+                            "shared_relations": intersection
+                        })
+
+                # Sort by similarity
+                similar_entities.sort(key=lambda x: x["similarity"], reverse=True)
 
             return similar_entities
 
@@ -501,10 +422,7 @@ class GraphManager:
             await self.init_db()
             async with self.Session() as session:
                 # Find entity ID
-                res = await session.execute(
-                    text("SELECT id FROM kg_entities WHERE name = :n"),
-                    {"n": entity_name},
-                )
+                res = await session.execute(text("SELECT id FROM kg_entities WHERE name = :n"), {"n": entity_name})
                 row = res.fetchone()
                 if not row:
                     return 0
@@ -512,9 +430,7 @@ class GraphManager:
                 eid = row[0]
 
                 # Delete relations where source or target is this entity
-                stmt = text(
-                    "DELETE FROM kg_relations WHERE source_id = :eid OR target_id = :eid"
-                )
+                stmt = text("DELETE FROM kg_relations WHERE source_id = :eid OR target_id = :eid")
                 result = await session.execute(stmt, {"eid": eid})
                 deleted_relations = result.rowcount
 
@@ -525,9 +441,7 @@ class GraphManager:
                 await session.commit()
 
                 total = 1 + deleted_relations
-                logger.info(
-                    f"Deleted entity '{entity_name}' and {deleted_relations} relations"
-                )
+                logger.info(f"Deleted entity '{entity_name}' and {deleted_relations} relations")
                 return total
 
         except Exception as e:
