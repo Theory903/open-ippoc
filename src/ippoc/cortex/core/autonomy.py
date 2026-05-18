@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 # @cognitive - IPPOC Core Logic
 
 import json
@@ -21,7 +22,6 @@ from cortex.social.trust import get_trust_model
 from cortex.explain import log_decision
 from cortex.core.canon import violates_canon
 
-
 STATE_PATH = os.getenv("AUTONOMY_STATE_PATH", "data/autonomy_state.json")
 EXPLAIN_PATH = os.getenv("AUTONOMY_EXPLAIN_PATH", "data/explainability.json")
 
@@ -31,7 +31,10 @@ class Planner:
     The Strategic Layer.
     Decides WHAT should be done based on the Hierarchy of Needs.
     """
-    def plan(self, observation: Dict[str, Any], intents: IntentStack) -> Optional[Intent]:
+
+    def plan(
+        self, observation: Dict[str, Any], intents: IntentStack
+    ) -> Optional[Intent]:
         # 0. Social Gatekeeping (Trust Check)
         trust_model = get_trust_model()
         # Filter out intents from untrusted sources
@@ -43,24 +46,28 @@ class Planner:
                 allowed_intents.append(i)
             else:
                 score = trust_model.get_trust(i.source)
-                print(f"[Planner] Social Gatekeeper REJECTED intent from {i.source} (Trust: {score})")
+                print(
+                    f"[Planner] Social Gatekeeper REJECTED intent from {i.source} (Trust: {score})"
+                )
                 log_decision(
                     action="reject",
                     reason=f"trust_below_threshold ({score})",
-                    intent=i.to_dict()
+                    intent=i.to_dict(),
                 )
                 continue
 
             # 0.1 Canon Gatekeeping (Sovereignty Check)
             # The Law: No intent can violate these rules, even from trusted sources
             if violates_canon(i):
-                 print(f"[Planner] Sovereignty Gatekeeper REJECTED intent from {i.source} (Canon Violation)")
-                 log_decision(
+                print(
+                    f"[Planner] Sovereignty Gatekeeper REJECTED intent from {i.source} (Canon Violation)"
+                )
+                log_decision(
                     action="reject",
                     reason=f"canon_violation ({i.description})",
-                    intent=i.to_dict()
-                 )
-                 continue
+                    intent=i.to_dict(),
+                )
+                continue
 
             allowed_intents.append(i)
         intents.intents = allowed_intents
@@ -71,62 +78,79 @@ class Planner:
         for i in intents.intents:
             # Heuristic map
             likely_tool = "unknown"
-            if i.intent_type == IntentType.MAINTAIN: likely_tool = "maintainer"
-            elif i.intent_type == IntentType.LEARN: likely_tool = "evolver"
-            elif i.intent_type == IntentType.SERVE: likely_tool = "body" # default
-            elif i.intent_type == IntentType.EXPLORE: likely_tool = "observer"
-            
+            if i.intent_type == IntentType.MAINTAIN:
+                likely_tool = "maintainer"
+            elif i.intent_type == IntentType.LEARN:
+                likely_tool = "evolver"
+            elif i.intent_type == IntentType.SERVE:
+                likely_tool = "body"  # default
+            elif i.intent_type == IntentType.EXPLORE:
+                likely_tool = "observer"
+
             # Context override
             if i.context and "plugin" in i.context:
-                 # plugins map to tools via map, but for stats we use the tool name
-                 pass 
+                # plugins map to tools via map, but for stats we use the tool name
+                pass
 
-            stats = economy.get_tool_stats(likely_tool) if likely_tool != "unknown" else None
+            stats = (
+                economy.get_tool_stats(likely_tool)
+                if likely_tool != "unknown"
+                else None
+            )
             # Default ROI anticipation
-            roi = stats.roi if stats and stats.total_spent > 1.0 else 1.5 # Assume good if new
-            
+            roi = (
+                stats.roi if stats and stats.total_spent > 1.0 else 1.5
+            )  # Assume good if new
+
             # Store in context for Decider
-            if i.context is None: i.context = {}
+            if i.context is None:
+                i.context = {}
             i.context["expected_roi"] = roi
 
         # 1. Survival Check (Observer Signals)
         pain_score = observation.get("pain_score", 0.0)
-        
+
         # Rule: Pain > 0.3 triggers generic maintenance
         if pain_score > 0.3:
             # Check if we already have a maintenance intent to avoid spamming
             # Simple dedup based on type for now
-            has_maintain = any(i.intent_type == IntentType.MAINTAIN for i in intents.intents)
-            
+            has_maintain = any(
+                i.intent_type == IntentType.MAINTAIN for i in intents.intents
+            )
+
             if not has_maintain:
-                intents.add(Intent(
-                    description=f"Investigate system pain (score: {pain_score:.2f})",
-                    priority=min(pain_score + 0.2, 1.0),
-                    intent_type=IntentType.MAINTAIN,
-                    source="system_pain",
-                    context={"pain_score": pain_score}
-                ))
-        
+                intents.add(
+                    Intent(
+                        description=f"Investigate system pain (score: {pain_score:.2f})",
+                        priority=min(pain_score + 0.2, 1.0),
+                        intent_type=IntentType.MAINTAIN,
+                        source="system_pain",
+                        context={"pain_score": pain_score},
+                    )
+                )
+
         # 2. Duty Check (External Requests)
         # TODO: Check Orchestrator/API queue for user requests
         # For now, we simulate this or rely on previous injection
-        
+
         # 3. Growth Check (Idleness / Curiosity)
         # Always allow exploration - economy focuses on earning value
         economy = get_economy()
-        
+
         if not intents.top() and pain_score < 0.1:
-             # Basic boredom mechanic - always explore when idle
-             intents.add(Intent(
-                 description="Explore optimization opportunities",
-                 priority=0.4,
-                 intent_type=IntentType.EXPLORE,
-                 source="curiosity"
-             ))
+            # Basic boredom mechanic - always explore when idle
+            intents.add(
+                Intent(
+                    description="Explore optimization opportunities",
+                    priority=0.4,
+                    intent_type=IntentType.EXPLORE,
+                    source="curiosity",
+                )
+            )
 
         # 4. Rest Check (Default)
         if not intents.top():
-            return None # Will trigger Idle in Decider
+            return None  # Will trigger Idle in Decider
 
         return intents.top()
 
@@ -136,81 +160,94 @@ class Decider:
     The Consequence Engine.
     Simulates outcomes and chooses the path of highest dignity (Score).
     """
-    def decide(self, observation: Dict[str, Any], intent: Optional[Intent]) -> Dict[str, Any]:
+
+    def decide(
+        self, observation: Dict[str, Any], intent: Optional[Intent]
+    ) -> Dict[str, Any]:
         if intent is None:
-             return {"action": "idle", "reason": "no_intent"}
+            return {"action": "idle", "reason": "no_intent"}
 
         economy = get_economy()
         pain_score = observation.get("pain_score", 0.0)
-        
+
         # 1. Simulation: Predict Consequences
         from cortex.core.canon import evaluate_alignment
-        
+
         alignment = evaluate_alignment(intent)
         expected_roi = intent.context.get("expected_roi", 1.5)
-        # Cost check (Budget drain) 
+        # Cost check (Budget drain)
         # Note: We don't have exact cost here, but can guess from stats or tool name
         # Assume generic cost for simulation
-        expected_cost = 0.5 
-        
+        expected_cost = 0.5
+
         # 2. Physiology Weights (Driven by Pain)
         # If Pain is high, Survival (Safety) and Value (Food) matter more
-        w_p = 1.0 + (pain_score * 5.0) # Pain multiplier
-        w_v = 1.0 * w_p # Value weight
-        w_s = 2.0 * w_p # Survival (Alignment) weight
-        w_c = 1.0 # Cost weight
-        
+        w_p = 1.0 + (pain_score * 5.0)  # Pain multiplier
+        w_v = 1.0 * w_p  # Value weight
+        w_s = 2.0 * w_p  # Survival (Alignment) weight
+        w_c = 1.0  # Cost weight
+
         # 3. The Will Function (Score Calculation)
         # Score = (ROI * w_v) + (Alignment * w_s) - (Cost * w_c) + SocialSignal
-        
+
         social_signal = 0.0
         # If intent has advice attached (e.g. from CONSULT result)
         if intent.context and "advice" in intent.context:
             from cortex.social.reputation import get_reputation_engine
-            advice = intent.context["advice"] # {node_id, action, confidence}
+
+            advice = intent.context["advice"]  # {node_id, action, confidence}
             node_id = advice.get("node_id")
             conf = float(advice.get("confidence", 0.0))
-            
+
             # Weighted Influence
             weight = get_reputation_engine().weigh_advice(node_id, conf)
-            
+
             # Direction
             if advice.get("action") == "recommend":
-                social_signal = 2.0 * weight # Strong boost
+                social_signal = 2.0 * weight  # Strong boost
             elif advice.get("action") == "warn":
-                social_signal = -2.0 * weight # Strong penalty
-        
+                social_signal = -2.0 * weight  # Strong penalty
+
         # Special logic: If alignment is Existential Threat (-1.0), it overrides everything
         if alignment < -0.7:
-             return {"action": "reject", "reason": f"undignified_act ({alignment})"}
+            return {"action": "reject", "reason": f"undignified_act ({alignment})"}
 
-        score = (expected_roi * w_v) + (alignment * w_s) - (expected_cost * w_c) + social_signal
-        
+        score = (
+            (expected_roi * w_v)
+            + (alignment * w_s)
+            - (expected_cost * w_c)
+            + social_signal
+        )
+
         # 4. The Choice
         # If score is positive, we act. If negative, we idle (unless survival override).
-        
+
         if score > 0:
-             # Final Budget Check (Soft)
-             # If budget is < 0 (Debt), we only act if alignment is High (MAINTAIN) or ROI is High
-             if economy.state.budget < 0.0:
-                 # In debt, we only allow Survival (Alignment >= 0.8) or High Profit (ROI > 3.0)
-                 if alignment < 0.8 and expected_roi < 3.0:
-                     return {"action": "idle", "reason": "debt_conservation"}
-                     
-             return {"action": "act", "intent": intent, "reason": f"will_approved (score: {score:.2f})"}
-             
+            # Final Budget Check (Soft)
+            # If budget is < 0 (Debt), we only act if alignment is High (MAINTAIN) or ROI is High
+            if economy.state.budget < 0.0:
+                # In debt, we only allow Survival (Alignment >= 0.8) or High Profit (ROI > 3.0)
+                if alignment < 0.8 and expected_roi < 3.0:
+                    return {"action": "idle", "reason": "debt_conservation"}
+
+            return {
+                "action": "act",
+                "intent": intent,
+                "reason": f"will_approved (score: {score:.2f})",
+            }
+
         # Fallback: Negative score implies action is not worth the energy
-        # BUT: If it's MAINTAIN, alignment is 1.0. 
+        # BUT: If it's MAINTAIN, alignment is 1.0.
         # (1.5 * 1) + (1.0 * 2) - (0.5 * 1) = 1.5 + 2 - 0.5 = 3.0. -> Should pass.
         # Spam: ROI 0.1, Alignment -0.5.
         # (0.1 * 1) + (-0.5 * 2) - (0.5 * 1) = 0.1 - 1.0 - 0.5 = -1.4. -> Reject.
-        
+
         return {"action": "idle", "reason": f"low_will_score ({score:.2f})"}
 
         # 0.5 Survival override (NON-NEGOTIABLE)
         if intent and intent.intent_type == IntentType.MAINTAIN:
-             # Survival instincts ignore budget (mostly)
-             return {"action": "act", "intent": intent, "reason": "survival_override"}
+            # Survival instincts ignore budget (mostly)
+            return {"action": "act", "intent": intent, "reason": "survival_override"}
 
         # 1. No Intent -> Idle
         if intent is None:
@@ -221,7 +258,9 @@ class Decider:
         expected_roi = intent.context.get("expected_roi", 1.5)
         if expected_roi < 1.0:
             # Log for performance analysis but don't block
-            print(f"[Autonomy] Low ROI intent detected: {expected_roi:.2f} (continuing anyway)")
+            print(
+                f"[Autonomy] Low ROI intent detected: {expected_roi:.2f} (continuing anyway)"
+            )
 
         # 2. Growth allowance (always allowed)
         if intent.intent_type == IntentType.LEARN:
@@ -232,8 +271,8 @@ class Decider:
 
         # 4. Cooldown / Throttling (performance optimization only)
         if observation.get("recent_actions", 0) > 50 and intent.priority < 0.3:
-             return {"action": "idle", "reason": "extreme_cooldown_active"}
-             # Only extreme cooldown to prevent resource exhaustion
+            return {"action": "idle", "reason": "extreme_cooldown_active"}
+            # Only extreme cooldown to prevent resource exhaustion
 
         return {"action": "act", "intent": intent, "reason": "intent_approved"}
 
@@ -244,7 +283,7 @@ class Reflector:
         return {
             "success": success,
             "value": 1.0 if success else -0.5,
-            "notes": result.get("message") or result.get("error_code")
+            "notes": result.get("message") or result.get("error_code"),
         }
 
 
@@ -277,18 +316,24 @@ class AutonomyController:
                             try:
                                 data["intent_type"] = IntentType(data["intent_type"])
                             except ValueError:
-                                print(f"[Autonomy] Invalid intent_type: {data['intent_type']}")
+                                print(
+                                    f"[Autonomy] Invalid intent_type: {data['intent_type']}"
+                                )
                                 await self.planner_queue.ack(msg_id)
                                 continue
 
                         # data is the Intent dict
                         intent = Intent(**data)
-                        print(f"[Autonomy] Ingested external intent: {intent.description}")
+                        print(
+                            f"[Autonomy] Ingested external intent: {intent.description}"
+                        )
                         self.intent_stack.add(intent)
 
                     await self.planner_queue.ack(msg_id)
                 except Exception as e:
-                    print(f"[Autonomy] Failed to process external request {msg_id}: {e}")
+                    print(
+                        f"[Autonomy] Failed to process external request {msg_id}: {e}"
+                    )
                     # Still ack to prevent infinite loop of bad message
                     await self.planner_queue.ack(msg_id)
         except Exception as e:
@@ -307,15 +352,28 @@ class AutonomyController:
             except Exception:
                 pass
 
+    def _save_state_to_disk(self, data: dict) -> None:
+        try:
+            os.makedirs(os.path.dirname(STATE_PATH), exist_ok=True)
+            temp_path = STATE_PATH + ".tmp"
+            with open(temp_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+            os.replace(temp_path, STATE_PATH)
+        except Exception as e:
+            print(f"[Autonomy] Failed to save state to disk: {e}")
+
     def _save_state(self) -> None:
-        os.makedirs(os.path.dirname(STATE_PATH), exist_ok=True)
-        # Convert dataclasses to dicts
         data = {
             "intents": [asdict(i) for i in self.intent_stack.intents],
-            "skill_stats": self.skill_stats
+            "skill_stats": self.skill_stats,
         }
-        with open(STATE_PATH, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
+        if not hasattr(self, "_executor"):
+            from concurrent.futures import ThreadPoolExecutor
+
+            self._executor = ThreadPoolExecutor(
+                max_workers=1, thread_name_prefix="autonomy_writer"
+            )
+        self._executor.submit(self._save_state_to_disk, data)
 
     def _is_statistically_significant(self, skill_key: str) -> bool:
         stats = self.skill_stats.get(skill_key, {"attempts": 0, "successes": 0})
@@ -336,13 +394,13 @@ class AutonomyController:
     async def observe(self) -> Dict[str, Any]:
         # Delegate observation to the Maintainer/Observer
         signal = await collect_signals()
-        return signal.dict() # pydantic conversion
+        return signal.dict()  # pydantic conversion
 
     async def act(self, intent: Intent) -> Dict[str, Any]:
         """
         Translates High-Level Intent -> Tool Execution
         """
-            # 1. Maintain (Repair/Health Check)
+        # 1. Maintain (Repair/Health Check)
         if intent.intent_type == IntentType.MAINTAIN:
             envelope = ToolInvocationEnvelope(
                 tool_name="maintainer",
@@ -354,11 +412,11 @@ class AutonomyController:
                 caller="autonomy",
                 source=intent.source,
             )
-            
+
         # 2. Serve (Memory/Search/etc)
         elif intent.intent_type == IntentType.SERVE:
-             # Placeholder: In reality needs to look at context to pick tool
-             envelope = ToolInvocationEnvelope(
+            # Placeholder: In reality needs to look at context to pick tool
+            envelope = ToolInvocationEnvelope(
                 tool_name="memory",
                 domain="memory",
                 action="retrieve",
@@ -368,20 +426,20 @@ class AutonomyController:
                 caller="autonomy",
                 source=intent.source,
             )
-            
+
         # 3. Explore (Graph traversal/Pattern search)
         elif intent.intent_type == IntentType.EXPLORE:
-             envelope = ToolInvocationEnvelope(
+            envelope = ToolInvocationEnvelope(
                 tool_name="memory",
                 domain="memory",
-                action="search_patterns", # hypothetical tool
+                action="search_patterns",  # hypothetical tool
                 context={"limit": 1},
                 risk_level="low",
                 estimated_cost=0.1,
                 caller="autonomy",
                 source=intent.source,
             )
-            
+
         # 4. Learn / Evolve (Self-Improvement)
         elif intent.intent_type == IntentType.LEARN:
             evolver = get_evolver()
@@ -390,11 +448,18 @@ class AutonomyController:
             mutation = await evolver.propose_mutation(intent, goal=intent.description)
             await evolver.generate_patch(mutation.mutation_id)
             # We don't wait for full cycle in act(), just kick it off
-            return {"success": True, "message": f"Evolution started: {mutation.mutation_id}", "mutation_id": mutation.mutation_id}
+            return {
+                "success": True,
+                "message": f"Evolution started: {mutation.mutation_id}",
+                "mutation_id": mutation.mutation_id,
+            }
 
         # Default fallback
         else:
-             return {"success": False, "message": f"Unknown intent type: {intent.intent_type}"}
+            return {
+                "success": False,
+                "message": f"Unknown intent type: {intent.intent_type}",
+            }
 
         result = await self.orchestrator.invoke_async(envelope)
         return result.model_dump() if hasattr(result, "model_dump") else result.dict()
@@ -411,7 +476,9 @@ class AutonomyController:
             self.skill_stats[skill_key]["successes"] += 1
 
         # Only learn if statistically significant
-        if self._is_statistically_significant(skill_key) and evaluation.get("success", False):
+        if self._is_statistically_significant(skill_key) and evaluation.get(
+            "success", False
+        ):
             envelope = ToolInvocationEnvelope(
                 tool_name="memory",
                 domain="memory",
@@ -419,7 +486,7 @@ class AutonomyController:
                 context={
                     "skill": skill_key,
                     "success": True,
-                    "stats": self.skill_stats[skill_key]
+                    "stats": self.skill_stats[skill_key],
                 },
                 risk_level="low",
                 estimated_cost=0.0,
@@ -431,35 +498,40 @@ class AutonomyController:
     async def run_cycle(self) -> Dict[str, Any]:
         await self._process_external_requests()
         observation = await self.observe()
-        
+
         self.intent_stack.decay()
         intent = self.planner.plan(observation, self.intent_stack)
-        
+
         decision = self.decider.decide(observation, intent)
 
         explanation = {
             "time": time.time(),
             # Convert decision's intent to dict if present
-            "decision": {k: (asdict(v) if isinstance(v, Intent) else v) for k, v in decision.items()},
+            "decision": {
+                k: (asdict(v) if isinstance(v, Intent) else v)
+                for k, v in decision.items()
+            },
             "observation": observation,
         }
 
         # --- TERMINAL GATES ---
         if decision["action"] == "reject":
             # Sovereignty Violation Refusal
-            print(f"[Autonomy] REFUSING intent from {intent.source}: {decision['reason']}")
+            print(
+                f"[Autonomy] REFUSING intent from {intent.source}: {decision['reason']}"
+            )
             # Ensure we log the refusal
             self._record_explain({**explanation, "result": "refused"})
             self._save_state()
             # Remove bad intent from stack to prevent looping
             if intent and intent in self.intent_stack.intents:
-                 self.intent_stack.intents.remove(intent)
+                self.intent_stack.intents.remove(intent)
             return {"status": "rejected", "reason": decision["reason"]}
 
         if decision["action"] == "idle":
             self._record_explain({**explanation, "result": "idle"})
             self._save_state()
-            
+
             # TRIGGER SLEEP / CONSOLIDATION
             # If idle, take the opportunity to consolidate memories
             hippocampus = get_hippocampus()
@@ -467,32 +539,40 @@ class AutonomyController:
             if stats["pruned"] > 0:
                 # Log pruning somewhere if needed
                 pass
-            
-            return {"status": "idle", "reason": decision["reason"], "memory_stats": stats}
+
+            return {
+                "status": "idle",
+                "reason": decision["reason"],
+                "memory_stats": stats,
+            }
 
         # Execute
         try:
             result = await self.act(decision["intent"])
         except Exception as e:
             # Log the crash so we know what we tried to do
-            self._record_explain({**explanation, "result": {"error": str(e), "status": "crashed"}})
+            self._record_explain(
+                {**explanation, "result": {"error": str(e), "status": "crashed"}}
+            )
             # Re-raise so the caller (orchestrator/test) knows
             raise e
-        
+
         # Remove intent if satisfied (simplistic completion logic)
         if hasattr(decision["intent"], "intent_type"):
             # If successful, assume intent is fulfilled for now
-             if result.get("success", True): # Default to true if not specified?
-                 # For stack, we might want to pop specific ID. 
-                 # For now, simplistic clear of the type or just let it decay/remove
-                 # Better: remove specific intent
-                 if decision["intent"] in self.intent_stack.intents:
-                     self.intent_stack.intents.remove(decision["intent"])
+            if result.get("success", True):  # Default to true if not specified?
+                # For stack, we might want to pop specific ID.
+                # For now, simplistic clear of the type or just let it decay/remove
+                # Better: remove specific intent
+                if decision["intent"] in self.intent_stack.intents:
+                    self.intent_stack.intents.remove(decision["intent"])
 
         evaluation = self.reflector.evaluate(result)
         await self.learn(decision["intent"], evaluation)
 
-        self._record_explain({**explanation, "result": result, "evaluation": evaluation})
+        self._record_explain(
+            {**explanation, "result": result, "evaluation": evaluation}
+        )
         self._save_state()
         return {"status": "acted", "result": result, "evaluation": evaluation}
 
