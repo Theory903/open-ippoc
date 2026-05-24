@@ -318,11 +318,15 @@ class MemorySystem:
         if "semantic" in criteria and self.semantic:
             try:
                 semantic_criteria = criteria["semantic"]
+                # Handle single string format or list
                 if "ids" in semantic_criteria:
                     semantic_ids = semantic_criteria["ids"]
+                    if not isinstance(semantic_ids, list):
+                        semantic_ids = [semantic_ids]
                     if semantic_ids:
-                        if await self.semantic.delete_memories(semantic_ids):
-                            total_deleted += len(semantic_ids)
+                        res = await self.semantic.delete_memories(semantic_ids)
+                        if res:
+                            total_deleted += len(semantic_ids) if type(res) is bool else res
             except Exception as e:
                 logger.error(f"Failed to delete semantic memories: {e}")
 
@@ -330,11 +334,15 @@ class MemorySystem:
         if "procedural" in criteria and self.procedural:
             try:
                 proc_criteria = criteria["procedural"]
+                # Handle single string format or list
                 if "skills" in proc_criteria:
                     skills = proc_criteria["skills"]
+                    if not isinstance(skills, list):
+                        skills = [skills]
                     for skill_name in skills:
-                        if await self.procedural.delete_skill(skill_name):
-                            total_deleted += 1
+                        res = await self.procedural.delete_skill(skill_name)
+                        if res:
+                            total_deleted += 1 if type(res) is bool else res
             except Exception as e:
                 logger.error(f"Failed to delete procedural skills: {e}")
 
@@ -344,9 +352,12 @@ class MemorySystem:
                 graph_criteria = criteria["graph"]
                 if "entities" in graph_criteria:
                     entities = graph_criteria["entities"]
+                    if not isinstance(entities, list):
+                        entities = [entities]
                     for entity in entities:
-                        count = await self.graph.delete_entity(entity)
-                        total_deleted += count if isinstance(count, int) else (1 if count else 0)
+                        res = await self.graph.delete_entity(entity)
+                        if res:
+                            total_deleted += 1 if type(res) is bool else res
             except Exception as e:
                 logger.error(f"Failed to delete graph entities: {e}")
 
