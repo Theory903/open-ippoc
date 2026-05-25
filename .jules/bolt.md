@@ -5,3 +5,6 @@
 ## 2024-05-23 - Synchronous Audit Logging Bottleneck
 **Learning:** `ToolOrchestrator._audit_action` was performing synchronous file I/O (open/write/close) for every tool invocation. This introduced ~68ms latency per 1000 calls. Moving this to a background thread with `queue.Queue` reduced it to ~3ms (20x improvement).
 **Action:** For high-frequency logging or audit trails, always use an asynchronous writer or background thread to decouple I/O latency from the main execution path.
+## 2026-02-28 - Optimize Jaccard Similarity Candidate Pruning in Graph Manager
+**Learning:** Calculating Jaccard similarity between a target entity and all other entities using N+1 queries creates massive overhead, particularly as the graph grows. Even with asynchronous queries, network and application latency accumulate for each node.
+**Action:** Relocate iterative relational logic into a unified SQL statement using Common Table Expressions (CTEs). By counting intersection boundaries and dynamically returning matched Jaccard computations in the database query, we leverage SQL optimization and entirely eliminate the N+1 problem.
