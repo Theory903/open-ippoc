@@ -309,8 +309,11 @@ class MemorySystem:
         # Episodic deletion
         if "episodic" in criteria:
             try:
-                count = await self.episodic.delete(**criteria["episodic"])
-                total_deleted += count
+                res = await self.episodic.delete(**criteria["episodic"])
+                if type(res) is int:
+                    total_deleted += res
+                elif res:
+                    total_deleted += 1
             except Exception as e:
                 logger.error(f"Failed to delete episodic memories: {e}")
 
@@ -320,8 +323,13 @@ class MemorySystem:
                 semantic_criteria = criteria["semantic"]
                 if "ids" in semantic_criteria:
                     semantic_ids = semantic_criteria["ids"]
+                    if isinstance(semantic_ids, str):
+                        semantic_ids = [semantic_ids]
                     if semantic_ids:
-                        if await self.semantic.delete_memories(semantic_ids):
+                        res = await self.semantic.delete_memories(semantic_ids)
+                        if type(res) is int:
+                            total_deleted += res
+                        elif res:
                             total_deleted += len(semantic_ids)
             except Exception as e:
                 logger.error(f"Failed to delete semantic memories: {e}")
@@ -332,8 +340,13 @@ class MemorySystem:
                 proc_criteria = criteria["procedural"]
                 if "skills" in proc_criteria:
                     skills = proc_criteria["skills"]
+                    if isinstance(skills, str):
+                        skills = [skills]
                     for skill_name in skills:
-                        if await self.procedural.delete_skill(skill_name):
+                        res = await self.procedural.delete_skill(skill_name)
+                        if type(res) is int:
+                            total_deleted += res
+                        elif res:
                             total_deleted += 1
             except Exception as e:
                 logger.error(f"Failed to delete procedural skills: {e}")
@@ -344,15 +357,20 @@ class MemorySystem:
                 graph_criteria = criteria["graph"]
                 if "entities" in graph_criteria:
                     entities = graph_criteria["entities"]
+                    if isinstance(entities, str):
+                        entities = [entities]
                     for entity in entities:
-                        count = await self.graph.delete_entity(entity)
-                        total_deleted += count if isinstance(count, int) else (1 if count else 0)
+                        res = await self.graph.delete_entity(entity)
+                        if type(res) is int:
+                            total_deleted += res
+                        elif res:
+                            total_deleted += 1
             except Exception as e:
                 logger.error(f"Failed to delete graph entities: {e}")
 
         logger.info(f"Forget operation completed. Total removed: {total_deleted}")
         return total_deleted
-    
+
     def health_check(self) -> Dict[str, Any]:
         """Check memory system health"""
         return {
