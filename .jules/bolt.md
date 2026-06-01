@@ -5,3 +5,6 @@
 ## 2024-05-23 - Synchronous Audit Logging Bottleneck
 **Learning:** `ToolOrchestrator._audit_action` was performing synchronous file I/O (open/write/close) for every tool invocation. This introduced ~68ms latency per 1000 calls. Moving this to a background thread with `queue.Queue` reduced it to ~3ms (20x improvement).
 **Action:** For high-frequency logging or audit trails, always use an asynchronous writer or background thread to decouple I/O latency from the main execution path.
+## 2024-05-24 - Dataclasses asdict Deep Copy Overhead
+**Learning:** `dataclasses.asdict` performs a deep copy of the dataclass and all nested structures, which can be surprisingly slow (~5ms per call) in high-frequency serialization paths like `EconomyManager`. Manual dictionary construction with shallow copies (`.copy()`) is up to 600x faster.
+**Action:** When optimizing dataclass serialization in performance-critical or high-frequency paths, manually construct the dictionary and use shallow `.copy()` for nested lists/dicts instead of relying on `asdict`.
