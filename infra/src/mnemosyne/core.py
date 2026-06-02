@@ -330,11 +330,15 @@ class MemorySystem:
         if "procedural" in criteria and self.procedural:
             try:
                 proc_criteria = criteria["procedural"]
-                if "skills" in proc_criteria:
-                    skills = proc_criteria["skills"]
-                    for skill_name in skills:
-                        if await self.procedural.delete_skill(skill_name):
-                            total_deleted += 1
+                skills = proc_criteria.get("skills")
+                if isinstance(skills, str):
+                    skills = [skills]
+                elif skills is None:
+                    skills = []
+                for skill_name in skills:
+                    res = await self.procedural.delete_skill(skill_name)
+                    if res:
+                        total_deleted += 1 if type(res) is bool else (res if isinstance(res, int) else 1)
             except Exception as e:
                 logger.error(f"Failed to delete procedural skills: {e}")
 
@@ -342,17 +346,20 @@ class MemorySystem:
         if "graph" in criteria:
             try:
                 graph_criteria = criteria["graph"]
-                if "entities" in graph_criteria:
-                    entities = graph_criteria["entities"]
-                    for entity in entities:
-                        count = await self.graph.delete_entity(entity)
-                        total_deleted += count if isinstance(count, int) else (1 if count else 0)
+                entities = graph_criteria.get("entities")
+                if isinstance(entities, str):
+                    entities = [entities]
+                elif entities is None:
+                    entities = []
+                for entity in entities:
+                    count = await self.graph.delete_entity(entity)
+                    total_deleted += count if isinstance(count, int) else (1 if count else 0)
             except Exception as e:
                 logger.error(f"Failed to delete graph entities: {e}")
 
         logger.info(f"Forget operation completed. Total removed: {total_deleted}")
         return total_deleted
-    
+
     def health_check(self) -> Dict[str, Any]:
         """Check memory system health"""
         return {
