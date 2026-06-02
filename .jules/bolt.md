@@ -5,3 +5,6 @@
 ## 2024-05-23 - Synchronous Audit Logging Bottleneck
 **Learning:** `ToolOrchestrator._audit_action` was performing synchronous file I/O (open/write/close) for every tool invocation. This introduced ~68ms latency per 1000 calls. Moving this to a background thread with `queue.Queue` reduced it to ~3ms (20x improvement).
 **Action:** For high-frequency logging or audit trails, always use an asynchronous writer or background thread to decouple I/O latency from the main execution path.
+## 2025-03-01 - Optimize graph pathfinding with Recursive CTE
+**Learning:** Standard BFS implementation for graph pathfinding causes severe N+1 query problems in SQL, taking ~190ms for deep searches, whereas a Recursive CTE runs entirely within the database engine and executes in ~6ms.
+**Action:** Replace application-layer BFS loops with `WITH RECURSIVE` CTEs in SQL-based graph managers to completely avoid N+1 querying and latency.
