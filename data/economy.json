@@ -1,7 +1,7 @@
 {
-  "budget": 5000.0,
+  "budget": 4999.0,
   "reserve": 5000.0,
-  "total_spent": 2000.0,
+  "total_spent": 2003.0,
   "total_value": 900.0,
   "total_earnings": 750.0,
   "tool_stats": {
@@ -33,6 +33,12 @@
       "calls": 2,
       "failures": 0,
       "total_spent": 0.0,
+      "total_value": 0.0
+    },
+    "test": {
+      "calls": 3,
+      "failures": 0,
+      "total_spent": 3.0,
       "total_value": 0.0
     }
   },
@@ -226,8 +232,29 @@
       "cost": 0.0,
       "failed": false,
       "ts": 1770659247.016294
+    },
+    {
+      "kind": "spend",
+      "tool": "test",
+      "cost": 1.0,
+      "failed": false,
+      "ts": 1780432084.8276262
+    },
+    {
+      "kind": "spend",
+      "tool": "test",
+      "cost": 1.0,
+      "failed": false,
+      "ts": 1780432456.6799428
+    },
+    {
+      "kind": "spend",
+      "tool": "test",
+      "cost": 1.0,
+      "failed": false,
+      "ts": 1780432474.153457
     }
   ],
-  "last_tick": 1770659247.01629,
+  "last_tick": 1780432474.1534424,
   "last_earning_timestamp": 1770639272.910227
 }
