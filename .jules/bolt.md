@@ -5,3 +5,6 @@
 ## 2024-05-23 - Synchronous Audit Logging Bottleneck
 **Learning:** `ToolOrchestrator._audit_action` was performing synchronous file I/O (open/write/close) for every tool invocation. This introduced ~68ms latency per 1000 calls. Moving this to a background thread with `queue.Queue` reduced it to ~3ms (20x improvement).
 **Action:** For high-frequency logging or audit trails, always use an asynchronous writer or background thread to decouple I/O latency from the main execution path.
+## 2026-05-29 - Graph Similarity Search N+1 Optimization
+**Learning:** Found an N+1 query loop performing sequential DB requests and set operations in Python (`ref_rels.intersection(cmp_rels)`) when finding similar entities in `src/ippoc/mnemosyne/graph/manager.py`.
+**Action:** Replaced it with a single efficient SQL query utilizing Common Table Expressions (CTEs) to filter candidates early and compute Jaccard similarity in the DB layer, improving latency from 0.96s to 0.01s (99% reduction).
