@@ -367,7 +367,7 @@ class GraphManager:
                 if ref_total == 0:
                     return []
 
-                # Intersection-first optimization using CTEs
+                # Optimization: Intersection-first optimization using CTEs to avoid N+1 queries
                 # 1. Identify candidates (entities sharing >=1 relation) -> O(Neighbors)
                 # 2. Count totals for candidates only
                 # 3. Calculate Jaccard in SQL
