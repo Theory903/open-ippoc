@@ -5,3 +5,6 @@
 ## 2024-05-23 - Synchronous Audit Logging Bottleneck
 **Learning:** `ToolOrchestrator._audit_action` was performing synchronous file I/O (open/write/close) for every tool invocation. This introduced ~68ms latency per 1000 calls. Moving this to a background thread with `queue.Queue` reduced it to ~3ms (20x improvement).
 **Action:** For high-frequency logging or audit trails, always use an asynchronous writer or background thread to decouple I/O latency from the main execution path.
+## 2023-10-24 - Intersection-first CTE optimization for graph similarity
+**Learning:** Jaccard similarity between entities often results in an N+1 query issue when iterating over all entity combinations. Doing intersection-first aggregation using SQL CTEs reduces time complexity and skips unrelated entities.
+**Action:** Always prefer computing intersection aggregates and total counts in SQL CTEs over pulling all relations into application memory for comparisons when working with property graphs.
