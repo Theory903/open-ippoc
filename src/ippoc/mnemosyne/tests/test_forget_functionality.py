@@ -109,7 +109,7 @@ class TestForgetFunctionality(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(self.mock_graph_session.execute.call_count >= 2)
 
         print(f"Forget returned count: {count}")
-        self.assertIn(count, [7, 9]) # Episodic (5) + Semantic (2) + Procedural (1) + Graph (0/1 depending on test mock setup)
+        self.assertEqual(count, 9)
 
 if __name__ == "__main__":
     unittest.main()
