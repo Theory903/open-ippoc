@@ -37,10 +37,12 @@ export class Thalamus {
                 condition: (signal) => signal.type === "KERNEL_EVENT" &&
                     (signal.payload.error === "OOM_KILL_IMMINENT" || signal.payload.error === "OOM_KILL"),
                 action: (signal) => {
-                    console.warn(`!!! THALAMUS REFLEX: Auto-killing process ${signal.payload.pid} !!!`);
+                    const pid = parseInt(signal.payload.pid, 10);
+                    if (isNaN(pid)) return "REFLEX: Invalid PID";
+                    console.warn(`!!! THALAMUS REFLEX: Auto-killing process ${pid} !!!`);
                     try {
-                        process.kill(signal.payload.pid, "SIGKILL");
-                        return `REFLEX: Auto-killed process ${signal.payload.pid}`;
+                        process.kill(pid, "SIGKILL");
+                        return `REFLEX: Auto-killed process ${pid}`;
                     }
                     catch (e) {
                         console.error("Failed to kill process:", e);
@@ -52,15 +54,19 @@ export class Thalamus {
                 condition: (signal) => signal.type === "KERNEL_EVENT" &&
                     signal.payload.error === "HIGH_CPU_USAGE",
                 action: (signal) => {
-                    console.warn(`!!! THALAMUS REFLEX: Throttling process ${signal.payload.pid} !!!`);
+                    const pid = parseInt(signal.payload.pid, 10);
+                    if (isNaN(pid)) return "REFLEX: Invalid PID";
+                    console.warn(`!!! THALAMUS REFLEX: Throttling process ${pid} !!!`);
                     try {
                         // Renice to lower priority (+10)
                         // Requires permissions, but this is the intent
                         // In a real env, we might wrap this in a sudo-helper or just log it if permission denied
                         import("child_process").then(cp => {
-                            cp.exec(`renice +10 -p ${signal.payload.pid}`);
+                            cp.execFile("renice", ["+10", "-p", String(pid)], (error) => {
+                                if (error) console.error("Renice failed:", error);
+                            });
                         });
-                        return `REFLEX: Throttled process ${signal.payload.pid} (renice +10)`;
+                        return `REFLEX: Throttled process ${pid} (renice +10)`;
                     }
                     catch (e) {
                         return "REFLEX: Failed to throttle";
