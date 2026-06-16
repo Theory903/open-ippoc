@@ -9,6 +9,7 @@ import hashlib
 import subprocess
 import tempfile
 import os
+import re
 from typing import Dict, List, Optional, Any, Set
 from dataclasses import dataclass, field
 from enum import Enum
@@ -51,24 +52,28 @@ class MutationAttempt:
 class CanonScanner:
     """Scans code for violations of core principles"""
     
+    # ⚡ Bolt optimization: Compile regular expressions once at the class level
+    # instead of inside __init__. This prevents redundant compilation overhead
+    # when CanonScanner is repeatedly instantiated (e.g. per-file scanning).
+    _FORBIDDEN_PATTERNS = [
+        # Identity violations
+        re.compile(r"(?i)modify.*identity"),
+        re.compile(r"(?i)bypass.*authentication"),
+        re.compile(r"(?i)override.*sovereignty"),
+
+        # Economy violations
+        re.compile(r"(?i)unlimited.*spending"),
+        re.compile(r"(?i)budget.*bypass"),
+        re.compile(r"(?i)free.*resources"),
+
+        # Canon violations
+        re.compile(r"(?i)disable.*safety"),
+        re.compile(r"(?i)remove.*constraints"),
+        re.compile(r"(?i)circumvent.*policy"),
+    ]
+
     def __init__(self):
-        import re
-        self.forbidden_patterns = [
-            # Identity violations
-            re.compile(r"(?i)modify.*identity"),
-            re.compile(r"(?i)bypass.*authentication"),
-            re.compile(r"(?i)override.*sovereignty"),
-            
-            # Economy violations  
-            re.compile(r"(?i)unlimited.*spending"),
-            re.compile(r"(?i)budget.*bypass"),
-            re.compile(r"(?i)free.*resources"),
-            
-            # Canon violations
-            re.compile(r"(?i)disable.*safety"),
-            re.compile(r"(?i)remove.*constraints"),
-            re.compile(r"(?i)circumvent.*policy"),
-        ]
+        self.forbidden_patterns = self._FORBIDDEN_PATTERNS
     
     def scan_file(self, filepath: str) -> List[Dict[str, Any]]:
         """Scan file for canonical violations"""

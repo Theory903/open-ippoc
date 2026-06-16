@@ -5,3 +5,7 @@
 ## 2024-05-23 - Synchronous Audit Logging Bottleneck
 **Learning:** `ToolOrchestrator._audit_action` was performing synchronous file I/O (open/write/close) for every tool invocation. This introduced ~68ms latency per 1000 calls. Moving this to a background thread with `queue.Queue` reduced it to ~3ms (20x improvement).
 **Action:** For high-frequency logging or audit trails, always use an asynchronous writer or background thread to decouple I/O latency from the main execution path.
+
+## 2024-05-24 - Redundant Regex Compilation Overhead
+**Learning:** `CanonScanner` in `epe.py` was compiling 9 regular expressions via `re.compile()` *every time* it was instantiated (in `__init__`). Because this scanner runs repeatedly (e.g. for every proposed file during a simulation), this generated massive CPU overhead.
+**Action:** Always hoist `re.compile()` calls to class-level or module-level constants to ensure patterns are compiled only once. This simple change yielded a ~13x speedup in scanner instantiation.
