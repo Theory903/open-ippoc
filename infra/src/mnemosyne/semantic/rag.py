@@ -56,6 +56,12 @@ class SemanticManager:
     - Structured data support
     - Context-aware chunking
     """
+
+    # Compiled regular expressions for performance optimization
+    TERMS_RE = re.compile(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b|\b\d+(?:\.\d+)?\b')
+    NUMBERS_RE = re.compile(r'\b\d+(?:\.\d+)?%?\b')
+    TABLE_TERMS_RE = re.compile(r'[A-Za-z][a-z]+(?:\s+[A-Za-z][a-z]+)*|\d+(?:\.\d+)?%?')
+
     def __init__(self, vector_store: VectorStore, embeddings: Embeddings, llm: Optional[Runnable] = None):
         self.vector_store = vector_store
         self.embeddings = embeddings
@@ -403,12 +409,11 @@ class SemanticManager:
     def _extract_semantic_components(self, text: str) -> List[str]:
         """Extract key semantic components/phrases from text"""
         components = []
-        sentences = re.split(r'[.!?]+', text)
-        for sentence in sentences:
-            terms = re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b|\b\d+(?:\.\d+)?\b', sentence)
-            components.extend(terms)
+        # Extract terms directly from text to avoid unnecessary sentence splitting overhead
+        terms = self.TERMS_RE.findall(text)
+        components.extend(terms)
         
-        numbers = re.findall(r'\b\d+(?:\.\d+)?%?\b', text)
+        numbers = self.NUMBERS_RE.findall(text)
         components.extend(numbers)
         
         components = list(set(comp for comp in components if len(comp) > 2))
@@ -419,7 +424,7 @@ class SemanticManager:
         components = []
         for cell in row:
             if cell and cell.strip():
-                terms = re.findall(r'[A-Za-z][a-z]+(?:\s+[A-Za-z][a-z]+)*|\d+(?:\.\d+)?%?', cell)
+                terms = self.TABLE_TERMS_RE.findall(cell)
                 components.extend([term for term in terms if len(term) > 2])
         return list(set(components))[:5]
     
