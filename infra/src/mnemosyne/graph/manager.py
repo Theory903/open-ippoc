@@ -171,6 +171,8 @@ class GraphManager:
                 FROM kg_relations r
                 JOIN path_search p ON r.source_id = p.last_id
                 WHERE p.depth < :max_depth
+                -- IN-SQL CYCLE PRUNING
+                AND (',' || p.path_ids || ',') NOT LIKE ('%,' || cast(r.target_id as text) || ',%')
             )
             SELECT path_ids, path_rels, depth
             FROM path_search
@@ -200,10 +202,6 @@ class GraphManager:
             ids = [int(x) for x in row[0].split(',')]
             # path_rels is "rel1,rel2"
             rels = row[1].split(',')
-
-            # Basic cycle check: if IDs are not unique, skip cyclic path
-            if len(ids) != len(set(ids)):
-                continue
 
             all_node_ids.update(ids)
             parsed_rows.append((ids, rels))
