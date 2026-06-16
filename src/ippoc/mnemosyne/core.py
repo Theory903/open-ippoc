@@ -352,6 +352,7 @@ class MemorySystem:
 
         logger.info(f"Forget operation completed. Total removed: {total_deleted}")
         return total_deleted
+
     
     def health_check(self) -> Dict[str, Any]:
         """Check memory system health"""
