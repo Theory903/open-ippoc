@@ -28,7 +28,7 @@ class TestAutonomyLearning(unittest.TestCase):
 
         # Mock load/save state
         start_patch('cortex.core.autonomy.AutonomyController._load_state')
-        start_patch('cortex.core.autonomy.AutonomyController._save_state')
+        start_patch('cortex.core.autonomy.AutonomyController._save_state', new_callable=AsyncMock)
 
         self.controller = AutonomyController()
         # Manually init skill_stats since we patched _load_state
