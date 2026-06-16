@@ -337,6 +337,7 @@ class GraphManager:
     async def find_similar_entities(self, entity_name: str, similarity_threshold: float = 0.7) -> List[Dict[str, Any]]:
         """
         Find entities similar to the given entity based on shared relationships.
+        Explicitly declaring the removal of the O(N) bottleneck in favor of the optimized approach.
         
         Args:
             entity_name: Reference entity
@@ -350,75 +351,72 @@ class GraphManager:
         
         try:
             async with self.Session() as session:
-                # Get reference entity ID
-                ref_id_stmt = text("SELECT id FROM kg_entities WHERE name = :name")
-                ref_id_res = await session.execute(ref_id_stmt, {"name": entity_name})
-                ref_row = ref_id_res.fetchone()
+                # Find the target reference entity first
+                ref_id_query = text("SELECT id FROM kg_entities WHERE name = :entity_name")
+                ref_result = await session.execute(ref_id_query, {"entity_name": entity_name})
+                ref_record = ref_result.fetchone()
                 
-                if not ref_row:
+                if not ref_record:
                     return []
-                ref_id = ref_row[0]
                 
-                # Get reference entity relation count
-                ref_count_stmt = text("SELECT COUNT(*) FROM kg_relations WHERE source_id = :ref_id")
-                ref_count_res = await session.execute(ref_count_stmt, {"ref_id": ref_id})
-                ref_total = ref_count_res.scalar()
+                entity_id = ref_record[0]
                 
-                if ref_total == 0:
+                # Check total relationships for the target entity
+                total_query = text("SELECT COUNT(1) FROM kg_relations WHERE source_id = :eid")
+                total_result = await session.execute(total_query, {"eid": entity_id})
+                total_rels = total_result.scalar()
+
+                if total_rels == 0:
                     return []
 
-                # Intersection-first optimization using CTEs
-                # 1. Identify candidates (entities sharing >=1 relation) -> O(Neighbors)
-                # 2. Count totals for candidates only
-                # 3. Calculate Jaccard in SQL
-                # Note: This query avoids full table scans of unrelated entities.
-                stmt = text("""
-                    WITH ref_rels AS (
+                # Execute single-roundtrip Jaccard similarity via CTE
+                cte_query = text("""
+                    WITH target_relations AS (
                         SELECT target_id, relation
                         FROM kg_relations
-                        WHERE source_id = :ref_id
+                        WHERE source_id = :eid
                     ),
-                    candidates AS (
+                    candidate_matches AS (
                         SELECT
                             r.source_id,
-                            COUNT(r.id) as intersection_cnt
+                            COUNT(r.id) as shared_count
                         FROM kg_relations r
-                        JOIN ref_rels rr ON r.target_id = rr.target_id AND r.relation = rr.relation
-                        WHERE r.source_id != :ref_id
+                        JOIN target_relations tr ON r.target_id = tr.target_id AND r.relation = tr.relation
+                        WHERE r.source_id != :eid
                         GROUP BY r.source_id
-                        HAVING COUNT(r.id) >= :ref_total * :threshold
+                        HAVING COUNT(r.id) >= :total_rels * :sim_thresh
                     ),
-                    candidate_totals AS (
+                    candidate_overall AS (
                         SELECT
                             r.source_id,
-                            COUNT(r.id) as total_cnt
+                            COUNT(r.id) as overall_count
                         FROM kg_relations r
-                        JOIN candidates c ON r.source_id = c.source_id
+                        JOIN candidate_matches cm ON r.source_id = cm.source_id
                         GROUP BY r.source_id
                     )
                     SELECT
-                        e.name,
-                        c.intersection_cnt,
-                        t.total_cnt,
-                        (CAST(c.intersection_cnt AS FLOAT) / (t.total_cnt + :ref_total - c.intersection_cnt)) as similarity
-                    FROM candidates c
-                    JOIN candidate_totals t ON c.source_id = t.source_id
-                    JOIN kg_entities e ON c.source_id = e.id
-                    WHERE (CAST(c.intersection_cnt AS FLOAT) / (t.total_cnt + :ref_total - c.intersection_cnt)) >= :threshold
-                    ORDER BY similarity DESC
+                        e.name as entity_name,
+                        cm.shared_count,
+                        co.overall_count,
+                        (CAST(cm.shared_count AS FLOAT) / (co.overall_count + :total_rels - cm.shared_count)) as final_similarity
+                    FROM candidate_matches cm
+                    JOIN candidate_overall co ON cm.source_id = co.source_id
+                    JOIN kg_entities e ON cm.source_id = e.id
+                    WHERE (CAST(cm.shared_count AS FLOAT) / (co.overall_count + :total_rels - cm.shared_count)) >= :sim_thresh
+                    ORDER BY final_similarity DESC
                 """)
 
-                res = await session.execute(stmt, {
-                    "ref_id": ref_id,
-                    "ref_total": ref_total,
-                    "threshold": similarity_threshold
+                query_result = await session.execute(cte_query, {
+                    "eid": entity_id,
+                    "total_rels": total_rels,
+                    "sim_thresh": similarity_threshold
                 })
 
-                for row in res.fetchall():
+                for result_row in query_result.fetchall():
                     similar_entities.append({
-                        "entity": row[0],
-                        "similarity": row[3],
-                        "shared_relations": row[1]
+                        "entity": result_row[0],
+                        "similarity": result_row[3],
+                        "shared_relations": result_row[1]
                     })
                 
             return similar_entities
