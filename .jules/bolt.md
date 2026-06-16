@@ -5,3 +5,6 @@
 ## 2024-05-23 - Synchronous Audit Logging Bottleneck
 **Learning:** `ToolOrchestrator._audit_action` was performing synchronous file I/O (open/write/close) for every tool invocation. This introduced ~68ms latency per 1000 calls. Moving this to a background thread with `queue.Queue` reduced it to ~3ms (20x improvement).
 **Action:** For high-frequency logging or audit trails, always use an asynchronous writer or background thread to decouple I/O latency from the main execution path.
+## 2024-05-15 - [O(N*M) string allocation overhead from generator expressions]
+**Learning:** Generator expressions using `.lower()` on a document inside an outer loop over query terms (like `sum(1 for term in terms if term in doc.lower())`) evaluate the invariant string operation redundantly for *every* term, leading to O(N*M) string allocations and severe CPU overhead.
+**Action:** Always hoist invariant string operations (like `.lower()` or `.split()`) completely outside of generator expressions and their iterating loops.
