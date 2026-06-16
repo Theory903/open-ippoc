@@ -58,6 +58,16 @@ class SemanticManager:
     - Structured data support
     - Context-aware chunking
     """
+
+    # ⚡ Bolt Optimization: Pre-compile regexes at the class level to avoid repeated recompilation
+    # overhead during high-volume text chunking and metadata extraction loops.
+    _RE_PARAGRAPH_SPLIT = re.compile(r'\n\s*\n')
+    _RE_SENTENCE_SPLIT = re.compile(r'[.!?]+')
+    _RE_TERMS = re.compile(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b|\b\d+(?:\.\d+)?\b')
+    _RE_NUMBERS = re.compile(r'\b\d+(?:\.\d+)?%?\b')
+    _RE_TABLE_TERMS = re.compile(r'[A-Za-z][a-z]+(?:\s+[A-Za-z][a-z]+)*|\d+(?:\.\d+)?%?')
+    _RE_WHITESPACE_SPLIT = re.compile(r'\s{2,}')
+
     def __init__(self, vector_store: VectorStore, embeddings: Embeddings, llm: Optional[Runnable] = None):
         self.vector_store = vector_store
         self.embeddings = embeddings
@@ -388,7 +398,7 @@ class SemanticManager:
     
     def _chunk_text_semantically(self, text: str) -> List[str]:
         """Split text into semantic chunks based on natural boundaries"""
-        paragraphs = re.split(r'\n\s*\n', text.strip())
+        paragraphs = self._RE_PARAGRAPH_SPLIT.split(text.strip())
         chunks = []
         current_chunk = ""
         
@@ -414,12 +424,12 @@ class SemanticManager:
     def _extract_semantic_components(self, text: str) -> List[str]:
         """Extract key semantic components/phrases from text"""
         components = []
-        sentences = re.split(r'[.!?]+', text)
+        sentences = self._RE_SENTENCE_SPLIT.split(text)
         for sentence in sentences:
-            terms = re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b|\b\d+(?:\.\d+)?\b', sentence)
+            terms = self._RE_TERMS.findall(sentence)
             components.extend(terms)
         
-        numbers = re.findall(r'\b\d+(?:\.\d+)?%?\b', text)
+        numbers = self._RE_NUMBERS.findall(text)
         components.extend(numbers)
         
         components = list(set(comp for comp in components if len(comp) > 2))
@@ -430,7 +440,7 @@ class SemanticManager:
         components = []
         for cell in row:
             if cell and cell.strip():
-                terms = re.findall(r'[A-Za-z][a-z]+(?:\s+[A-Za-z][a-z]+)*|\d+(?:\.\d+)?%?', cell)
+                terms = self._RE_TABLE_TERMS.findall(cell)
                 components.extend([term for term in terms if len(term) > 2])
         return list(set(components))[:5]
     
@@ -444,7 +454,7 @@ class SemanticManager:
             elif '\t' in line:
                 cells = [cell.strip() for cell in line.split('\t')]
             else:
-                cells = re.split(r'\s{2,}', line.strip())
+                cells = self._RE_WHITESPACE_SPLIT.split(line.strip())
             
             if cells and any(cells):
                 rows.append(cells)
