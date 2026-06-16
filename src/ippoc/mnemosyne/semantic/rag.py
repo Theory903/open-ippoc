@@ -58,6 +58,15 @@ class SemanticManager:
     - Structured data support
     - Context-aware chunking
     """
+
+    # Pre-compiled regex patterns to avoid recompilation on each text chunking/extraction
+    SPLIT_PARAGRAPH_REGEX = re.compile(r'\n\s*\n')
+    SPLIT_SENTENCE_REGEX = re.compile(r'[.!?]+')
+    EXTRACT_TERMS_REGEX = re.compile(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b|\b\d+(?:\.\d+)?\b')
+    EXTRACT_NUMBERS_REGEX = re.compile(r'\b\d+(?:\.\d+)?%?\b')
+    EXTRACT_CELL_TERMS_REGEX = re.compile(r'[A-Za-z][a-z]+(?:\s+[A-Za-z][a-z]+)*|\d+(?:\.\d+)?%?')
+    SPLIT_CELLS_REGEX = re.compile(r'\s{2,}')
+
     def __init__(self, vector_store: VectorStore, embeddings: Embeddings, llm: Optional[Runnable] = None):
         self.vector_store = vector_store
         self.embeddings = embeddings
@@ -388,7 +397,7 @@ class SemanticManager:
     
     def _chunk_text_semantically(self, text: str) -> List[str]:
         """Split text into semantic chunks based on natural boundaries"""
-        paragraphs = re.split(r'\n\s*\n', text.strip())
+        paragraphs = self.SPLIT_PARAGRAPH_REGEX.split(text.strip())
         chunks = []
         current_chunk = ""
         
@@ -414,12 +423,12 @@ class SemanticManager:
     def _extract_semantic_components(self, text: str) -> List[str]:
         """Extract key semantic components/phrases from text"""
         components = []
-        sentences = re.split(r'[.!?]+', text)
+        sentences = self.SPLIT_SENTENCE_REGEX.split(text)
         for sentence in sentences:
-            terms = re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b|\b\d+(?:\.\d+)?\b', sentence)
+            terms = self.EXTRACT_TERMS_REGEX.findall(sentence)
             components.extend(terms)
         
-        numbers = re.findall(r'\b\d+(?:\.\d+)?%?\b', text)
+        numbers = self.EXTRACT_NUMBERS_REGEX.findall(text)
         components.extend(numbers)
         
         components = list(set(comp for comp in components if len(comp) > 2))
@@ -430,7 +439,7 @@ class SemanticManager:
         components = []
         for cell in row:
             if cell and cell.strip():
-                terms = re.findall(r'[A-Za-z][a-z]+(?:\s+[A-Za-z][a-z]+)*|\d+(?:\.\d+)?%?', cell)
+                terms = self.EXTRACT_CELL_TERMS_REGEX.findall(cell)
                 components.extend([term for term in terms if len(term) > 2])
         return list(set(components))[:5]
     
@@ -444,7 +453,7 @@ class SemanticManager:
             elif '\t' in line:
                 cells = [cell.strip() for cell in line.split('\t')]
             else:
-                cells = re.split(r'\s{2,}', line.strip())
+                cells = self.SPLIT_CELLS_REGEX.split(line.strip())
             
             if cells and any(cells):
                 rows.append(cells)
@@ -495,14 +504,19 @@ class SemanticManager:
                         candidates.append(obj)
                         candidate_ids.add(obj.id)
 
+        # Pre-compute query components set to avoid redundant conversions
+        query_comp_set = set(query_components)
+        len_query_comp = len(query_comp_set)
+
         # Match against semantic components
         for obj in candidates:
             if filter_metadata and not self._matches_filter(obj.metadata, filter_metadata):
                 continue
                 
             # Calculate component overlap score
-            overlap = len(set(query_components) & set(obj.semantic_components))
-            max_components = max(len(query_components), len(obj.semantic_components))
+            obj_comp_list = obj.semantic_components
+            overlap = len(query_comp_set.intersection(obj_comp_list))
+            max_components = max(len_query_comp, len(obj_comp_list))
             component_score = overlap / max_components if max_components > 0 else 0
             
             # Combine with object confidence
