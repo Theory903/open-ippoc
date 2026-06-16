@@ -143,32 +143,29 @@ class OpenClawToolIntegrator:
             for tg_path in telegram_paths:
                 if tg_path.exists():
                     # Export Telegram data
-                    export_cmd = ["python3", "-c", f"""
-                        import json, sqlite3, os
-                        groups = []
-                        for db_file in os.listdir('{tg_path}'):
+                    import sqlite3, os
+                    groups = []
+                    try:
+                        for db_file in os.listdir(tg_path):
                             if db_file.endswith('.db'):
-                                conn = sqlite3.connect(os.path.join('{tg_path}', db_file))
+                                conn = sqlite3.connect(os.path.join(tg_path, db_file))
                                 cursor = conn.cursor()
                                 try:
                                     cursor.execute('SELECT name FROM sqlite_master WHERE type="table"')
                                     tables = cursor.fetchall()
-                                    groups.append({{'db': db_file, 'tables': [t[0] for t in tables]}})
+                                    groups.append({'db': db_file, 'tables': [t[0] for t in tables]})
                                 except: pass
                                 conn.close()
-                        print(json.dumps(groups))
-                    """]
-                    
-                    result = subprocess.run(export_cmd, capture_output=True, text=True, timeout=10)
-                    
-                    if result.returncode == 0:
+
                         return {
                             'status': 'connected',
                             'capabilities': ['message_export', 'channel_monitoring', 'media_access', 'contact_sync'],
                             'data_location': str(tg_path),
-                            'database_info': json.loads(result.stdout) if result.stdout else [],
+                            'database_info': groups,
                             'last_sync': datetime.now().isoformat()
                         }
+                    except Exception as e:
+                        pass
             
             return {'status': 'unavailable', 'error': 'Telegram data not found'}
             
