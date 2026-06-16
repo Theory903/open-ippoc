@@ -1,15 +1,13 @@
-from typing import List, Optional, Dict, Union, Tuple, Any
+from typing import List, Optional, Dict, Tuple, Any
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import Runnable
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from enum import Enum
 import logging
 import re
-import json
-from datetime import datetime
 
 # Optional multimodal support
 try:
@@ -364,7 +362,7 @@ class SemanticManager:
         # Create figure metadata object
         metadata_obj = SemanticObject(
             id=f"figure_meta_{hash(content)}",
-            content=f"Figure from document",
+            content="Figure from document",
             content_type=ContentType.FIGURE,
             semantic_components=["figure", "chart", "diagram"],
             context_window="",
@@ -585,14 +583,18 @@ class SemanticManager:
         all_docs = await self._get_all_documents()
         scored_docs = []
         
+        # Optimize: hoist invariant query component extraction and set creation out of loop
+        query_components = self._extract_semantic_components(str(query_embedding)[:200])
+        query_components_set = set(query_components)
+        query_components_len = len(query_components)
+
         for doc in all_docs:
             # Calculate similarity between document and hypothetical embedding
             # This is a simplified approximation
             doc_components = self._extract_semantic_components(doc.page_content)
-            query_components = self._extract_semantic_components(str(query_embedding)[:200])
             
-            overlap = len(set(doc_components) & set(query_components))
-            max_components = max(len(doc_components), len(query_components))
+            overlap = len(set(doc_components) & query_components_set)
+            max_components = max(len(doc_components), query_components_len)
             similarity = overlap / max_components if max_components > 0 else 0
             
             if similarity >= min_score:
