@@ -11,6 +11,7 @@ Biological Mapping:
 
 import asyncio
 import logging
+import re
 from typing import Dict, Any, Optional, List, Tuple
 from enum import Enum
 from dataclasses import dataclass
@@ -210,36 +211,24 @@ Also categorize it into: research, technical, memory, factual, conversational, s
         
         return max(interactive_score, length_score, realtime_score)
     
+    _INTENT_PATTERNS = [
+        ('research', re.compile(r'research|study|analyze|investigate')),
+        ('technical', re.compile(r'code|implement|program|script|function')),
+        ('memory', re.compile(r'remember|recall|who|what|when|relationship')),
+        ('factual', re.compile(r'what is|how to|define|explain')),
+        ('conversational', re.compile(r'hello|hi|hey|goodbye|thanks')),
+        ('system', re.compile(r'status|version|ping|health|running'))
+    ]
+
     def _classify_intent(self, query: str) -> str:
         """Classify query intent category"""
         query_lower = query.lower()
         
-        # Research/Analysis intent
-        if any(word in query_lower for word in ['research', 'study', 'analyze', 'investigate']):
-            return 'research'
-            
-        # Technical/Code intent
-        elif any(word in query_lower for word in ['code', 'implement', 'program', 'script', 'function']):
-            return 'technical'
-            
-        # Memory/Context intent
-        elif any(word in query_lower for word in ['remember', 'recall', 'who', 'what', 'when', 'relationship']):
-            return 'memory'
-            
-        # Simple/Factual intent
-        elif any(word in query_lower for word in ['what is', 'how to', 'define', 'explain']):
-            return 'factual'
-            
-        # Conversational intent
-        elif any(word in query_lower for word in ['hello', 'hi', 'hey', 'goodbye', 'thanks']):
-            return 'conversational'
-            
-        # System/Status intent
-        elif any(word in query_lower for word in ['status', 'version', 'ping', 'health', 'running']):
-            return 'system'
-            
-        else:
-            return 'general'
+        for intent, pattern in self._INTENT_PATTERNS:
+            if pattern.search(query_lower):
+                return intent
+
+        return 'general'
     
     def _should_route_to_brain(self, complexity: float, intent: str) -> bool:
         """Determine if query should go to brain (complex reasoning)"""

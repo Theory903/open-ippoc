@@ -400,28 +400,36 @@ class SemanticManager:
         
         return chunks
     
+    _SENTENCE_SPLIT_RE = re.compile(r'[.!?]+')
+    _TERMS_RE = re.compile(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b|\b\d+(?:\.\d+)?\b')
+    _NUMBERS_RE = re.compile(r'\b\d+(?:\.\d+)?%?\b')
+    _TABLE_TERMS_RE = re.compile(r'[A-Za-z][a-z]+(?:\s+[A-Za-z][a-z]+)*|\d+(?:\.\d+)?%?')
+    _SPACE_SPLIT_RE = re.compile(r'\s{2,}')
+
     def _extract_semantic_components(self, text: str) -> List[str]:
         """Extract key semantic components/phrases from text"""
-        components = []
-        sentences = re.split(r'[.!?]+', text)
+        components = set()
+        sentences = self._SENTENCE_SPLIT_RE.split(text)
         for sentence in sentences:
-            terms = re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b|\b\d+(?:\.\d+)?\b', sentence)
-            components.extend(terms)
+            for term in self._TERMS_RE.findall(sentence):
+                if len(term) > 2:
+                    components.add(term)
         
-        numbers = re.findall(r'\b\d+(?:\.\d+)?%?\b', text)
-        components.extend(numbers)
-        
-        components = list(set(comp for comp in components if len(comp) > 2))
-        return components[:10]
+        for num in self._NUMBERS_RE.findall(text):
+            if len(num) > 2:
+                components.add(num)
+
+        return list(components)[:10]
     
     def _extract_table_components(self, row: List[str]) -> List[str]:
         """Extract semantic components from table row"""
-        components = []
+        components = set()
         for cell in row:
             if cell and cell.strip():
-                terms = re.findall(r'[A-Za-z][a-z]+(?:\s+[A-Za-z][a-z]+)*|\d+(?:\.\d+)?%?', cell)
-                components.extend([term for term in terms if len(term) > 2])
-        return list(set(components))[:5]
+                for term in self._TABLE_TERMS_RE.findall(cell):
+                    if len(term) > 2:
+                        components.add(term)
+        return list(components)[:5]
     
     def _parse_table_rows(self, content: str) -> List[List[str]]:
         """Parse table content into rows and columns"""
@@ -433,7 +441,7 @@ class SemanticManager:
             elif '\t' in line:
                 cells = [cell.strip() for cell in line.split('\t')]
             else:
-                cells = re.split(r'\s{2,}', line.strip())
+                cells = self._SPACE_SPLIT_RE.split(line.strip())
             
             if cells and any(cells):
                 rows.append(cells)
@@ -457,10 +465,11 @@ class SemanticManager:
         confidence = base_score + (length_factor * 0.2) + (component_factor * 0.2) + (type_factor * 0.1)
         return min(1.0, confidence)
     
+    _IMAGE_EXTENSIONS = ('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff')
+
     def _is_image_path(self, content: str) -> bool:
         """Check if content represents an image file path"""
-        image_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff'}
-        return any(content.lower().endswith(ext) for ext in image_extensions)
+        return content.lower().endswith(self._IMAGE_EXTENSIONS)
     
     async def _advanced_retrieve(self, query: str, k: int, min_score: float, filter_metadata: Dict) -> List[Document]:
         """Advanced retrieval using semantic object matching"""
