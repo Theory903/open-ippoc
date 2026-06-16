@@ -116,7 +116,6 @@ class ServiceManager:
 
         # Use the same python interpreter that launched this process to ensure venv/dependencies are inherited
         # RC FIX: Launch as a module to preserve package structure and imports
-        # RC FIX: Explicitly forward API Key if present
         if "IPPOC_API_KEY" in os.environ:
             env["IPPOC_API_KEY"] = os.environ["IPPOC_API_KEY"]
 
