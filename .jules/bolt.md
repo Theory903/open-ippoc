@@ -5,3 +5,7 @@
 ## 2024-05-23 - Synchronous Audit Logging Bottleneck
 **Learning:** `ToolOrchestrator._audit_action` was performing synchronous file I/O (open/write/close) for every tool invocation. This introduced ~68ms latency per 1000 calls. Moving this to a background thread with `queue.Queue` reduced it to ~3ms (20x improvement).
 **Action:** For high-frequency logging or audit trails, always use an asynchronous writer or background thread to decouple I/O latency from the main execution path.
+
+## 2024-05-28 - Invariant String Operations inside Loops
+**Learning:** In routing logic like `AdaptiveRAGRouter` string operations such as `query.lower()` placed inside generator comprehensions (`sum(... if word in query.lower())`) re-evaluate and allocate a new string for every iteration in the loop, introducing unnecessary CPU cycles and memory allocations.
+**Action:** When performing substring or exact matches against a large set of keywords or items inside comprehensions, always extract invariant operations (`.lower()`, `.split()`) outside of the loops into local cached variables to prevent redundant execution overhead.

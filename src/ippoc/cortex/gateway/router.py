@@ -163,6 +163,7 @@ Also categorize it into: research, technical, memory, factual, conversational, s
     
     def _assess_complexity(self, query: str) -> float:
         """Assess query complexity (0.0 to 1.0)"""
+        query_lower = query.lower()
         # Length-based complexity
         length_score = min(1.0, len(query) / 200)
         
@@ -171,42 +172,45 @@ Also categorize it into: research, technical, memory, factual, conversational, s
             'research', 'analyze', 'implement', 'compare', 'evaluate',
             'strategy', 'architecture', 'design', 'optimize', 'debug'
         ]
-        keyword_score = sum(1 for word in complex_indicators if word in query.lower()) / len(complex_indicators)
+        keyword_score = sum(1 for word in complex_indicators if word in query_lower) / len(complex_indicators)
         
         # Question type complexity
         question_indicators = ['how', 'why', 'explain', 'compare']
-        question_score = 0.3 if any(q in query.lower() for q in question_indicators) else 0.1
+        question_score = 0.3 if any(q in query_lower for q in question_indicators) else 0.1
         
         return (length_score * 0.4) + (keyword_score * 0.4) + (question_score * 0.2)
     
     def _assess_safety_risk(self, query: str) -> float:
         """Assess safety/canon violation risk"""
+        query_lower = query.lower()
         # Canon violation keywords
         violation_keywords = [
             'delete', 'destroy', 'harm', 'illegal', 'bypass', 'hack',
             'override', 'ignore', 'disable', 'remove'
         ]
         
-        risk_score = sum(1 for word in violation_keywords if word in query.lower()) / len(violation_keywords)
+        risk_score = sum(1 for word in violation_keywords if word in query_lower) / len(violation_keywords)
         
         # Self-reference queries (potentially sensitive)
-        if any(word in query.lower() for word in ['you', 'your', 'identity', 'memory']):
+        if any(word in query_lower for word in ['you', 'your', 'identity', 'memory']):
             risk_score += 0.3
             
         return min(1.0, risk_score)
     
     def _assess_speed_need(self, query: str, context: Dict) -> float:
         """Assess speed/latency requirements"""
+        query_lower = query.lower()
         # Interactive context indicators
         interactive_indicators = ['chat', 'conversation', 'discuss', 'talk']
-        interactive_score = 0.8 if any(word in str(context.get('mode', '')).lower() for word in interactive_indicators) else 0.3
+        context_mode = str(context.get('mode', '')).lower()
+        interactive_score = 0.8 if any(word in context_mode for word in interactive_indicators) else 0.3
         
         # Short query preference
         length_score = 1.0 if len(query) < 50 else 0.5
         
         # Real-time context
         realtime_indicators = ['now', 'immediately', 'quick', 'fast']
-        realtime_score = 0.9 if any(word in query.lower() for word in realtime_indicators) else 0.4
+        realtime_score = 0.9 if any(word in query_lower for word in realtime_indicators) else 0.4
         
         return max(interactive_score, length_score, realtime_score)
     
@@ -339,7 +343,8 @@ Also categorize it into: research, technical, memory, factual, conversational, s
     
     async def _route_to_body(self, query: str, classification: QueryClassification) -> RoutingDecision:
         """Route to body-based RAG architectures"""
-        if 'image' in str(classification.category).lower() or 'visual' in str(classification.category).lower():
+        category_lower = str(classification.category).lower()
+        if 'image' in category_lower or 'visual' in category_lower:
             return RoutingDecision(
                 rag_type=RAGType.MULTIMODAL,
                 confidence=0.85,
