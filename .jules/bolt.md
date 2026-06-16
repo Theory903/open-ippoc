@@ -5,3 +5,7 @@
 ## 2024-05-23 - Synchronous Audit Logging Bottleneck
 **Learning:** `ToolOrchestrator._audit_action` was performing synchronous file I/O (open/write/close) for every tool invocation. This introduced ~68ms latency per 1000 calls. Moving this to a background thread with `queue.Queue` reduced it to ~3ms (20x improvement).
 **Action:** For high-frequency logging or audit trails, always use an asynchronous writer or background thread to decouple I/O latency from the main execution path.
+
+## 2026-04-30 - N+1 Query in Entity Similarity Search
+**Learning:** In Mnemosyne's `GraphManager.find_similar_entities`, a naive Python loop iterating over entities and running a query per entity to fetch relationships (`SELECT e.name, r.relation... WHERE r.source_id = :entity_id`) creates a massive N+1 query bottleneck.
+**Action:** Replace the Python loop with a single Common Table Expression (CTE) query in the database. A query with `WITH ref_rels AS (...)`, `candidates AS (...)`, and `candidate_totals AS (...)` computes the intersection and union for Jaccard similarity directly in SQL, avoiding the N+1 latency entirely and pruning unrelated entities efficiently.
