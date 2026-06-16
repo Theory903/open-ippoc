@@ -89,6 +89,21 @@ class AdaptiveRAGRouter:
     Follows first principles logic for each RAG type with proper LangChain integration.
     """
     
+    # Pre-compiled static tuples for heuristic evaluations to avoid list allocation overhead
+    COMPLEX_INDICATORS = ('research', 'analyze', 'implement', 'compare', 'evaluate', 'strategy', 'architecture', 'design', 'optimize', 'debug')
+    QUESTION_INDICATORS = ('how', 'why', 'explain', 'compare')
+    VIOLATION_KEYWORDS = ('delete', 'destroy', 'harm', 'illegal', 'bypass', 'hack', 'override', 'ignore', 'disable', 'remove')
+    SELF_REFERENCE = ('you', 'your', 'identity', 'memory')
+    INTERACTIVE_INDICATORS = ('chat', 'conversation', 'discuss', 'talk')
+    REALTIME_INDICATORS = ('now', 'immediately', 'quick', 'fast')
+
+    RESEARCH_INTENT = ('research', 'study', 'analyze', 'investigate')
+    TECHNICAL_INTENT = ('code', 'implement', 'program', 'script', 'function')
+    MEMORY_INTENT = ('remember', 'recall', 'who', 'what', 'when', 'relationship')
+    FACTUAL_INTENT = ('what is', 'how to', 'define', 'explain')
+    CONVERSATIONAL_INTENT = ('hello', 'hi', 'hey', 'goodbye', 'thanks')
+    SYSTEM_INTENT = ('status', 'version', 'ping', 'health', 'running')
+
     def __init__(self, llm: Runnable = None, embeddings: Embeddings = None, vectorstore: VectorStore = None):
         # Core components
         self.llm = llm
@@ -163,50 +178,64 @@ Also categorize it into: research, technical, memory, factual, conversational, s
     
     def _assess_complexity(self, query: str) -> float:
         """Assess query complexity (0.0 to 1.0)"""
+        query_lower = query.lower()
         # Length-based complexity
         length_score = min(1.0, len(query) / 200)
         
         # Keyword complexity indicators
-        complex_indicators = [
-            'research', 'analyze', 'implement', 'compare', 'evaluate',
-            'strategy', 'architecture', 'design', 'optimize', 'debug'
-        ]
-        keyword_score = sum(1 for word in complex_indicators if word in query.lower()) / len(complex_indicators)
+        matches = 0
+        for word in self.COMPLEX_INDICATORS:
+            if word in query_lower:
+                matches += 1
+        keyword_score = matches / len(self.COMPLEX_INDICATORS)
         
         # Question type complexity
-        question_indicators = ['how', 'why', 'explain', 'compare']
-        question_score = 0.3 if any(q in query.lower() for q in question_indicators) else 0.1
+        question_score = 0.1
+        for q in self.QUESTION_INDICATORS:
+            if q in query_lower:
+                question_score = 0.3
+                break
         
         return (length_score * 0.4) + (keyword_score * 0.4) + (question_score * 0.2)
     
     def _assess_safety_risk(self, query: str) -> float:
         """Assess safety/canon violation risk"""
+        query_lower = query.lower()
         # Canon violation keywords
-        violation_keywords = [
-            'delete', 'destroy', 'harm', 'illegal', 'bypass', 'hack',
-            'override', 'ignore', 'disable', 'remove'
-        ]
-        
-        risk_score = sum(1 for word in violation_keywords if word in query.lower()) / len(violation_keywords)
+        matches = 0
+        for word in self.VIOLATION_KEYWORDS:
+            if word in query_lower:
+                matches += 1
+        risk_score = matches / len(self.VIOLATION_KEYWORDS)
         
         # Self-reference queries (potentially sensitive)
-        if any(word in query.lower() for word in ['you', 'your', 'identity', 'memory']):
-            risk_score += 0.3
+        for word in self.SELF_REFERENCE:
+            if word in query_lower:
+                risk_score += 0.3
+                break
             
         return min(1.0, risk_score)
     
     def _assess_speed_need(self, query: str, context: Dict) -> float:
         """Assess speed/latency requirements"""
+        query_lower = query.lower()
         # Interactive context indicators
-        interactive_indicators = ['chat', 'conversation', 'discuss', 'talk']
-        interactive_score = 0.8 if any(word in str(context.get('mode', '')).lower() for word in interactive_indicators) else 0.3
+        context_mode = str(context.get('mode', '')).lower()
+        interactive_score = 0.3
+        for word in self.INTERACTIVE_INDICATORS:
+            if word in context_mode:
+                interactive_score = 0.8
+                break
         
         # Short query preference
         length_score = 1.0 if len(query) < 50 else 0.5
         
         # Real-time context
-        realtime_indicators = ['now', 'immediately', 'quick', 'fast']
-        realtime_score = 0.9 if any(word in query.lower() for word in realtime_indicators) else 0.4
+        realtime_score = 0.4
+        for word in self.REALTIME_INDICATORS:
+            if word in query_lower:
+                realtime_score = 0.9
+                break
         
         return max(interactive_score, length_score, realtime_score)
     
@@ -215,31 +244,30 @@ Also categorize it into: research, technical, memory, factual, conversational, s
         query_lower = query.lower()
         
         # Research/Analysis intent
-        if any(word in query_lower for word in ['research', 'study', 'analyze', 'investigate']):
-            return 'research'
+        for word in self.RESEARCH_INTENT:
+            if word in query_lower: return 'research'
             
         # Technical/Code intent
-        elif any(word in query_lower for word in ['code', 'implement', 'program', 'script', 'function']):
-            return 'technical'
+        for word in self.TECHNICAL_INTENT:
+            if word in query_lower: return 'technical'
             
         # Memory/Context intent
-        elif any(word in query_lower for word in ['remember', 'recall', 'who', 'what', 'when', 'relationship']):
-            return 'memory'
+        for word in self.MEMORY_INTENT:
+            if word in query_lower: return 'memory'
             
         # Simple/Factual intent
-        elif any(word in query_lower for word in ['what is', 'how to', 'define', 'explain']):
-            return 'factual'
+        for word in self.FACTUAL_INTENT:
+            if word in query_lower: return 'factual'
             
         # Conversational intent
-        elif any(word in query_lower for word in ['hello', 'hi', 'hey', 'goodbye', 'thanks']):
-            return 'conversational'
+        for word in self.CONVERSATIONAL_INTENT:
+            if word in query_lower: return 'conversational'
             
         # System/Status intent
-        elif any(word in query_lower for word in ['status', 'version', 'ping', 'health', 'running']):
-            return 'system'
+        for word in self.SYSTEM_INTENT:
+            if word in query_lower: return 'system'
             
-        else:
-            return 'general'
+        return 'general'
     
     def _should_route_to_brain(self, complexity: float, intent: str) -> bool:
         """Determine if query should go to brain (complex reasoning)"""
