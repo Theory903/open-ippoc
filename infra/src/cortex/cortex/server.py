@@ -4,6 +4,7 @@ import time
 import json
 import uuid
 import asyncio
+import secrets
 from fastapi import FastAPI, HTTPException, Depends, Security, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import JSONResponse, PlainTextResponse
@@ -47,7 +48,12 @@ except Exception:  # pragma: no cover
 
 # --- Configuration ---
 NODE_ID = os.getenv("NODE_ID", "ippoc-local")
-IPPOC_API_KEY = os.getenv("IPPOC_API_KEY", "ippoc-secret-key") # Default for dev, warn in prod
+
+IPPOC_API_KEY = os.getenv("IPPOC_API_KEY")
+if not IPPOC_API_KEY:
+    IPPOC_API_KEY = secrets.token_hex(32)
+    print(f"⚠️  [Server] IPPOC_API_KEY not set! Generated temporary key: {IPPOC_API_KEY}")
+
 PERSISTENCE_PATH = os.getenv("CHAT_DB_PATH", "data/state/chat_rooms.json")
 PEER_NODES = os.getenv("PEER_NODES", "").split(",") # Comma separated URLs
 PEER_NODES = [p for p in PEER_NODES if p] # Filter empty
