@@ -5,3 +5,7 @@
 ## 2024-05-23 - Synchronous Audit Logging Bottleneck
 **Learning:** `ToolOrchestrator._audit_action` was performing synchronous file I/O (open/write/close) for every tool invocation. This introduced ~68ms latency per 1000 calls. Moving this to a background thread with `queue.Queue` reduced it to ~3ms (20x improvement).
 **Action:** For high-frequency logging or audit trails, always use an asynchronous writer or background thread to decouple I/O latency from the main execution path.
+
+## 2026-03-14 - [Optimize Graph Pathfinding]
+**Learning:** In graph traversal, simple CTE queries can lead to exponential path expansions when cyclic paths are possible, causing extreme performance degradation as cycle paths continually branch.
+**Action:** Adding a native SQL string validation (`AND (',' || p.path_ids || ',') NOT LIKE ('%,' || cast(r.target_id as text) || ',%')`) prunes cycles early in the CTE recursion, drastically improving performance (from ~0.9s to ~0.005s in dense graphs).
