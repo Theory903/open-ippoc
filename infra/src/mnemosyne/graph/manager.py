@@ -350,19 +350,22 @@ class GraphManager:
         
         try:
             async with self.Session() as session:
-                # Get reference entity ID
-                ref_id_stmt = text("SELECT id FROM kg_entities WHERE name = :name")
-                ref_id_res = await session.execute(ref_id_stmt, {"name": entity_name})
-                ref_row = ref_id_res.fetchone()
+                # Get reference entity ID and its relation count in a single query
+                ref_stmt = text("""
+                    SELECT e.id, COUNT(r.id) as rel_count
+                    FROM kg_entities e
+                    LEFT JOIN kg_relations r ON e.id = r.source_id
+                    WHERE e.name = :name
+                    GROUP BY e.id
+                """)
+                ref_res = await session.execute(ref_stmt, {"name": entity_name})
+                ref_row = ref_res.fetchone()
                 
                 if not ref_row:
                     return []
+
                 ref_id = ref_row[0]
-                
-                # Get reference entity relation count
-                ref_count_stmt = text("SELECT COUNT(*) FROM kg_relations WHERE source_id = :ref_id")
-                ref_count_res = await session.execute(ref_count_stmt, {"ref_id": ref_id})
-                ref_total = ref_count_res.scalar()
+                ref_total = ref_row[1] or 0
                 
                 if ref_total == 0:
                     return []
