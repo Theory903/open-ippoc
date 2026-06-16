@@ -11,12 +11,12 @@ from typing import Any, Dict, List, Optional
 
 
 class IntentType(str, Enum):
-    MAINTAIN = "maintain"   # Survival: Fix pain (errors, latency)
-    SERVE = "serve"         # Duty: Fulfill user request
-    LEARN = "learn"         # Growth: Curiosity, experimentation
-    EXPLORE = "explore"     # Growth: Low-risk discovery
-    IDLE = "idle"           # Rest: Save budget / cooldown
-    CONSULT = "consult"     # Social: Ask for advice / Receive advice
+    MAINTAIN = "maintain"  # Survival: Fix pain (errors, latency)
+    SERVE = "serve"  # Duty: Fulfill user request
+    LEARN = "learn"  # Growth: Curiosity, experimentation
+    EXPLORE = "explore"  # Growth: Low-risk discovery
+    IDLE = "idle"  # Rest: Save budget / cooldown
+    CONSULT = "consult"  # Social: Ask for advice / Receive advice
 
 
 @dataclass
@@ -24,12 +24,12 @@ class Intent:
     description: str
     priority: float  # 0.0 to 1.0
     intent_type: IntentType
-    
+
     intent_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     created_at: float = field(default_factory=time.time)
     source: str = "system"  # 'system', 'user', 'mentor'
     context: Dict[str, Any] = field(default_factory=dict)
-    
+
     # Dynamic properties
     decay_rate: float = 0.01  # Priority loss per second (if in stack)
 
@@ -38,12 +38,12 @@ class Intent:
         elapsed = max(time.time() - self.created_at, 0.0)
         # Use a simpler linear decay for now
         # Maybe exponential later if needed
-        self.priority = max(self.priority - (self.decay_rate * 0.01 * elapsed), 0.0) 
+        self.priority = max(self.priority - (self.decay_rate * 0.01 * elapsed), 0.0)
         # adjusted decay factor to be less aggressive than raw seconds
 
     def to_dict(self) -> Dict[str, Any]:
-        from dataclasses import asdict
-        return asdict(self)
+        # Optimization: Use __dict__ shallow copy instead of deep dataclasses.asdict
+        return self.__dict__.copy()
 
 
 class IntentStack:
@@ -67,7 +67,7 @@ class IntentStack:
             return None
         # Sort by priority desc
         return sorted(self.intents, key=lambda i: i.priority, reverse=True)[0]
-    
+
     def clear_type(self, intent_type: IntentType) -> None:
         """Remove all intents of a specific type (e.g. after fulfilling one)"""
         self.intents = [i for i in self.intents if i.intent_type != intent_type]
