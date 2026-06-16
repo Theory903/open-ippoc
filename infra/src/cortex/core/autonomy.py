@@ -5,6 +5,7 @@ import json
 import os
 import time
 import asyncio
+import concurrent.futures
 from dataclasses import asdict
 from typing import Any, Dict, Optional
 
@@ -255,6 +256,7 @@ class AutonomyController:
         self.planner = Planner()
         self.decider = Decider()
         self.reflector = Reflector()
+        self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         self._load_state()
 
     def _load_state(self) -> None:
@@ -269,17 +271,31 @@ class AutonomyController:
             except Exception:
                 pass
 
+    def _save_to_disk(self, data: Dict[str, Any]) -> None:
+        try:
+            os.makedirs(os.path.dirname(STATE_PATH), exist_ok=True)
+            with open(STATE_PATH, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+        except Exception as e:
+            print(f"[Autonomy] State save failed: {e}")
+
     def _save_state(self) -> None:
-        os.makedirs(os.path.dirname(STATE_PATH), exist_ok=True)
-        # Convert dataclasses to dicts
+        # Snapshot state locally
         data = {"intents": [asdict(i) for i in self.intent_stack.intents]}
-        with open(STATE_PATH, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
+        # Offload file I/O to background thread
+        self._executor.submit(self._save_to_disk, data)
+
+    def _explain_to_disk(self, explanation: Dict[str, Any]) -> None:
+        try:
+            os.makedirs(os.path.dirname(EXPLAIN_PATH), exist_ok=True)
+            with open(EXPLAIN_PATH, "w", encoding="utf-8") as f:
+                json.dump(explanation, f, indent=2)
+        except Exception as e:
+            print(f"[Autonomy] Explain save failed: {e}")
 
     def _record_explain(self, explanation: Dict[str, Any]) -> None:
-        os.makedirs(os.path.dirname(EXPLAIN_PATH), exist_ok=True)
-        with open(EXPLAIN_PATH, "w", encoding="utf-8") as f:
-            json.dump(explanation, f, indent=2)
+        # Offload file I/O to background thread
+        self._executor.submit(self._explain_to_disk, explanation)
 
     async def observe(self) -> Dict[str, Any]:
         # Delegate observation to the Maintainer/Observer
