@@ -89,6 +89,13 @@ class AdaptiveRAGRouter:
     Follows first principles logic for each RAG type with proper LangChain integration.
     """
     
+    _RESEARCH_WORDS = ('research', 'study', 'analyze', 'investigate')
+    _TECHNICAL_WORDS = ('code', 'implement', 'program', 'script', 'function')
+    _MEMORY_WORDS = ('remember', 'recall', 'who', 'what', 'when', 'relationship')
+    _FACTUAL_WORDS = ('what is', 'how to', 'define', 'explain')
+    _CONVERSATIONAL_WORDS = ('hello', 'hi', 'hey', 'goodbye', 'thanks')
+    _SYSTEM_WORDS = ('status', 'version', 'ping', 'health', 'running')
+
     def __init__(self, llm: Runnable = None, embeddings: Embeddings = None, vectorstore: VectorStore = None):
         # Core components
         self.llm = llm
@@ -214,32 +221,31 @@ Also categorize it into: research, technical, memory, factual, conversational, s
         """Classify query intent category"""
         query_lower = query.lower()
         
-        # Research/Analysis intent
-        if any(word in query_lower for word in ['research', 'study', 'analyze', 'investigate']):
-            return 'research'
-            
-        # Technical/Code intent
-        elif any(word in query_lower for word in ['code', 'implement', 'program', 'script', 'function']):
-            return 'technical'
-            
-        # Memory/Context intent
-        elif any(word in query_lower for word in ['remember', 'recall', 'who', 'what', 'when', 'relationship']):
-            return 'memory'
-            
-        # Simple/Factual intent
-        elif any(word in query_lower for word in ['what is', 'how to', 'define', 'explain']):
-            return 'factual'
-            
-        # Conversational intent
-        elif any(word in query_lower for word in ['hello', 'hi', 'hey', 'goodbye', 'thanks']):
-            return 'conversational'
-            
-        # System/Status intent
-        elif any(word in query_lower for word in ['status', 'version', 'ping', 'health', 'running']):
-            return 'system'
-            
-        else:
-            return 'general'
+        for word in self._RESEARCH_WORDS:
+            if word in query_lower:
+                return 'research'
+
+        for word in self._TECHNICAL_WORDS:
+            if word in query_lower:
+                return 'technical'
+
+        for word in self._MEMORY_WORDS:
+            if word in query_lower:
+                return 'memory'
+
+        for word in self._FACTUAL_WORDS:
+            if word in query_lower:
+                return 'factual'
+
+        for word in self._CONVERSATIONAL_WORDS:
+            if word in query_lower:
+                return 'conversational'
+
+        for word in self._SYSTEM_WORDS:
+            if word in query_lower:
+                return 'system'
+
+        return 'general'
     
     def _should_route_to_brain(self, complexity: float, intent: str) -> bool:
         """Determine if query should go to brain (complex reasoning)"""
