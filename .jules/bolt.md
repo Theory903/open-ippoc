@@ -5,3 +5,7 @@
 ## 2024-05-23 - Synchronous Audit Logging Bottleneck
 **Learning:** `ToolOrchestrator._audit_action` was performing synchronous file I/O (open/write/close) for every tool invocation. This introduced ~68ms latency per 1000 calls. Moving this to a background thread with `queue.Queue` reduced it to ~3ms (20x improvement).
 **Action:** For high-frequency logging or audit trails, always use an asynchronous writer or background thread to decouple I/O latency from the main execution path.
+
+## 2024-05-24 - Synchronous File I/O in State Persistence
+**Learning:** Synchronous JSON serialization and disk writes in high-frequency state persistence methods (`_save_state` in AutonomyController and `_save_trust_metrics` in ReputationWeightedEconomy) cause main thread blocking, similar to previous findings in audit logging.
+**Action:** When saving system state or metrics, offload the actual file I/O to a background thread (`ThreadPoolExecutor`) after taking a snapshot in the main thread to decouple disk latency from the main execution path.
