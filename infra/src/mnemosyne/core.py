@@ -301,13 +301,14 @@ class MemorySystem:
                 }
             
         Returns:
-            Number of memories removed (approximate count from all subsystems)
+            Number of memories removed
         """
         await self.initialize()
         total_deleted = 0
+        sem = asyncio.Semaphore(10)
 
         # Episodic deletion
-        if "episodic" in criteria:
+        if "episodic" in criteria and self.episodic:
             try:
                 count = await self.episodic.delete(**criteria["episodic"])
                 total_deleted += count
@@ -321,8 +322,9 @@ class MemorySystem:
                 if "ids" in semantic_criteria:
                     semantic_ids = semantic_criteria["ids"]
                     if semantic_ids:
-                        if await self.semantic.delete_memories(semantic_ids):
-                            total_deleted += len(semantic_ids)
+                        res = await self.semantic.delete_memories(semantic_ids)
+                        if res:
+                            total_deleted += len(semantic_ids) if type(res) is bool else res
             except Exception as e:
                 logger.error(f"Failed to delete semantic memories: {e}")
 
@@ -332,27 +334,41 @@ class MemorySystem:
                 proc_criteria = criteria["procedural"]
                 if "skills" in proc_criteria:
                     skills = proc_criteria["skills"]
-                    for skill_name in skills:
-                        if await self.procedural.delete_skill(skill_name):
-                            total_deleted += 1
+
+                    async def delete_skill_bounded(skill_name):
+                        async with sem:
+                            return await self.procedural.delete_skill(skill_name)
+
+                    tasks = [delete_skill_bounded(skill_name) for skill_name in skills]
+                    results = await asyncio.gather(*tasks, return_exceptions=True)
+                    for res in results:
+                        if not isinstance(res, Exception) and res:
+                            total_deleted += 1 if type(res) is bool else res
             except Exception as e:
                 logger.error(f"Failed to delete procedural skills: {e}")
 
         # Graph deletion
-        if "graph" in criteria:
+        if "graph" in criteria and self.graph:
             try:
                 graph_criteria = criteria["graph"]
                 if "entities" in graph_criteria:
                     entities = graph_criteria["entities"]
-                    for entity in entities:
-                        count = await self.graph.delete_entity(entity)
-                        total_deleted += count if isinstance(count, int) else (1 if count else 0)
+
+                    async def delete_entity_bounded(entity):
+                        async with sem:
+                            return await self.graph.delete_entity(entity)
+
+                    tasks = [delete_entity_bounded(entity) for entity in entities]
+                    results = await asyncio.gather(*tasks, return_exceptions=True)
+                    for res in results:
+                        if not isinstance(res, Exception):
+                            total_deleted += res if isinstance(res, int) else (1 if res else 0)
             except Exception as e:
                 logger.error(f"Failed to delete graph entities: {e}")
 
         logger.info(f"Forget operation completed. Total removed: {total_deleted}")
         return total_deleted
-    
+
     def health_check(self) -> Dict[str, Any]:
         """Check memory system health"""
         return {
