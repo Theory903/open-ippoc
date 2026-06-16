@@ -5,7 +5,10 @@ from cortex.cortex.server import app
 from cortex.core.bootstrap import bootstrap_tools
 
 # Auth Header
-HEADERS = {"Authorization": "Bearer ippoc-secret-key"}
+from cortex.cortex.server import IPPOC_API_KEY
+
+HEADERS = {"Authorization": f"Bearer {IPPOC_API_KEY}"}
+
 
 def run_tests():
     # Use context manager to trigger lifespan (startup/shutdown)
@@ -24,7 +27,7 @@ def run_tests():
             "action": "digest_paper",
             "context": {"url": "http://test.com/paper.pdf"},
             "risk_level": "low",
-            "estimated_cost": 2.0
+            "estimated_cost": 2.0,
         }
         resp_auth = client.post("/v1/tools/execute", json=payload, headers=HEADERS)
         if resp_auth.status_code != 200:
@@ -40,10 +43,15 @@ def run_tests():
         print("✅ Unauthorized (Missing) Blocked")
 
         # 4. Unauthorized (Wrong Header)
-        resp_wrong = client.post("/v1/tools/execute", json=payload, headers={"Authorization": "Bearer wrong-key"})
+        resp_wrong = client.post(
+            "/v1/tools/execute",
+            json=payload,
+            headers={"Authorization": "Bearer wrong-key"},
+        )
         assert resp_wrong.status_code == 403
         assert resp_wrong.json()["detail"] == "Invalid API Key"
         print("✅ Unauthorized (Wrong) Blocked")
+
 
 if __name__ == "__main__":
     try:
