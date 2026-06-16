@@ -59,6 +59,7 @@ from ippoc.runtime.ports import PORTS, get_port
 from ippoc.runtime.bootstrap.auth import get_api_key
 import socket
 import requests
+import httpx
 
 # Security: Use centralized key logic
 IPPOC_API_KEY = get_api_key()
@@ -98,18 +99,21 @@ if IPPOC_API_KEY:
     print(f"[DEBUG] IPPOC_API_KEY loaded: {IPPOC_API_KEY[:3]}... Length: {len(IPPOC_API_KEY)}")
 print(f"[DEBUG] Valid tokens: {list(TOKEN_SCOPES.keys())}")
 
-def validate_key_with_soma(token: str) -> bool:
+async def validate_key_with_soma(token: str) -> bool:
     """
     Validate API key against Soma's verify endpoint.
     Returns True if valid, False otherwise.
     """
+    if auth_http_client is None:
+        return False
+
     try:
-        response = requests.get(f"{SOMA_URL}/v1/auth/verify", params={"api_key": token}, timeout=5)
+        response = await auth_http_client.get(f"{SOMA_URL}/v1/auth/verify", params={"api_key": token}, timeout=5)
         return response.status_code == 200
     except Exception:
         return False
 
-def verify_api_key(request: Request, credentials: Optional[HTTPAuthorizationCredentials] = Security(security, scopes=[])):
+async def verify_api_key(request: Request, credentials: Optional[HTTPAuthorizationCredentials] = Security(security, scopes=[])):
     """
     Enforces Bearer Token Authentication.
     Validates against Soma for dynamic key verification.
@@ -131,7 +135,7 @@ def verify_api_key(request: Request, credentials: Optional[HTTPAuthorizationCred
         return token
     
     # Validate against Soma dynamically
-    if validate_key_with_soma(token):
+    if await validate_key_with_soma(token):
         # Cache valid token
         TOKEN_SCOPES[token] = ["*"]
         request.state.scopes = ["*"]
@@ -187,10 +191,14 @@ class SystemState:
 
 system_state = SystemState()
 
+auth_http_client: Optional[httpx.AsyncClient] = None
+
 # --- Lifespan ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
+    global auth_http_client
+    auth_http_client = httpx.AsyncClient(limits=httpx.Limits(max_connections=100, max_keepalive_connections=100))
     print(f"[Server] Booting Node: {NODE_ID}")
     bootstrap_tools()
     
@@ -248,6 +256,9 @@ async def lifespan(app: FastAPI):
     for t in swarm.transports:
         if isinstance(t, HttpTransport):
              await t.client.aclose()
+
+    if auth_http_client:
+        await auth_http_client.aclose()
 
 app = FastAPI(
     title="IPPOC Cognitive Core (Two-Tower + Chat)", 
