@@ -1,6 +1,8 @@
 import uvicorn
 import os
 import time
+import secrets
+import sys
 import json
 import uuid
 import asyncio
@@ -47,7 +49,12 @@ except Exception:  # pragma: no cover
 
 # --- Configuration ---
 NODE_ID = os.getenv("NODE_ID", "ippoc-local")
-IPPOC_API_KEY = os.getenv("IPPOC_API_KEY", "ippoc-secret-key") # Default for dev, warn in prod
+
+IPPOC_API_KEY = os.getenv("IPPOC_API_KEY")
+if not IPPOC_API_KEY:
+    IPPOC_API_KEY = secrets.token_hex(32)
+    print(f"[Server] ⚠️  SECURITY WARNING: IPPOC_API_KEY not set! Generated temporary admin key: {IPPOC_API_KEY}", file=sys.stderr)
+
 PERSISTENCE_PATH = os.getenv("CHAT_DB_PATH", "data/state/chat_rooms.json")
 PEER_NODES = os.getenv("PEER_NODES", "").split(",") # Comma separated URLs
 PEER_NODES = [p for p in PEER_NODES if p] # Filter empty
