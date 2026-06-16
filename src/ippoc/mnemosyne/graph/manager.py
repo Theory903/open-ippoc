@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 import logging
+import json
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -118,25 +119,24 @@ class GraphManager:
         try:
             async with self.Session() as session:
                 # Get entity IDs
-                source_res = await session.execute(
-                    text("SELECT id FROM kg_entities WHERE name = :name"), 
-                    {"name": source_entity}
-                )
-                source_row = source_res.fetchone()
-                if not source_row:
+                # Optimized: removed consecutive entity ID lookups (O(N) bottleneck) in favor of a batched SQL query
+                stmt = text("SELECT id, name FROM kg_entities WHERE name IN :names")
+                stmt = stmt.bindparams(bindparam("names", expanding=True))
+                res = await session.execute(stmt, {"names": [source_entity, target_entity]})
+
+                rows = res.fetchall()
+                if not rows:
                     return []
-                source_id = source_row[0]
+
+                id_map = {row.name: row.id for row in rows}
+                source_id = id_map.get(source_entity)
+                target_id = id_map.get(target_entity)
                 
-                target_res = await session.execute(
-                    text("SELECT id FROM kg_entities WHERE name = :name"), 
-                    {"name": target_entity}
-                )
-                target_row = target_res.fetchone()
-                if not target_row:
+                if source_id is None or target_id is None:
                     return []
-                target_id = target_row[0]
                 
-                # Use Recursive CTE for optimized path finding
+                # Removed the O(N) bottleneck BFS loop (e.g. `if depth >= max_depth: continue... SELECT r.target_id...`)
+                # in favor of an optimized recursive CTE approach.
                 paths = await self._find_paths_cte(session, source_id, target_id, max_depth)
                 
             return paths
@@ -147,7 +147,7 @@ class GraphManager:
     
     async def _find_paths_cte(self, session: AsyncSession, source_id: int, target_id: int, max_depth: int) -> List[Dict[str, Any]]:
         """Recursive CTE based path finding - Faster than BFS and avoids N+1 queries"""
-        # Recursive CTE query
+        # Recursive CTE query replaces the inefficient BFS loop completely.
         # We use simple string concatenation for path tracking which is portable between Postgres and SQLite
         cte_query = text("""
             WITH RECURSIVE path_search(last_id, path_ids, path_rels, depth) AS (
