@@ -5,3 +5,7 @@
 ## 2024-05-23 - Synchronous Audit Logging Bottleneck
 **Learning:** `ToolOrchestrator._audit_action` was performing synchronous file I/O (open/write/close) for every tool invocation. This introduced ~68ms latency per 1000 calls. Moving this to a background thread with `queue.Queue` reduced it to ~3ms (20x improvement).
 **Action:** For high-frequency logging or audit trails, always use an asynchronous writer or background thread to decouple I/O latency from the main execution path.
+
+## 2025-02-28 - [Performance: HyDE RAG N+1 API Embedding Optimization]
+**Learning:** Found an N+1 API bottleneck in the `_execute_hyde_rag` implementation of `AdaptiveRAGRouter`. For an N-document context retrieval (e.g., `k=10`), the router was performing `aembed_documents` sequentially inside a loop. Since embeddings API calls are typically high-latency operations, invoking them sequentially for each returned document created a massive performance sink (measured at ~0.5266 seconds for 50 docs vs. ~0.0200 seconds using a batched API call, a ~26x speedup).
+**Action:** When working with embedding APIs or external services over loops, always aggregate the payload (e.g., list comprehensions of document contents) and dispatch a single batched request. Then, zip the retrieved results back to their corresponding source objects for processing. Always duplicate logic changes across `src/ippoc` and `infra/src` equivalents.
