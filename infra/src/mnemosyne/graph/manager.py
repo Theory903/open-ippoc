@@ -350,27 +350,25 @@ class GraphManager:
         
         try:
             async with self.Session() as session:
-                # Get reference entity ID
-                ref_id_stmt = text("SELECT id FROM kg_entities WHERE name = :name")
-                ref_id_res = await session.execute(ref_id_stmt, {"name": entity_name})
-                ref_row = ref_id_res.fetchone()
+                # Combine ref_id and ref_total into a single query
+                ref_stmt = text("""
+                    SELECT e.id, (SELECT COUNT(id) FROM kg_relations WHERE source_id = e.id) as rel_count
+                    FROM kg_entities e WHERE e.name = :name
+                """)
+                ref_res = await session.execute(ref_stmt, {"name": entity_name})
+                ref_row = ref_res.fetchone()
                 
                 if not ref_row:
                     return []
-                ref_id = ref_row[0]
-                
-                # Get reference entity relation count
-                ref_count_stmt = text("SELECT COUNT(*) FROM kg_relations WHERE source_id = :ref_id")
-                ref_count_res = await session.execute(ref_count_stmt, {"ref_id": ref_id})
-                ref_total = ref_count_res.scalar()
+                ref_id, ref_total = ref_row
                 
                 if ref_total == 0:
                     return []
 
                 # Intersection-first optimization using CTEs
                 # 1. Identify candidates (entities sharing >=1 relation) -> O(Neighbors)
-                # 2. Count totals for candidates only
-                # 3. Calculate Jaccard in SQL
+                # 2. Count totals for candidates inline using subquery
+                # 3. Calculate Jaccard in Python to avoid grouping CTEs
                 # Note: This query avoids full table scans of unrelated entities.
                 stmt = text("""
                     WITH ref_rels AS (
@@ -387,25 +385,13 @@ class GraphManager:
                         WHERE r.source_id != :ref_id
                         GROUP BY r.source_id
                         HAVING COUNT(r.id) >= :ref_total * :threshold
-                    ),
-                    candidate_totals AS (
-                        SELECT
-                            r.source_id,
-                            COUNT(r.id) as total_cnt
-                        FROM kg_relations r
-                        JOIN candidates c ON r.source_id = c.source_id
-                        GROUP BY r.source_id
                     )
                     SELECT
                         e.name,
                         c.intersection_cnt,
-                        t.total_cnt,
-                        (CAST(c.intersection_cnt AS FLOAT) / (t.total_cnt + :ref_total - c.intersection_cnt)) as similarity
+                        (SELECT COUNT(id) FROM kg_relations WHERE source_id = c.source_id) as total_cnt
                     FROM candidates c
-                    JOIN candidate_totals t ON c.source_id = t.source_id
                     JOIN kg_entities e ON c.source_id = e.id
-                    WHERE (CAST(c.intersection_cnt AS FLOAT) / (t.total_cnt + :ref_total - c.intersection_cnt)) >= :threshold
-                    ORDER BY similarity DESC
                 """)
 
                 res = await session.execute(stmt, {
@@ -415,11 +401,16 @@ class GraphManager:
                 })
 
                 for row in res.fetchall():
-                    similar_entities.append({
-                        "entity": row[0],
-                        "similarity": row[3],
-                        "shared_relations": row[1]
-                    })
+                    name, intersection_cnt, total_cnt = row[0], row[1], row[2]
+                    similarity = float(intersection_cnt) / (total_cnt + ref_total - intersection_cnt)
+                    if similarity >= similarity_threshold:
+                        similar_entities.append({
+                            "entity": name,
+                            "similarity": similarity,
+                            "shared_relations": intersection_cnt
+                        })
+
+                similar_entities.sort(key=lambda x: x["similarity"], reverse=True)
                 
             return similar_entities
             
