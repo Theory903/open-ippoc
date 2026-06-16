@@ -11,7 +11,7 @@
         "axios": "^1.6.0",
         "capnp-ts": "^0.7.0",
         "fs-extra": "^11.2.0",
-        "openclaw": "file:../../../mind/openclaw",
+        "openclaw": "file:../../../../../src/kernel/openclaw",
         "simple-git": "^3.22.0",
         "zod": "^3.22.4"
     },
