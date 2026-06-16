@@ -171,11 +171,12 @@ Also categorize it into: research, technical, memory, factual, conversational, s
             'research', 'analyze', 'implement', 'compare', 'evaluate',
             'strategy', 'architecture', 'design', 'optimize', 'debug'
         ]
-        keyword_score = sum(1 for word in complex_indicators if word in query.lower()) / len(complex_indicators)
+        query_lower = query.lower()
+        keyword_score = sum(1 for word in complex_indicators if word in query_lower) / len(complex_indicators)
         
         # Question type complexity
         question_indicators = ['how', 'why', 'explain', 'compare']
-        question_score = 0.3 if any(q in query.lower() for q in question_indicators) else 0.1
+        question_score = 0.3 if any(q in query_lower for q in question_indicators) else 0.1
         
         return (length_score * 0.4) + (keyword_score * 0.4) + (question_score * 0.2)
     
@@ -187,10 +188,11 @@ Also categorize it into: research, technical, memory, factual, conversational, s
             'override', 'ignore', 'disable', 'remove'
         ]
         
-        risk_score = sum(1 for word in violation_keywords if word in query.lower()) / len(violation_keywords)
+        query_lower = query.lower()
+        risk_score = sum(1 for word in violation_keywords if word in query_lower) / len(violation_keywords)
         
         # Self-reference queries (potentially sensitive)
-        if any(word in query.lower() for word in ['you', 'your', 'identity', 'memory']):
+        if any(word in query_lower for word in ['you', 'your', 'identity', 'memory']):
             risk_score += 0.3
             
         return min(1.0, risk_score)
@@ -206,7 +208,8 @@ Also categorize it into: research, technical, memory, factual, conversational, s
         
         # Real-time context
         realtime_indicators = ['now', 'immediately', 'quick', 'fast']
-        realtime_score = 0.9 if any(word in query.lower() for word in realtime_indicators) else 0.4
+        query_lower = query.lower()
+        realtime_score = 0.9 if any(word in query_lower for word in realtime_indicators) else 0.4
         
         return max(interactive_score, length_score, realtime_score)
     
@@ -903,10 +906,10 @@ Also categorize it into: research, technical, memory, factual, conversational, s
         # In production, this would use a cross-encoder model
         # For demonstration, we'll use a simple relevance scoring
         scored_docs = []
+        query_terms = query.lower().split()
         for doc in docs:
             # Calculate relevance score (simplified)
             content = doc.page_content.lower()
-            query_terms = query.lower().split()
             score = sum(1 for term in query_terms if term in content) / len(query_terms)
             scored_docs.append((doc, score))
         
