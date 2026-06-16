@@ -210,36 +210,48 @@ Also categorize it into: research, technical, memory, factual, conversational, s
         
         return max(interactive_score, length_score, realtime_score)
     
+    _RESEARCH_KEYWORDS = ('research', 'study', 'analyze', 'investigate')
+    _TECHNICAL_KEYWORDS = ('code', 'implement', 'program', 'script', 'function')
+    _MEMORY_KEYWORDS = ('remember', 'recall', 'who', 'what', 'when', 'relationship')
+    _FACTUAL_KEYWORDS = ('what is', 'how to', 'define', 'explain')
+    _CONVERSATIONAL_KEYWORDS = ('hello', 'hi', 'hey', 'goodbye', 'thanks')
+    _SYSTEM_KEYWORDS = ('status', 'version', 'ping', 'health', 'running')
+
     def _classify_intent(self, query: str) -> str:
         """Classify query intent category"""
         query_lower = query.lower()
         
         # Research/Analysis intent
-        if any(word in query_lower for word in ['research', 'study', 'analyze', 'investigate']):
-            return 'research'
+        for word in self._RESEARCH_KEYWORDS:
+            if word in query_lower:
+                return 'research'
             
         # Technical/Code intent
-        elif any(word in query_lower for word in ['code', 'implement', 'program', 'script', 'function']):
-            return 'technical'
+        for word in self._TECHNICAL_KEYWORDS:
+            if word in query_lower:
+                return 'technical'
             
         # Memory/Context intent
-        elif any(word in query_lower for word in ['remember', 'recall', 'who', 'what', 'when', 'relationship']):
-            return 'memory'
+        for word in self._MEMORY_KEYWORDS:
+            if word in query_lower:
+                return 'memory'
             
         # Simple/Factual intent
-        elif any(word in query_lower for word in ['what is', 'how to', 'define', 'explain']):
-            return 'factual'
+        for word in self._FACTUAL_KEYWORDS:
+            if word in query_lower:
+                return 'factual'
             
         # Conversational intent
-        elif any(word in query_lower for word in ['hello', 'hi', 'hey', 'goodbye', 'thanks']):
-            return 'conversational'
+        for word in self._CONVERSATIONAL_KEYWORDS:
+            if word in query_lower:
+                return 'conversational'
             
         # System/Status intent
-        elif any(word in query_lower for word in ['status', 'version', 'ping', 'health', 'running']):
-            return 'system'
+        for word in self._SYSTEM_KEYWORDS:
+            if word in query_lower:
+                return 'system'
             
-        else:
-            return 'general'
+        return 'general'
     
     def _should_route_to_brain(self, complexity: float, intent: str) -> bool:
         """Determine if query should go to brain (complex reasoning)"""
