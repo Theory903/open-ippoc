@@ -5,3 +5,7 @@
 ## 2024-05-23 - Synchronous Audit Logging Bottleneck
 **Learning:** `ToolOrchestrator._audit_action` was performing synchronous file I/O (open/write/close) for every tool invocation. This introduced ~68ms latency per 1000 calls. Moving this to a background thread with `queue.Queue` reduced it to ~3ms (20x improvement).
 **Action:** For high-frequency logging or audit trails, always use an asynchronous writer or background thread to decouple I/O latency from the main execution path.
+
+## 2026-03-25 - Pre-compile Regex in Hot Loops
+**Learning:** Compiling regex dynamically and repeatedly inside list/generator loops in functions like `_extract_semantic_components` leads to redundant overhead scaling linearly with the document size. Hoisting static data shapes to class scope removes this repeated penalty.
+**Action:** Define static invariants like sets of extensions as tuples, and compile regex patterns using `re.compile` as class-level variables to optimize processing scaling.
