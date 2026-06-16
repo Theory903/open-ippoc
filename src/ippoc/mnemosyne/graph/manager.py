@@ -426,7 +426,6 @@ class GraphManager:
         except Exception as e:
             logger.error(f"Similar entity search failed: {e}")
             return []
-
     async def delete_entity(self, entity_name: str) -> int:
         """
         Delete an entity and all its incident edges.
