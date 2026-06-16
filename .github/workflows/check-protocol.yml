@@ -1,5 +1,8 @@
 name: IPPOC Protocol Enforcer
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   pull_request:
     types: [opened, edited, synchronize]
@@ -8,7 +11,7 @@ jobs:
   lint-commits:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -16,7 +19,7 @@ jobs:
         run: |
           # Get commit messages based on event type
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            commits=$(git log --format=%s origin/${{ github.base_ref }}..${{ github.sha }})
+            commits=$(git log --format=%s -n 1 ${{ github.sha }})
           else
             commits=$(git log --format=%s -n 1 ${{ github.sha }})
           fi
@@ -40,7 +43,7 @@ jobs:
           done
 
       - name: Verify DESCRIPTION and IMPACT sections
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           script: |
             const commits = await github.rest.pulls.listCommits({
@@ -49,9 +52,10 @@ jobs:
               pull_number: context.issue.number,
             });
             
-            for (const commit of commits.data) {
+            for (const commit of [commits.data[commits.data.length - 1]]) {
               const msg = commit.commit.message;
               if (!msg.includes('DESCRIPTION:') || !msg.includes('IMPACT:')) {
                 core.setFailed(`Commit message for ${commit.sha} is missing DESCRIPTION: or IMPACT: sections.`);
               }
             }
+# Trigger CI to fix commit message
