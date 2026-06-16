@@ -221,24 +221,18 @@ class GraphManager:
         paths = []
         # Construct result objects
         for ids, rels in parsed_rows:
-            # Map IDs to names
-            nodes = []
-            valid_path = True
-            for nid in ids:
-                name = id_to_name.get(nid)
-                if name is None:
-                    # Should not happen if DB is consistent, but handle gracefully
-                    valid_path = False
-                    break
-                nodes.append(name)
-
-            if valid_path:
+            try:
+                # Map IDs to names using a list comprehension and direct indexing for performance
+                nodes = [id_to_name[nid] for nid in ids]
                 paths.append({
                     "nodes": nodes,
                     "relations": rels,
                     "length": len(rels),
                     "confidence": 1.0 - (len(rels) * 0.1)
                 })
+            except KeyError:
+                # Should not happen if DB is consistent, but handle gracefully
+                continue
 
         return paths
     
