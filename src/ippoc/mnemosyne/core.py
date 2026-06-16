@@ -321,8 +321,9 @@ class MemorySystem:
                 if "ids" in semantic_criteria:
                     semantic_ids = semantic_criteria["ids"]
                     if semantic_ids:
-                        if await self.semantic.delete_memories(semantic_ids):
-                            total_deleted += len(semantic_ids)
+                        res = await self.semantic.delete_memories(semantic_ids)
+                        if res:
+                            total_deleted += len(semantic_ids) if isinstance(res, bool) else res
             except Exception as e:
                 logger.error(f"Failed to delete semantic memories: {e}")
 
@@ -330,11 +331,23 @@ class MemorySystem:
         if "procedural" in criteria and self.procedural:
             try:
                 proc_criteria = criteria["procedural"]
-                if "skills" in proc_criteria:
-                    skills = proc_criteria["skills"]
-                    for skill_name in skills:
+                skills = list(proc_criteria.get("skills", []))
+                if "skill_name" in proc_criteria and proc_criteria["skill_name"] not in skills:
+                    skills.append(proc_criteria["skill_name"])
+
+                sem = asyncio.Semaphore(10)
+                async def _delete_skill(skill_name):
+                    async with sem:
                         if await self.procedural.delete_skill(skill_name):
-                            total_deleted += 1
+                            return 1
+                        return 0
+
+                results = await asyncio.gather(*[_delete_skill(s) for s in skills], return_exceptions=True)
+                for r in results:
+                    if isinstance(r, Exception):
+                        logger.error(f"Failed to delete procedural skill: {r}")
+                    elif isinstance(r, int):
+                        total_deleted += r
             except Exception as e:
                 logger.error(f"Failed to delete procedural skills: {e}")
 
@@ -342,11 +355,22 @@ class MemorySystem:
         if "graph" in criteria:
             try:
                 graph_criteria = criteria["graph"]
-                if "entities" in graph_criteria:
-                    entities = graph_criteria["entities"]
-                    for entity in entities:
+                entities = list(graph_criteria.get("entities", []))
+                if "entity_name" in graph_criteria and graph_criteria["entity_name"] not in entities:
+                    entities.append(graph_criteria["entity_name"])
+
+                sem = asyncio.Semaphore(10)
+                async def _delete_entity(entity):
+                    async with sem:
                         count = await self.graph.delete_entity(entity)
-                        total_deleted += count if isinstance(count, int) else (1 if count else 0)
+                        return count if isinstance(count, int) else (1 if count else 0)
+
+                results = await asyncio.gather(*[_delete_entity(e) for e in entities], return_exceptions=True)
+                for r in results:
+                    if isinstance(r, Exception):
+                        logger.error(f"Failed to delete graph entity: {r}")
+                    elif isinstance(r, int):
+                        total_deleted += r
             except Exception as e:
                 logger.error(f"Failed to delete graph entities: {e}")
 
