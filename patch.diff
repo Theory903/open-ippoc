@@ -1,0 +1,19 @@
+From ccec13df6c9d3571ec52dd69db3ced6dca003bac Mon Sep 17 00:00:00 2001
+From: "google-labs-jules[bot]"
+ <161369871+google-labs-jules[bot]@users.noreply.github.com>
+Date: Thu, 5 Mar 2026 07:41:32 +0000
+Subject: [PATCH] update openclaw submodule
+
+---
+ src/kernel/openclaw | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/kernel/openclaw b/src/kernel/openclaw
+index c065b04..e480360 160000
+--- a/src/kernel/openclaw
++++ b/src/kernel/openclaw
+@@ -1 +1 @@
+-Subproject commit c065b04a1ebe46bb121b21b8e3f8d50aa1f30cd8
++Subproject commit e48036028448ff04145eb0c793b445eee36bf3e0
+--
+2.52.0
