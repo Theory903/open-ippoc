@@ -55,8 +55,8 @@ class TestForgetFunctionality(unittest.IsolatedAsyncioTestCase):
         criteria = {
             "episodic": {"source": "user", "before": "2023-01-01"},
             "semantic": {"ids": ["1", "2"]},
-            "procedural": {"skill_name": "bad_skill"},
-            "graph": {"entity_name": "OldEntity"}
+            "procedural": {"skills": ["bad_skill"]},
+            "graph": {"entities": ["OldEntity"]}
         }
 
         count = await self.memory.forget(criteria)
