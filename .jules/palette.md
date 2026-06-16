@@ -1,0 +1,3 @@
+## 2025-03-25 - Missing ARIA Labels on Chat Control Icons
+**Learning:** Found that the main chat interface's primary controls (Refresh, Toggle Thinking, Toggle Focus Mode) were icon-only buttons (`btn--icon`) lacking `aria-label` attributes, making them inaccessible to screen readers. While they had `title` attributes for mouse hover tooltips, screen readers often require explicit ARIA labels or visually hidden text for interactive elements without text content.
+**Action:** Always add `aria-label` attributes to `btn--icon` elements. If the button has a dynamic state (like the thinking toggle), the `aria-label` should reflect that state or use a generic label in combination with `aria-pressed`.
