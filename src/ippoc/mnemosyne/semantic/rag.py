@@ -496,14 +496,27 @@ class SemanticManager:
                         candidate_ids.add(obj.id)
 
         # Match against semantic components
+        query_comps_set = set(query_components)
+        query_comps_len = len(query_components)
+
         for obj in candidates:
             if filter_metadata and not self._matches_filter(obj.metadata, filter_metadata):
                 continue
                 
-            # Calculate component overlap score
-            overlap = len(set(query_components) & set(obj.semantic_components))
-            max_components = max(len(query_components), len(obj.semantic_components))
-            component_score = overlap / max_components if max_components > 0 else 0
+            obj_comps_len = len(obj.semantic_components)
+            max_components = max(query_comps_len, obj_comps_len)
+
+            if max_components == 0:
+                component_score = 0
+            else:
+                # Early return if theoretical max score can't beat threshold
+                max_possible_component_score = min(query_comps_len, obj_comps_len) / max_components
+                if (max_possible_component_score * 0.7) + (obj.confidence * 0.3) < min_score:
+                    continue
+
+                # Calculate component overlap score
+                overlap = len(query_comps_set.intersection(obj.semantic_components))
+                component_score = overlap / max_components
             
             # Combine with object confidence
             final_score = (component_score * 0.7) + (obj.confidence * 0.3)
@@ -613,15 +626,27 @@ class SemanticManager:
         all_docs = await self._get_all_documents()
         scored_docs = []
         
+        query_components = self._extract_semantic_components(str(query_embedding)[:200])
+        query_comps_set = set(query_components)
+        query_comps_len = len(query_components)
+
         for doc in all_docs:
             # Calculate similarity between document and hypothetical embedding
             # This is a simplified approximation
             doc_components = self._extract_semantic_components(doc.page_content)
-            query_components = self._extract_semantic_components(str(query_embedding)[:200])
+            doc_comps_len = len(doc_components)
+
+            max_components = max(doc_comps_len, query_comps_len)
+            if max_components == 0:
+                continue
+
+            # Early return if theoretical max score can't beat threshold
+            max_possible_overlap = min(doc_comps_len, query_comps_len)
+            if max_possible_overlap / max_components < min_score:
+                continue
             
-            overlap = len(set(doc_components) & set(query_components))
-            max_components = max(len(doc_components), len(query_components))
-            similarity = overlap / max_components if max_components > 0 else 0
+            overlap = len(query_comps_set.intersection(doc_components))
+            similarity = overlap / max_components
             
             if similarity >= min_score:
                 scored_docs.append((doc, similarity))
