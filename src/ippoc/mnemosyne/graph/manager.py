@@ -103,6 +103,7 @@ class GraphManager:
     async def find_relationship_path(self, source_entity: str, target_entity: str, max_depth: int = 3) -> List[Dict[str, Any]]:
         """
         Find paths between two entities in the knowledge graph.
+        Optimized with Recursive CTE to avoid N+1 queries.
         
         Args:
             source_entity: Starting entity name
