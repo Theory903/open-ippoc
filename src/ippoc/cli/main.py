@@ -411,9 +411,10 @@ def verify_api_key(api_key: str) -> bool:
     import urllib.request
     import json
     
-    url = f"http://localhost:{SOMA_PORT}/v1/auth/verify?api_key={api_key}"
+    url = f"http://localhost:{SOMA_PORT}/v1/auth/verify"
+    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {api_key}"})
     try:
-        with urllib.request.urlopen(url, timeout=5) as resp:
+        with urllib.request.urlopen(req, timeout=5) as resp:
             data = json.loads(resp.read())
             return data.get("status") == "valid"
     except Exception:

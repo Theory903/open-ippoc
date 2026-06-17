@@ -104,7 +104,7 @@ def validate_key_with_soma(token: str) -> bool:
     Returns True if valid, False otherwise.
     """
     try:
-        response = requests.get(f"{SOMA_URL}/v1/auth/verify", params={"api_key": token}, timeout=5)
+        response = requests.get(f"{SOMA_URL}/v1/auth/verify", headers={"Authorization": f"Bearer {token}"}, timeout=5)
         return response.status_code == 200
     except Exception:
         return False
