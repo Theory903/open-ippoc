@@ -1,7 +1,14 @@
 from typing import Protocol, List, Optional
 import asyncio
 import httpx
+import os
+import re
 from .schemas import TelepathyMessage
+
+# Security Limits
+MAX_MSG_SIZE = 64 * 1024  # 64KB limit for telepathy messages
+MAX_LOG_SIZE = 10 * 1024 * 1024  # 10MB limit for event bus log
+SAFE_SENDER_PATTERN = re.compile(r"^[a-zA-Z0-9_\-.]+$")
 
 class TransportLayer(Protocol):
     async def send(self, message: TelepathyMessage, target_node_id: Optional[str] = None):
@@ -128,11 +135,22 @@ class TelepathySwarm:
         Process incoming messages.
         Filter by reputation, validate signature, then ingest into cortex.
         """
-        print(f"[Telepathy] Received from {message.sender}: {message.content}")
-        
-        # 1. Validation (Signature mock)
+        # 1. Input Validation & Sanitization
         if not message.sender:
             return None
+
+        # Security: Sanitize Sender ID
+        if not SAFE_SENDER_PATTERN.match(message.sender):
+            print(f"[Telepathy] Rejected unsafe sender ID: {message.sender}")
+            return None
+
+        # Security: Truncate oversized content to prevent DoS
+        content = message.content or ""
+        if len(content) > MAX_MSG_SIZE:
+            print(f"[Telepathy] Truncating oversized message from {message.sender}")
+            content = content[:MAX_MSG_SIZE] + "...(truncated)"
+
+        print(f"[Telepathy] Received from {message.sender}: {content[:100]}...")
             
         # 2. Conversion to Signal
         # Even though this class is detached, we prepare the data structure for the Cortex to pick up.
@@ -141,7 +159,7 @@ class TelepathySwarm:
         signal_data = {
             "type": "telepathy",
             "source": message.sender,
-            "content": message.content,
+            "content": content,
             "confidence": message.confidence,
             "pattern_id": message.pattern,
             "timestamp": "iso-now"
@@ -152,7 +170,17 @@ class TelepathySwarm:
         import asyncio
 
         def _write_to_bus():
-            with open("ippoc_event_bus.log", "a") as bus:
+            log_path = "ippoc_event_bus.log"
+
+            # Security: Log Rotation
+            try:
+                if os.path.exists(log_path) and os.path.getsize(log_path) > MAX_LOG_SIZE:
+                    os.rename(log_path, log_path + ".old")
+                    print(f"[Telepathy] Rotated event bus log.")
+            except Exception as e:
+                print(f"[Telepathy] Log rotation failed: {e}")
+
+            with open(log_path, "a") as bus:
                 bus.write(json.dumps(signal_data) + "\n")
 
         loop = asyncio.get_running_loop()
