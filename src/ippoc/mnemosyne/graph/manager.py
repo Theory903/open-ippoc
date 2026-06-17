@@ -1,11 +1,10 @@
-from typing import List, Dict, Any, Tuple, Optional
-from collections import defaultdict
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, text, DateTime, bindparam
-from sqlalchemy.orm import relationship
+from typing import List, Dict, Any
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, text, bindparam, Index
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 import logging
+import json
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -22,6 +21,10 @@ class Entity(Base):
 class Relation(Base):
     """An Edge in the Knowledge Graph"""
     __tablename__ = "kg_relations"
+    __table_args__ = (
+        Index('idx_source_relation', 'source_id', 'relation'),
+        Index('idx_target_relation', 'target_id', 'relation'),
+    )
     id = Column(Integer, primary_key=True)
     source_id = Column(Integer, ForeignKey("kg_entities.id"), index=True)
     target_id = Column(Integer, ForeignKey("kg_entities.id"), index=True)
@@ -279,7 +282,7 @@ class GraphManager:
                 # Parse metadata
                 try:
                     context["metadata"] = json.loads(metadata_str) if metadata_str else {}
-                except:
+                except Exception:
                     context["metadata"] = {}
                 
                 # Get relationships if requested
