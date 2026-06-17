@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 import logging
+import json
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -262,8 +263,9 @@ class GraphManager:
         try:
             async with self.Session() as session:
                 # Get entity details
+                # Optimized: Fix column name from metadata_ to metadata
                 entity_stmt = text("""
-                    SELECT id, type, metadata_
+                    SELECT id, type, metadata
                     FROM kg_entities
                     WHERE name = :name
                 """)
@@ -279,52 +281,57 @@ class GraphManager:
                 # Parse metadata
                 try:
                     context["metadata"] = json.loads(metadata_str) if metadata_str else {}
-                except:
+                except Exception:
                     context["metadata"] = {}
                 
-                # Get relationships if requested
-                if 'relationships' in context_types:
-                    # Incoming relationships
-                    incoming_stmt = text("""
-                        SELECT e.name, r.relation
+                # Optimized: Fetch all relations (incoming and outgoing) in a single query
+                if 'relationships' in context_types or 'attributes' in context_types:
+                    stmt = text("""
+                        SELECT
+                            CASE
+                                WHEN r.source_id = :eid THEN 'out'
+                                ELSE 'in'
+                            END as direction,
+                            e.name as other_name,
+                            r.relation
                         FROM kg_relations r
-                        JOIN kg_entities e ON r.source_id = e.id
-                        WHERE r.target_id = :entity_id
+                        JOIN kg_entities e ON (
+                            CASE
+                                WHEN r.source_id = :eid THEN r.target_id
+                                ELSE r.source_id
+                            END = e.id
+                        )
+                        WHERE r.source_id = :eid OR r.target_id = :eid
                     """)
-                    incoming_res = await session.execute(incoming_stmt, {"entity_id": entity_id})
-                    context["incoming_relations"] = [
-                        {"from": row[0], "relation": row[1]} 
-                        for row in incoming_res.fetchall()
-                    ]
                     
-                    # Outgoing relationships
-                    outgoing_stmt = text("""
-                        SELECT e.name, r.relation
-                        FROM kg_relations r
-                        JOIN kg_entities e ON r.target_id = e.id
-                        WHERE r.source_id = :entity_id
-                    """)
-                    outgoing_res = await session.execute(outgoing_stmt, {"entity_id": entity_id})
-                    context["outgoing_relations"] = [
-                        {"to": row[0], "relation": row[1]} 
-                        for row in outgoing_res.fetchall()
-                    ]
-                
-                # Get attributes if requested
-                if 'attributes' in context_types:
-                    # This would query attribute nodes connected to the entity
-                    attr_stmt = text("""
-                        SELECT e.name, r.relation
-                        FROM kg_relations r
-                        JOIN kg_entities e ON e.id = r.target_id
-                        WHERE r.source_id = :entity_id
-                        AND r.relation IN ('has_attribute', 'described_as', 'characterized_by')
-                    """)
-                    attr_res = await session.execute(attr_stmt, {"entity_id": entity_id})
-                    context["attributes"] = [
-                        {"attribute": row[0], "type": row[1]}
-                        for row in attr_res.fetchall()
-                    ]
+                    res = await session.execute(stmt, {"eid": entity_id})
+                    rows = res.fetchall()
+
+                    incoming = []
+                    outgoing = []
+                    attributes = []
+
+                    for row in rows:
+                        direction, other_name, relation = row
+
+                        if direction == 'in':
+                            if 'relationships' in context_types:
+                                incoming.append({"from": other_name, "relation": relation})
+                        else: # out
+                            if 'relationships' in context_types:
+                                outgoing.append({"to": other_name, "relation": relation})
+
+                            # Check for attributes (subset of outgoing relations)
+                            if 'attributes' in context_types:
+                                if relation in ('has_attribute', 'described_as', 'characterized_by'):
+                                    attributes.append({"attribute": other_name, "type": relation})
+
+                    if 'relationships' in context_types:
+                        context["incoming_relations"] = incoming
+                        context["outgoing_relations"] = outgoing
+
+                    if 'attributes' in context_types:
+                        context["attributes"] = attributes
                 
                 context["timestamp"] = datetime.now().isoformat()
                 
