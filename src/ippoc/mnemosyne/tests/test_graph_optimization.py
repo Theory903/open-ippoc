@@ -4,9 +4,29 @@ import pytest_asyncio
 import sys
 import os
 import asyncio
+from unittest.mock import MagicMock
+
+# Mock dependencies
+sys.modules["langchain_core"] = MagicMock()
+sys.modules["langchain_core.documents"] = MagicMock()
+sys.modules["langchain_postgres"] = MagicMock()
+sys.modules["pgvector"] = MagicMock()
+sys.modules["pgvector.sqlalchemy"] = MagicMock()
+sys.modules["ippoc.mnemosyne.semantic.rag"] = MagicMock()
+sys.modules["ippoc.mnemosyne.core"] = MagicMock()
+sys.modules["redis"] = MagicMock()
+sys.modules["redis.asyncio"] = MagicMock()
 
 # Ensure src is in path
 sys.path.append(os.path.join(os.getcwd(), "src"))
+# Add ippoc to path to help with imports
+sys.path.append(os.path.join(os.getcwd(), "src/ippoc"))
+
+# Use the file import trick to bypass package init if needed,
+# but mocks should handle it.
+# However, ippoc.mnemosyne.graph.manager is clean.
+# But "from ippoc.mnemosyne.graph.manager import GraphManager" might trigger ippoc.mnemosyne.__init__
+# which triggers other imports. With sys.modules mocked, it should be fine.
 
 from ippoc.mnemosyne.graph.manager import GraphManager
 
