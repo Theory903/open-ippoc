@@ -1,6 +1,6 @@
 from typing import List, Dict, Any, Tuple, Optional
 from collections import defaultdict
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, text, DateTime, bindparam
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, text, DateTime, bindparam, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
@@ -27,6 +27,11 @@ class Relation(Base):
     target_id = Column(Integer, ForeignKey("kg_entities.id"), index=True)
     relation = Column(String) # e.g. "authored", "is_located_in"
     weight = Column(Float, default=1.0)
+
+    __table_args__ = (
+        Index('idx_source_relation', 'source_id', 'relation'),
+        Index('idx_target_relation', 'target_id', 'relation'),
+    )
 
 class GraphManager:
     def __init__(self, db_url: str = None):
