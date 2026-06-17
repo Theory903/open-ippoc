@@ -1,5 +1,5 @@
 from typing import List, Dict, Any, Tuple, Optional
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, text, DateTime, bindparam
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, text, DateTime, bindparam, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
@@ -27,6 +27,11 @@ class Relation(Base):
     target_id = Column(Integer, ForeignKey("kg_entities.id"), index=True)
     relation = Column(String) # e.g. "authored", "is_located_in"
     weight = Column(Float, default=1.0)
+
+    __table_args__ = (
+        Index("idx_source_relation", "source_id", "relation"),
+        Index("idx_target_relation", "target_id", "relation"),
+    )
 
 class GraphManager:
     def __init__(self, db_url: str = None):
@@ -367,18 +372,22 @@ class GraphManager:
                 if ref_total == 0:
                     return []
 
-                # Intersection-first optimization using CTEs
+                # Intersection-first optimization using CTEs to solve N+1 Query problem.
                 # 1. Identify candidates (entities sharing >=1 relation) -> O(Neighbors)
                 # 2. Count totals for candidates only
                 # 3. Calculate Jaccard in SQL
                 # Note: This query avoids full table scans of unrelated entities.
+                # Optimization: Uses new composite indexes on (source_id, relation) and (target_id, relation)
                 stmt = text("""
                     WITH ref_rels AS (
+                        -- Get all relations of the reference entity
                         SELECT target_id, relation
                         FROM kg_relations
                         WHERE source_id = :ref_id
                     ),
                     candidates AS (
+                        -- Find entities that share at least one relation (target, type) with reference
+                        -- Optimized by composite index on (target_id, relation)
                         SELECT
                             r.source_id,
                             COUNT(r.id) as intersection_cnt
@@ -389,6 +398,8 @@ class GraphManager:
                         HAVING COUNT(r.id) >= :ref_total * :threshold
                     ),
                     candidate_totals AS (
+                        -- Count total relations for candidate entities
+                        -- Optimized by composite index on (source_id, relation)
                         SELECT
                             r.source_id,
                             COUNT(r.id) as total_cnt
@@ -396,6 +407,8 @@ class GraphManager:
                         JOIN candidates c ON r.source_id = c.source_id
                         GROUP BY r.source_id
                     )
+                    -- Calculate Jaccard Similarity: Intersection / Union
+                    -- Union = (Ref_Total + Candidate_Total - Intersection)
                     SELECT
                         e.name,
                         c.intersection_cnt,
