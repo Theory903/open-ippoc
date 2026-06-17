@@ -468,13 +468,16 @@ class SemanticManager:
         matched_objects = []
         
         # Match against semantic components
+        query_components_set = set(query_components)
+        len_query_components = len(query_components)
+
         for obj in self.semantic_objects:
             if filter_metadata and not self._matches_filter(obj.metadata, filter_metadata):
                 continue
                 
             # Calculate component overlap score
-            overlap = len(set(query_components) & set(obj.semantic_components))
-            max_components = max(len(query_components), len(obj.semantic_components))
+            overlap = len(query_components_set.intersection(obj.semantic_components))
+            max_components = max(len_query_components, len(obj.semantic_components))
             component_score = overlap / max_components if max_components > 0 else 0
             
             # Combine with object confidence
@@ -585,14 +588,18 @@ class SemanticManager:
         all_docs = await self._get_all_documents()
         scored_docs = []
         
+        # Extract query components once outside the loop
+        query_components = self._extract_semantic_components(str(query_embedding)[:200])
+        query_components_set = set(query_components)
+        len_query_components = len(query_components)
+
         for doc in all_docs:
             # Calculate similarity between document and hypothetical embedding
             # This is a simplified approximation
             doc_components = self._extract_semantic_components(doc.page_content)
-            query_components = self._extract_semantic_components(str(query_embedding)[:200])
             
-            overlap = len(set(doc_components) & set(query_components))
-            max_components = max(len(doc_components), len(query_components))
+            overlap = len(query_components_set.intersection(doc_components))
+            max_components = max(len(doc_components), len_query_components)
             similarity = overlap / max_components if max_components > 0 else 0
             
             if similarity >= min_score:
