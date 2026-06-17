@@ -34,6 +34,24 @@
       "failures": 0,
       "total_spent": 0.0,
       "total_value": 0.0
+    },
+    "malicious_sensor": {
+      "calls": 6,
+      "failures": 0,
+      "total_spent": 0.0,
+      "total_value": 0.0
+    },
+    "malicious_actor": {
+      "calls": 3,
+      "failures": 0,
+      "total_spent": 0.0,
+      "total_value": 0.0
+    },
+    "malicious_planner": {
+      "calls": 3,
+      "failures": 0,
+      "total_spent": 0.0,
+      "total_value": 0.0
     }
   },
   "events": [
@@ -226,8 +244,92 @@
       "cost": 0.0,
       "failed": false,
       "ts": 1770659247.016294
+    },
+    {
+      "kind": "spend",
+      "tool": "malicious_sensor",
+      "cost": 0.0,
+      "failed": false,
+      "ts": 1771965200.228198
+    },
+    {
+      "kind": "spend",
+      "tool": "malicious_actor",
+      "cost": 0.0,
+      "failed": false,
+      "ts": 1771965200.298554
+    },
+    {
+      "kind": "spend",
+      "tool": "malicious_planner",
+      "cost": 0.0,
+      "failed": false,
+      "ts": 1771965200.310598
+    },
+    {
+      "kind": "spend",
+      "tool": "malicious_sensor",
+      "cost": 0.0,
+      "failed": false,
+      "ts": 1771965200.3214915
+    },
+    {
+      "kind": "spend",
+      "tool": "malicious_sensor",
+      "cost": 0.0,
+      "failed": false,
+      "ts": 1771965212.279279
+    },
+    {
+      "kind": "spend",
+      "tool": "malicious_actor",
+      "cost": 0.0,
+      "failed": false,
+      "ts": 1771965212.3382146
+    },
+    {
+      "kind": "spend",
+      "tool": "malicious_planner",
+      "cost": 0.0,
+      "failed": false,
+      "ts": 1771965212.351512
+    },
+    {
+      "kind": "spend",
+      "tool": "malicious_sensor",
+      "cost": 0.0,
+      "failed": false,
+      "ts": 1771965212.3612936
+    },
+    {
+      "kind": "spend",
+      "tool": "malicious_sensor",
+      "cost": 0.0,
+      "failed": false,
+      "ts": 1771965241.2001352
+    },
+    {
+      "kind": "spend",
+      "tool": "malicious_actor",
+      "cost": 0.0,
+      "failed": false,
+      "ts": 1771965241.2607656
+    },
+    {
+      "kind": "spend",
+      "tool": "malicious_planner",
+      "cost": 0.0,
+      "failed": false,
+      "ts": 1771965241.2743347
+    },
+    {
+      "kind": "spend",
+      "tool": "malicious_sensor",
+      "cost": 0.0,
+      "failed": false,
+      "ts": 1771965241.285565
     }
   ],
-  "last_tick": 1770659247.01629,
+  "last_tick": 1771965241.2855499,
   "last_earning_timestamp": 1770639272.910227
 }
