@@ -1,0 +1,3 @@
+## 2024-03-01 - Icon-only buttons lacking ARIA labels
+**Learning:** Found an icon-only button ("Refresh chat data") that used a tooltip via `title` attribute but was missing the required `aria-label` for screen reader accessibility. Tooltips alone don't consistently announce to screen readers.
+**Action:** Always ensure icon-only interactive elements contain an explicitly defined `aria-label` or visually hidden text, even if a visual tooltip (`title`) is present.
