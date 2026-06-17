@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import Dict, Optional
 import uuid
 import os
+import secrets
 from pathlib import Path
 
 app = FastAPI(title="Soma - Identity & Trust Service")
@@ -51,7 +52,8 @@ def get_tokens(request: TokenRequest):
 
 @app.post("/v1/auth/issue")
 def issue_api_key(node_id: str = "ippoc-local"):
-    api_key = str(uuid.uuid4())
+    # SECURITY: Using cryptographically secure token instead of UUID
+    api_key = secrets.token_urlsafe(32)
     api_keys[api_key] = node_id
     return {"status": "success", "api_key": api_key, "node_id": node_id}
 
