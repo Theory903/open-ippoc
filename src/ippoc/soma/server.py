@@ -2,6 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Dict, Optional
 import uuid
+import secrets
 import os
 from pathlib import Path
 
@@ -51,7 +52,7 @@ def get_tokens(request: TokenRequest):
 
 @app.post("/v1/auth/issue")
 def issue_api_key(node_id: str = "ippoc-local"):
-    api_key = str(uuid.uuid4())
+    api_key = secrets.token_urlsafe(32)
     api_keys[api_key] = node_id
     return {"status": "success", "api_key": api_key, "node_id": node_id}
 
