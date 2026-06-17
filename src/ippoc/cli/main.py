@@ -27,6 +27,20 @@ logger = logging.getLogger("IPPOC.CLI")
 # SERVICE CONFIGURATION
 # ============================================================================
 
+# Colors
+class Colors:
+    GREEN = "\033[92m"
+    RED = "\033[91m"
+    YELLOW = "\033[93m"
+    BLUE = "\033[94m"
+    RESET = "\033[0m"
+    BOLD = "\033[1m"
+
+def colorize(text, color):
+    if sys.stdout.isatty():
+        return f"{color}{text}{Colors.RESET}"
+    return text
+
 # Service Ports
 SOMA_PORT = 8081          # Rust-based Soma (Identity + Mesh + Economy)
 SOMA_GRPC_PORT = 9081     # gRPC service
@@ -457,18 +471,35 @@ def get_all_services_status() -> Dict[str, dict]:
 def print_services_status():
     """Print status of all services."""
     print("\n" + "="*60)
-    print("📊 IPPOC Services Status")
+    print(f"📊 {colorize('IPPOC Services Status', Colors.BOLD)}")
     print("="*60)
     
     services = get_all_services_status()
     
     for name, info in services.items():
-        status = "🟢 Running" if info["running"] else "🔴 Stopped"
-        healthy = "✓" if info["healthy"] else "✗"
+        if info["running"]:
+            status = "🟢 Running"
+            status_display = colorize(status, Colors.GREEN)
+        else:
+            status = "🔴 Stopped"
+            status_display = colorize(status, Colors.RED)
+
+        healthy_char = "✓" if info["healthy"] else "✗"
+        if info["healthy"]:
+            healthy_display = colorize(healthy_char, Colors.GREEN)
+        elif info["running"]:
+            healthy_display = colorize(healthy_char, Colors.YELLOW)
+        else:
+            healthy_display = colorize(healthy_char, Colors.RED)
+
         pid = f" (PID: {info['pid']})" if info["pid"] else ""
         port = f":{info['port']}"
         
-        print(f"  {name.upper():8} {status}{pid} port{port} healthy={healthy}")
+        name_display = colorize(name.upper(), Colors.BLUE)
+        # We manually pad because ANSI codes mess up f-string width
+        padding = " " * (8 - len(name))
+
+        print(f"  {name_display}{padding} {status_display}{pid} port{port} healthy={healthy_display}")
     
     print("="*60 + "\n")
 
