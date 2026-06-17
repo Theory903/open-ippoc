@@ -5,3 +5,7 @@
 ## 2024-05-23 - Synchronous Audit Logging Bottleneck
 **Learning:** `ToolOrchestrator._audit_action` was performing synchronous file I/O (open/write/close) for every tool invocation. This introduced ~68ms latency per 1000 calls. Moving this to a background thread with `queue.Queue` reduced it to ~3ms (20x improvement).
 **Action:** For high-frequency logging or audit trails, always use an asynchronous writer or background thread to decouple I/O latency from the main execution path.
+
+## 2025-02-12 - [Routing Performance Bottlenecks]
+**Learning:** Repetitive string transformations (like `.lower()`) and inline list declarations inside frequently called evaluation functions (like `_assess_complexity`, `_assess_safety_risk` in `AdaptiveRAGRouter`) cause significant redundant memory allocation and CPU overhead.
+**Action:** Always hoist static keyword arrays/dicts to module-level constants and cache string transformations (e.g., `query_lower = query.lower()`) at the start of functions to optimize iteration loops.
