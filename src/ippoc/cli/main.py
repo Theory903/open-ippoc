@@ -105,12 +105,26 @@ def wait_for_url(url: str, timeout: float = 30.0, interval: float = 0.5) -> bool
     """Wait for a URL to become available."""
     import urllib.request
     start = time.time()
+
+    # Show waiting indicator if running in TTY
+    show_indicator = sys.stdout.isatty()
+    printed_dots = False
+
     while time.time() - start < timeout:
         try:
             urllib.request.urlopen(url, timeout=2)
+            if show_indicator and printed_dots:
+                sys.stdout.write("\n") # New line after dots
             return True
         except Exception:
+            if show_indicator:
+                sys.stdout.write(".")
+                sys.stdout.flush()
+                printed_dots = True
             time.sleep(interval)
+
+    if show_indicator and printed_dots:
+        sys.stdout.write("\n")
     return False
 
 def kill_process_on_port(port: int):
@@ -454,6 +468,16 @@ def get_all_services_status() -> Dict[str, dict]:
     
     return services
 
+class Colors:
+    OKGREEN = '\033[92m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+
+def colorize(text, color):
+    if sys.stdout.isatty():
+        return f"{color}{text}{Colors.ENDC}"
+    return text
+
 def print_services_status():
     """Print status of all services."""
     print("\n" + "="*60)
@@ -463,8 +487,16 @@ def print_services_status():
     services = get_all_services_status()
     
     for name, info in services.items():
-        status = "🟢 Running" if info["running"] else "🔴 Stopped"
-        healthy = "✓" if info["healthy"] else "✗"
+        if info["running"]:
+            status = colorize("🟢 Running", Colors.OKGREEN)
+        else:
+            status = colorize("🔴 Stopped", Colors.FAIL)
+
+        if info["healthy"]:
+            healthy = colorize("✓", Colors.OKGREEN)
+        else:
+            healthy = colorize("✗", Colors.FAIL)
+
         pid = f" (PID: {info['pid']})" if info["pid"] else ""
         port = f":{info['port']}"
         
