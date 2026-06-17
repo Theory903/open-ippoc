@@ -454,6 +454,12 @@ def get_all_services_status() -> Dict[str, dict]:
     
     return services
 
+def colorize(text: str, color_code: str) -> str:
+    """Colorize text with ANSI escape codes if stdout is a TTY."""
+    if sys.stdout.isatty():
+        return f"\033[{color_code}m{text}\033[0m"
+    return text
+
 def print_services_status():
     """Print status of all services."""
     print("\n" + "="*60)
@@ -463,8 +469,16 @@ def print_services_status():
     services = get_all_services_status()
     
     for name, info in services.items():
-        status = "🟢 Running" if info["running"] else "🔴 Stopped"
-        healthy = "✓" if info["healthy"] else "✗"
+        # Green (32) for running, Red (31) for stopped
+        status_text = "Running" if info["running"] else "Stopped"
+        color = "32" if info["running"] else "31"
+        status = f"{'🟢' if info['running'] else '🔴'} {colorize(status_text, color)}"
+
+        # Green (32) for healthy, Red (31) for unhealthy
+        healthy_mark = "✓" if info["healthy"] else "✗"
+        h_color = "32" if info["healthy"] else "31"
+        healthy = colorize(healthy_mark, h_color)
+
         pid = f" (PID: {info['pid']})" if info["pid"] else ""
         port = f":{info['port']}"
         
