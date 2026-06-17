@@ -1,6 +1,5 @@
-from typing import List, Dict, Any, Tuple, Optional
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, text, DateTime, bindparam
-from sqlalchemy.orm import relationship
+from typing import List, Dict, Any
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, text, bindparam
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
 import os
@@ -171,6 +170,7 @@ class GraphManager:
                 FROM kg_relations r
                 JOIN path_search p ON r.source_id = p.last_id
                 WHERE p.depth < :max_depth
+                AND (',' || p.path_ids || ',') NOT LIKE ('%,' || cast(r.target_id as text) || ',%')
             )
             SELECT path_ids, path_rels, depth
             FROM path_search
@@ -279,7 +279,7 @@ class GraphManager:
                 # Parse metadata
                 try:
                     context["metadata"] = json.loads(metadata_str) if metadata_str else {}
-                except:
+                except Exception:
                     context["metadata"] = {}
                 
                 # Get relationships if requested
