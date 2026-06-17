@@ -42,7 +42,10 @@ def validate_api_key(key: str) -> bool:
         return True
     
     try:
-        response = requests.get(f"{SOMA_BASE_URL}/v1/auth/verify", params={"api_key": key})
+        response = requests.get(
+            f"{SOMA_BASE_URL}/v1/auth/verify",
+            headers={"Authorization": f"Bearer {key}"}
+        )
         return response.status_code == 200
     except Exception as e:
         print(f"⚠️  Failed to validate API key: {e}")
