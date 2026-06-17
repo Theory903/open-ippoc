@@ -4,11 +4,37 @@ import pytest_asyncio
 import sys
 import os
 import asyncio
+from unittest.mock import MagicMock
+
+# Mock dependencies
+sys.modules["langchain_core"] = MagicMock()
+sys.modules["langchain_core.embeddings"] = MagicMock()
+sys.modules["langchain_core.vectorstores"] = MagicMock()
+sys.modules["langchain_core.prompts"] = MagicMock()
+sys.modules["langchain_core.runnables"] = MagicMock()
+sys.modules["langchain_core.documents"] = MagicMock()
+sys.modules["langchain_community"] = MagicMock()
+sys.modules["langchain_community.vectorstores"] = MagicMock()
+sys.modules["langchain_community.embeddings"] = MagicMock()
+sys.modules["langchain_google_genai"] = MagicMock()
+sys.modules["redis"] = MagicMock()
+sys.modules["redis.asyncio"] = MagicMock()
+sys.modules["pgvector"] = MagicMock()
+sys.modules["pgvector.sqlalchemy"] = MagicMock()
 
 # Ensure src is in path
 sys.path.append(os.path.join(os.getcwd(), "src"))
 
-from ippoc.mnemosyne.graph.manager import GraphManager
+# Try to import GraphManager, bypassing package init if needed
+try:
+    from ippoc.mnemosyne.graph.manager import GraphManager
+except ImportError:
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("GraphManager", "src/ippoc/mnemosyne/graph/manager.py")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["ippoc.mnemosyne.graph.manager"] = module
+    spec.loader.exec_module(module)
+    GraphManager = module.GraphManager
 
 @pytest_asyncio.fixture
 async def graph_manager():
