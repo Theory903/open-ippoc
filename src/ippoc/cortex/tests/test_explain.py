@@ -14,7 +14,7 @@ def temp_explain_file():
     file_path = os.path.join(temp_dir, "explain_test.json")
 
     # Patch the EXPLAIN_PATH in the module
-    with patch("cortex.explain.EXPLAIN_PATH", file_path):
+    with patch("ippoc.cortex.explain.EXPLAIN_PATH", file_path):
         yield file_path
 
     # Cleanup
