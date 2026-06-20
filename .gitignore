@@ -89,3 +89,4 @@ memory/db.sqlite*
 **/.cache/
 experiments/
 legacy/
+test_venv/
