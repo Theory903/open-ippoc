@@ -75,8 +75,16 @@ export class Thalamus {
              // Renice to lower priority (+10)
              // Requires permissions, but this is the intent
              // In a real env, we might wrap this in a sudo-helper or just log it if permission denied
+             const pid = Number(signal.payload.pid);
+             if (!Number.isInteger(pid)) {
+                 return "REFLEX: Failed to throttle (invalid PID)";
+             }
              import("child_process").then(cp => {
-                 cp.exec(`renice +10 -p ${signal.payload.pid}`);
+                 cp.execFile('renice', ['+10', '-p', pid.toString()], (error) => {
+                     if (error) {
+                         console.error("Failed to throttle process:", error);
+                     }
+                 });
              });
              return `REFLEX: Throttled process ${signal.payload.pid} (renice +10)`;
           } catch (e) {
