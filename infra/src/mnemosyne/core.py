@@ -8,7 +8,7 @@ This module provides a single entrypoint for accessing all memory subsystems:
 - Graph Memory (relationships, causality)
 
 Usage:
-    from mnemosyne import memory
+    from ippoc.mnemosyne import memory
     
     # Store an experience
     await memory.store_episodic("User asked about Python", source="chat")
@@ -234,7 +234,7 @@ class MemorySystem:
                 type="semantic",
                 content=doc.page_content,
                 metadata=doc.metadata,
-                score=1.0,  # TODO: get actual scores
+                score=doc.metadata.get("retrieval_score", 1.0),
                 id=doc.metadata.get("id", f"semantic:{i}")
             ) for i, doc in enumerate(documents)
         ]
@@ -320,9 +320,12 @@ class MemorySystem:
                 semantic_criteria = criteria["semantic"]
                 if "ids" in semantic_criteria:
                     semantic_ids = semantic_criteria["ids"]
+                    if isinstance(semantic_ids, str):
+                        semantic_ids = [semantic_ids]
                     if semantic_ids:
-                        if await self.semantic.delete_memories(semantic_ids):
-                            total_deleted += len(semantic_ids)
+                        res = await self.semantic.delete_memories(semantic_ids)
+                        if res:
+                            total_deleted += len(semantic_ids) if type(res) is bool else (res if type(res) is int else 1)
             except Exception as e:
                 logger.error(f"Failed to delete semantic memories: {e}")
 
@@ -332,9 +335,12 @@ class MemorySystem:
                 proc_criteria = criteria["procedural"]
                 if "skills" in proc_criteria:
                     skills = proc_criteria["skills"]
+                    if isinstance(skills, str):
+                        skills = [skills]
                     for skill_name in skills:
-                        if await self.procedural.delete_skill(skill_name):
-                            total_deleted += 1
+                        res = await self.procedural.delete_skill(skill_name)
+                        if res:
+                            total_deleted += 1 if type(res) is bool else (res if type(res) is int else 1)
             except Exception as e:
                 logger.error(f"Failed to delete procedural skills: {e}")
 
@@ -344,15 +350,17 @@ class MemorySystem:
                 graph_criteria = criteria["graph"]
                 if "entities" in graph_criteria:
                     entities = graph_criteria["entities"]
+                    if isinstance(entities, str):
+                        entities = [entities]
                     for entity in entities:
                         count = await self.graph.delete_entity(entity)
-                        total_deleted += count if isinstance(count, int) else (1 if count else 0)
+                        total_deleted += count if type(count) is int else (1 if count else 0)
             except Exception as e:
                 logger.error(f"Failed to delete graph entities: {e}")
 
         logger.info(f"Forget operation completed. Total removed: {total_deleted}")
         return total_deleted
-    
+
     def health_check(self) -> Dict[str, Any]:
         """Check memory system health"""
         return {
