@@ -262,15 +262,19 @@ export class ToolSmith {
     }
 
     try {
-        const { exec } = require("child_process");
+        const { execFile } = require("child_process");
         const util = require("util");
-        const execAsync = util.promisify(exec);
+        const execAsync = util.promisify(execFile);
 
         const resourceFlag = resources.length > 0 ? `--resources ${resources.join(",")}` : "";
         const cmd = `python3 "${scriptPath}" ${name} --path "${pathStr}" ${resourceFlag}`;
         
         console.log(`[ToolSmith] Executing: ${cmd}`);
-        const { stdout, stderr } = await execAsync(cmd);
+        const args = [scriptPath, name, "--path", pathStr];
+        if (resources.length > 0) {
+            args.push("--resources", resources.join(","));
+        }
+        const { stdout, stderr } = await execAsync("python3", args);
         
         console.log(stdout);
         if (stderr) console.warn(stderr);
