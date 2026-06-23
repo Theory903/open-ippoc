@@ -5,7 +5,6 @@ import json
 import os
 import time
 import asyncio
-from dataclasses import asdict
 from typing import Any, Dict, Optional
 
 from cortex.core.ledger import get_ledger
@@ -311,7 +310,7 @@ class AutonomyController:
         os.makedirs(os.path.dirname(STATE_PATH), exist_ok=True)
         # Convert dataclasses to dicts
         data = {
-            "intents": [asdict(i) for i in self.intent_stack.intents],
+            "intents": [i.to_dict() for i in self.intent_stack.intents],
             "skill_stats": self.skill_stats
         }
         with open(STATE_PATH, "w", encoding="utf-8") as f:
@@ -440,7 +439,7 @@ class AutonomyController:
         explanation = {
             "time": time.time(),
             # Convert decision's intent to dict if present
-            "decision": {k: (asdict(v) if isinstance(v, Intent) else v) for k, v in decision.items()},
+            "decision": {k: (v.to_dict() if isinstance(v, Intent) else v) for k, v in decision.items()},
             "observation": observation,
         }
 
