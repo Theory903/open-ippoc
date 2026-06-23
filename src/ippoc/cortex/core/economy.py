@@ -6,7 +6,7 @@ import json
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 
@@ -32,6 +32,15 @@ class ToolStats:
             return 0.0
         return self.total_value / self.total_spent
 
+    def to_dict(self) -> Dict[str, Any]:
+        # Optimization: Manual dict construction instead of asdict to avoid deep-copy overhead
+        return {
+            "calls": self.calls,
+            "failures": self.failures,
+            "total_spent": self.total_spent,
+            "total_value": self.total_value
+        }
+
 @dataclass
 class EconomyState:
     # Core accounting
@@ -48,6 +57,20 @@ class EconomyState:
     # Timing
     last_tick: float = 0.0
     last_earning_timestamp: float = 0.0
+
+    def to_dict(self) -> Dict[str, Any]:
+        # Optimization: Manual dict construction instead of asdict to avoid deep-copy overhead
+        return {
+            "budget": self.budget,
+            "reserve": self.reserve,
+            "total_spent": self.total_spent,
+            "total_value": self.total_value,
+            "total_earnings": self.total_earnings,
+            "tool_stats": self.tool_stats.copy(),
+            "events": list(self.events),
+            "last_tick": self.last_tick,
+            "last_earning_timestamp": self.last_earning_timestamp
+        }
 
 
 class EconomyManager:
@@ -105,7 +128,7 @@ class EconomyManager:
         Non-blocking save. Snapshots state and offloads I/O to thread.
         """
         # Snapshot state in main thread to ensure consistency
-        data = asdict(self.state)
+        data = self.state.to_dict()
         self._executor.submit(self._save_to_disk, data)
 
     def tick(self) -> None:
@@ -138,7 +161,7 @@ class EconomyManager:
         )
 
     def update_tool_stats(self, tool_name: str, stats: ToolStats) -> None:
-        self.state.tool_stats[tool_name] = asdict(stats)
+        self.state.tool_stats[tool_name] = stats.to_dict()
 
     def spend(self, cost: float, tool_name: str | None = None, failed: bool = False) -> bool:
         """
@@ -259,7 +282,7 @@ class EconomyManager:
 
     def snapshot(self) -> Dict[str, Any]:
         self.tick()
-        data = asdict(self.state)
+        data = self.state.to_dict()
         # Add derived metrics
         data["net_position"] = self.state.total_earnings - self.state.total_spent
         data["roi_ratio"] = self.state.total_value / max(self.state.total_spent, 1.0)

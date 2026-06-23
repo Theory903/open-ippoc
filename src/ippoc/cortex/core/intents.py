@@ -42,8 +42,17 @@ class Intent:
         # adjusted decay factor to be less aggressive than raw seconds
 
     def to_dict(self) -> Dict[str, Any]:
-        from dataclasses import asdict
-        return asdict(self)
+        # Optimization: Manual dict construction instead of asdict to avoid deep-copy overhead
+        return {
+            "description": self.description,
+            "priority": self.priority,
+            "intent_type": self.intent_type.value if hasattr(self.intent_type, 'value') else self.intent_type,
+            "intent_id": self.intent_id,
+            "created_at": self.created_at,
+            "source": self.source,
+            "context": self.context.copy() if self.context else {},
+            "decay_rate": self.decay_rate
+        }
 
 
 class IntentStack:

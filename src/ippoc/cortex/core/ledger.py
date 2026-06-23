@@ -6,7 +6,7 @@ import os
 import time
 from datetime import datetime
 import uuid
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 from sqlalchemy import Column, String, Float, Integer, DateTime, Text, select, text as sql_text
@@ -132,18 +132,84 @@ class InMemoryLedger(BaseLedger):
         record = self._data.get(execution_id)
         if not record:
             return None
-        return asdict(record)
+        # Optimization: Manual dict construction instead of asdict to avoid deep-copy overhead
+        return {
+            "execution_id": record.execution_id,
+            "status": record.status,
+            "tool_name": record.tool_name,
+            "domain": record.domain,
+            "action": record.action,
+            "request_id": record.request_id,
+            "idempotency_key": record.idempotency_key,
+            "trace_id": record.trace_id,
+            "caller": record.caller,
+            "tenant": record.tenant,
+            "source": record.source,
+            "priority": record.priority,
+            "created_at": record.created_at,
+            "updated_at": record.updated_at,
+            "duration_ms": record.duration_ms,
+            "retries": record.retries,
+            "cost_spent": record.cost_spent,
+            "result": record.result,
+            "error_code": record.error_code,
+            "error_message": record.error_message
+        }
 
     async def get_by_idempotency(self, key: str) -> Optional[Dict[str, Any]]:
         for record in self._data.values():
             if record.idempotency_key == key:
-                return asdict(record)
+                # Optimization: Manual dict construction instead of asdict to avoid deep-copy overhead
+                return {
+                    "execution_id": record.execution_id,
+                    "status": record.status,
+                    "tool_name": record.tool_name,
+                    "domain": record.domain,
+                    "action": record.action,
+                    "request_id": record.request_id,
+                    "idempotency_key": record.idempotency_key,
+                    "trace_id": record.trace_id,
+                    "caller": record.caller,
+                    "tenant": record.tenant,
+                    "source": record.source,
+                    "priority": record.priority,
+                    "created_at": record.created_at,
+                    "updated_at": record.updated_at,
+                    "duration_ms": record.duration_ms,
+                    "retries": record.retries,
+                    "cost_spent": record.cost_spent,
+                    "result": record.result,
+                    "error_code": record.error_code,
+                    "error_message": record.error_message
+                }
         return None
 
     async def list_recent(self, limit: int = 50) -> list[Dict[str, Any]]:
         records = list(self._data.values())
         records.sort(key=lambda r: r.updated_at or 0, reverse=True)
-        return [asdict(r) for r in records[:limit]]
+        # Optimization: Manual dict construction instead of asdict to avoid deep-copy overhead
+        return [{
+            "execution_id": r.execution_id,
+            "status": r.status,
+            "tool_name": r.tool_name,
+            "domain": r.domain,
+            "action": r.action,
+            "request_id": r.request_id,
+            "idempotency_key": r.idempotency_key,
+            "trace_id": r.trace_id,
+            "caller": r.caller,
+            "tenant": r.tenant,
+            "source": r.source,
+            "priority": r.priority,
+            "created_at": r.created_at,
+            "updated_at": r.updated_at,
+            "duration_ms": r.duration_ms,
+            "retries": r.retries,
+            "cost_spent": r.cost_spent,
+            "result": r.result,
+            "error_code": r.error_code,
+            "error_message": r.error_message
+        } for r in records[:limit]]
 
 
 class SqlLedger(BaseLedger):
