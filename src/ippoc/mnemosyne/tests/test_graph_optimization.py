@@ -8,6 +8,40 @@ import asyncio
 # Ensure src is in path
 sys.path.append(os.path.join(os.getcwd(), "src"))
 
+import sys
+from unittest.mock import MagicMock
+
+class MockPackage:
+    def __getattr__(self, name):
+        return MagicMock()
+
+sys.modules['langchain_core'] = MockPackage()
+sys.modules['langchain_core.documents'] = MockPackage()
+sys.modules['langchain_core.embeddings'] = MockPackage()
+sys.modules['langchain_core.vectorstores'] = MockPackage()
+sys.modules['langchain_core.prompts'] = MockPackage()
+sys.modules['langchain_core.runnables'] = MockPackage()
+sys.modules['langchain_community'] = MockPackage()
+sys.modules['langchain_community.vectorstores'] = MockPackage()
+sys.modules['langchain_community.embeddings'] = MockPackage()
+sys.modules['langchain_community.llms'] = MockPackage()
+sys.modules['langgraph'] = MockPackage()
+sys.modules['langgraph.graph'] = MockPackage()
+sys.modules['langgraph.prebuilt'] = MockPackage()
+sys.modules['langgraph.checkpoint'] = MockPackage()
+sys.modules['pgvector'] = MockPackage()
+sys.modules['pgvector.sqlalchemy'] = MockPackage()
+sys.modules['redis'] = MockPackage()
+sys.modules['redis.asyncio'] = MockPackage()
+sys.modules['asyncpg'] = MockPackage()
+sys.modules['pydantic'] = MockPackage()
+sys.modules['pydantic_settings'] = MockPackage()
+sys.modules['fastapi'] = MockPackage()
+sys.modules['httpx'] = MockPackage()
+sys.modules['nest_asyncio'] = MockPackage()
+sys.modules['dotenv'] = MockPackage()
+sys.modules['uvicorn'] = MockPackage()
+
 from ippoc.mnemosyne.graph.manager import GraphManager
 
 @pytest_asyncio.fixture
