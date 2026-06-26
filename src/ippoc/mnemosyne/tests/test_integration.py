@@ -9,7 +9,7 @@ from datetime import datetime
 # Add root to path so we can import memory
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
-from memory.api.server import app, ObservationPacket, SearchQuery
+from src.ippoc.mnemosyne.api.server import app, ObservationPacket, SearchQuery
 from memory.episodic.manager import EpisodicManager
 from memory.semantic.rag import SemanticManager
 from memory.graph.manager import GraphManager
