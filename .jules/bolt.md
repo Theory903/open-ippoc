@@ -5,3 +5,6 @@
 ## 2024-05-23 - Synchronous Audit Logging Bottleneck
 **Learning:** `ToolOrchestrator._audit_action` was performing synchronous file I/O (open/write/close) for every tool invocation. This introduced ~68ms latency per 1000 calls. Moving this to a background thread with `queue.Queue` reduced it to ~3ms (20x improvement).
 **Action:** For high-frequency logging or audit trails, always use an asynchronous writer or background thread to decouple I/O latency from the main execution path.
+## 2025-02-14 - Optimize Entity Similarity Search with SQL CTEs
+**Learning:** Replaced the inefficient N+1 query loop with a single optimized SQL query using CTEs. The original implementation fetched all entities, then iteratively queried relationships for each entity and compared them in Python, resulting in N+1 queries. The optimized query uses CTEs to perform intersection and calculate Jaccard similarity directly in SQL.
+**Action:** Use SQL CTEs to perform set operations and similarity calculations directly in the database to avoid N+1 query patterns and reduce data transfer overhead.
