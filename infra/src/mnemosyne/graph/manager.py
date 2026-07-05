@@ -146,7 +146,8 @@ class GraphManager:
             return []
     
     async def _find_paths_cte(self, session: AsyncSession, source_id: int, target_id: int, max_depth: int) -> List[Dict[str, Any]]:
-        """Recursive CTE based path finding - Faster than BFS and avoids N+1 queries"""
+        """Recursive CTE based path finding"""
+        # Optimization: Recursive CTE based path finding - Faster than BFS and avoids N+1 queries
         # Recursive CTE query
         # We use simple string concatenation for path tracking which is portable between Postgres and SQLite
         cte_query = text("""
