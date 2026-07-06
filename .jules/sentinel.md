@@ -1,4 +1,4 @@
-## 2025-02-06 - Default Insecure Configuration
-**Vulnerability:** Hardcoded API key ("ippoc-secret-key") used as default in `src/cortex/cortex/server.py`.
-**Learning:** Default configurations for development often make their way into production or expose systems during testing if not explicitly overridden. The system relied on a specific hardcoded string for default auth, which is a Critical vulnerability (CWE-798).
-**Prevention:** Never provide a hardcoded default for secrets. If a secret is missing, either generate a secure random one at runtime (fail-safe) or refuse to start (fail-secure).
+## 2026-07-06 - Command Injection via child_process.exec in Agent Tooling
+**Vulnerability:** Found `child_process.exec` being used to execute `git diff` and `renice` commands where process variables (like file paths or PIDs) were unsafely interpolated directly into the command string (e.g., `cp.exec("renice +10 -p " + pid)` and ``execAsync(`git diff --conflict=diff3 ${file}`)``).
+**Learning:** High-level abstractions like `exec` are frequently misused in Node.js when shell execution isn't actually required, exposing the application to command injection if variables are untrusted. Furthermore, these patterns were duplicated across multiple mirrored paths (`src/cortex`, `src/ippoc`) and submodules (`openclaw`), compounding the risk.
+**Prevention:** Always use `child_process.execFile` or `spawn` for system commands, passing arguments as an array instead of a single string. This bypasses the shell entirely. Also, ensure error callbacks are provided when using `execFile` to prevent unhandled rejections.
