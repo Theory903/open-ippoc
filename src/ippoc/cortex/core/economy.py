@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 # @cognitive - IPPOC Economy System (Value-Focused)
 # Focus: Earn real fiat/crypto value. Never block legitimate operations.
 
@@ -6,8 +7,8 @@ import json
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, asdict, field
-from typing import Any, Dict, List, Optional
+from dataclasses import dataclass, field
+from typing import Any, Dict, List
 
 
 @dataclass
@@ -15,11 +16,12 @@ class ToolStats:
     """
     Tracks performance and economic viability of a specific tool.
     """
+
     calls: int = 0
     failures: int = 0
     total_spent: float = 0.0
     total_value: float = 0.0
-    
+
     @property
     def error_rate(self) -> float:
         if self.calls == 0:
@@ -32,19 +34,20 @@ class ToolStats:
             return 0.0
         return self.total_value / self.total_spent
 
+
 @dataclass
 class EconomyState:
     # Core accounting
-    budget: float              # Current operational funds
-    reserve: float             # Maximum buffer capacity
-    total_spent: float = 0.0   # Total costs incurred
-    total_value: float = 0.0   # Total value earned
-    total_earnings: float = 0.0 # Real fiat/crypto earnings
-    
+    budget: float  # Current operational funds
+    reserve: float  # Maximum buffer capacity
+    total_spent: float = 0.0  # Total costs incurred
+    total_value: float = 0.0  # Total value earned
+    total_earnings: float = 0.0  # Real fiat/crypto earnings
+
     # Performance tracking
     tool_stats: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     events: List[Dict[str, Any]] = field(default_factory=list)
-    
+
     # Timing
     last_tick: float = 0.0
     last_earning_timestamp: float = 0.0
@@ -55,12 +58,18 @@ class EconomyManager:
         self.path = path or os.getenv("ECONOMY_PATH", "data/economy.json")
         self.state = self._load()
         # Single worker to ensure sequential writes to disk
-        self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="economy_writer")
+        self._executor = ThreadPoolExecutor(
+            max_workers=1, thread_name_prefix="economy_writer"
+        )
 
     def _load(self) -> EconomyState:
-        default_budget = float(os.getenv("ORCHESTRATOR_BUDGET", "1000.0"))  # Higher default
-        default_reserve = float(os.getenv("ORCHESTRATOR_RESERVE", "5000.0")) # Much higher reserve
-        
+        default_budget = float(
+            os.getenv("ORCHESTRATOR_BUDGET", "1000.0")
+        )  # Higher default
+        default_reserve = float(
+            os.getenv("ORCHESTRATOR_RESERVE", "5000.0")
+        )  # Much higher reserve
+
         if os.path.exists(self.path):
             try:
                 with open(self.path, "r", encoding="utf-8") as f:
@@ -74,7 +83,9 @@ class EconomyManager:
                     tool_stats=data.get("tool_stats", {}) or {},
                     events=data.get("events", []) or [],
                     last_tick=float(data.get("last_tick", time.time())),
-                    last_earning_timestamp=float(data.get("last_earning_timestamp", time.time())),
+                    last_earning_timestamp=float(
+                        data.get("last_earning_timestamp", time.time())
+                    ),
                 )
             except Exception:
                 pass
@@ -105,7 +116,18 @@ class EconomyManager:
         Non-blocking save. Snapshots state and offloads I/O to thread.
         """
         # Snapshot state in main thread to ensure consistency
-        data = asdict(self.state)
+        # Optimization: Avoid dataclasses.asdict for performance
+        data = {
+            "budget": self.state.budget,
+            "reserve": self.state.reserve,
+            "total_spent": self.state.total_spent,
+            "total_value": self.state.total_value,
+            "total_earnings": self.state.total_earnings,
+            "tool_stats": self.state.tool_stats.copy(),
+            "events": self.state.events.copy(),
+            "last_tick": self.state.last_tick,
+            "last_earning_timestamp": self.state.last_earning_timestamp,
+        }
         self._executor.submit(self._save_to_disk, data)
 
     def tick(self) -> None:
@@ -113,12 +135,12 @@ class EconomyManager:
         elapsed_min = max((now - self.state.last_tick) / 60.0, 0.0)
         if elapsed_min <= 0:
             return
-        
+
         # Gentle budget regeneration to prevent starvation
         # Regen 10% of reserve per hour (0.167% per minute)
         regen_rate = self.state.reserve * 0.00167 * elapsed_min
         self.state.budget = min(self.state.budget + regen_rate, self.state.reserve)
-            
+
         self.state.last_tick = now
         # Performance: Don't save on every tick. Save only on state changes (spend/earn).
 
@@ -138,18 +160,26 @@ class EconomyManager:
         )
 
     def update_tool_stats(self, tool_name: str, stats: ToolStats) -> None:
-        self.state.tool_stats[tool_name] = asdict(stats)
+        # Optimization: Avoid dataclasses.asdict for performance
+        self.state.tool_stats[tool_name] = {
+            "calls": stats.calls,
+            "failures": stats.failures,
+            "total_spent": stats.total_spent,
+            "total_value": stats.total_value,
+        }
 
-    def spend(self, cost: float, tool_name: str | None = None, failed: bool = False) -> bool:
+    def spend(
+        self, cost: float, tool_name: str | None = None, failed: bool = False
+    ) -> bool:
         """
         Spend budget for operations. NEVER blocks - borrows against future earnings.
         """
         self.tick()
-        
+
         # Always allow spending - negative budget is OK (operational debt)
         self.state.budget -= cost
         self.state.total_spent += cost
-        
+
         if tool_name:
             stats = self.get_tool_stats(tool_name)
             stats.total_spent += cost
@@ -157,8 +187,16 @@ class EconomyManager:
             if failed:
                 stats.failures += 1
             self.update_tool_stats(tool_name, stats)
-            
-        self._append_event({"kind": "spend", "tool": tool_name, "cost": cost, "failed": failed, "ts": time.time()})
+
+        self._append_event(
+            {
+                "kind": "spend",
+                "tool": tool_name,
+                "cost": cost,
+                "failed": failed,
+                "ts": time.time(),
+            }
+        )
         self._save()
         return True
 
@@ -174,37 +212,45 @@ class EconomyManager:
         total = sum(e.get("cost", 0.0) for e in recent)
         return total / len(recent)
 
-    def record_value(self, value: float, confidence: float = 1.0, source: str = "unknown", tool_name: str | None = None) -> None:
+    def record_value(
+        self,
+        value: float,
+        confidence: float = 1.0,
+        source: str = "unknown",
+        tool_name: str | None = None,
+    ) -> None:
         """
         Record earned value (real fiat/crypto). Updates both budget and earnings.
         """
         self.state.total_value += value
-        
+
         if tool_name:
             stats = self.get_tool_stats(tool_name)
             stats.total_value += value
             self.update_tool_stats(tool_name, stats)
-            
+
         # Convert value to budget with confidence adjustment
         realized_value = value * confidence
-        
+
         if realized_value > 0:
             # Add to operational budget
             self.state.budget += realized_value
             # Track as real earnings
             self.state.total_earnings += realized_value
             self.state.last_earning_timestamp = time.time()
-            
-        self._append_event({
-            "kind": "value", 
-            "tool": tool_name, 
-            "value": value, 
-            "confidence": confidence,
-            "source": source,
-            "realized": realized_value,
-            "is_earning": True,
-            "ts": time.time()
-        })
+
+        self._append_event(
+            {
+                "kind": "value",
+                "tool": tool_name,
+                "value": value,
+                "confidence": confidence,
+                "source": source,
+                "realized": realized_value,
+                "is_earning": True,
+                "ts": time.time(),
+            }
+        )
         self._save()
 
     def check_throttle(self, tool_name: str) -> bool:
@@ -213,15 +259,15 @@ class EconomyManager:
         Only throttles consistently failing tools to optimize resource usage.
         """
         stats = self.get_tool_stats(tool_name)
-        
+
         # Only throttle if catastrophic failure (>90% error rate after many calls)
         if stats.calls > 50 and stats.error_rate > 0.9:
             return True
-            
+
         # Extremely poor ROI after significant investment
         if stats.total_spent > 100.0 and stats.roi < 0.01:
             return True
-            
+
         return False
 
     def should_throttle(self, tool_name: str) -> bool:
@@ -239,7 +285,7 @@ class EconomyManager:
         # Only signal issues at extreme negative budget (-1000+)
         if self.state.budget >= -100.0:
             return 0.0  # Normal operations
-        
+
         # Gradual performance warning
         return min(abs(self.state.budget) / 1000.0, 1.0)
 
@@ -259,22 +305,37 @@ class EconomyManager:
 
     def snapshot(self) -> Dict[str, Any]:
         self.tick()
-        data = asdict(self.state)
+        # Optimization: Avoid dataclasses.asdict for performance
+        data = {
+            "budget": self.state.budget,
+            "reserve": self.state.reserve,
+            "total_spent": self.state.total_spent,
+            "total_value": self.state.total_value,
+            "total_earnings": self.state.total_earnings,
+            "tool_stats": self.state.tool_stats.copy(),
+            "events": self.state.events.copy(),
+            "last_tick": self.state.last_tick,
+            "last_earning_timestamp": self.state.last_earning_timestamp,
+        }
         # Add derived metrics
         data["net_position"] = self.state.total_earnings - self.state.total_spent
         data["roi_ratio"] = self.state.total_value / max(self.state.total_spent, 1.0)
-        data["earning_rate"] = self.state.total_earnings / max(time.time() - self.state.last_earning_timestamp, 1.0)
+        data["earning_rate"] = self.state.total_earnings / max(
+            time.time() - self.state.last_earning_timestamp, 1.0
+        )
         return data
 
 
 # Import RWE for enhanced economy functionality
 try:
-    from ippoc.cortex.core.rwe import get_rwe, ReputationWeightedEconomy
+    from ippoc.cortex.core.rwe import get_rwe
+
     _USE_RWE = True
 except ImportError:
     _USE_RWE = False
 
 _economy_instance: EconomyManager | None = None
+
 
 def get_economy() -> EconomyManager:
     global _economy_instance
@@ -285,9 +346,11 @@ def get_economy() -> EconomyManager:
             _economy_instance = EconomyManager()
     return _economy_instance
 
+
 def get_base_economy() -> EconomyManager:
     """Get the base EconomyManager without RWE extensions"""
     return EconomyManager()
+
 
 def is_rwe_enabled() -> bool:
     """Check if Reputation-Weighted Economics is enabled"""
