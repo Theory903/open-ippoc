@@ -1,4 +1,4 @@
-## 2025-02-06 - Default Insecure Configuration
-**Vulnerability:** Hardcoded API key ("ippoc-secret-key") used as default in `src/cortex/cortex/server.py`.
-**Learning:** Default configurations for development often make their way into production or expose systems during testing if not explicitly overridden. The system relied on a specific hardcoded string for default auth, which is a Critical vulnerability (CWE-798).
-**Prevention:** Never provide a hardcoded default for secrets. If a secret is missing, either generate a secure random one at runtime (fail-safe) or refuse to start (fail-secure).
+## 2026-07-07 - Replace Command Execution via exec with execFile
+**Vulnerability:** The use of `child_process.exec()` allows for command injection because it launches a shell and executes the provided command string. A malicious input could result in arbitrary commands being executed.
+**Learning:** Found instances of `child_process.exec()` used in `ToolSmith` and `Thalamus` agents. This pattern is insecure as it takes strings formatted with variables and can execute unwanted shell commands if those variables contain unsanitized input. Using `execFile` is a secure alternative because it does not spawn a shell.
+**Prevention:** Avoid `child_process.exec()`. Always use `child_process.execFile()` or `child_process.spawn()` with structured arguments array to bypass the shell when executing external binaries. Ensure that an error callback is provided when using `execFile` asynchronously.
